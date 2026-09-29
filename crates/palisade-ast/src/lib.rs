@@ -38,12 +38,43 @@ pub enum ParseError {
         /// The first one, 1-based line.
         first_line: Option<usize>,
     },
+    /// A declaration's text came out empty, so its signature cannot be
+    /// compared against anything.
+    ///
+    /// This exists because an empty signature is not a neutral value — it reads
+    /// as "unchanged", which is the one thing a two-tree comparison must never
+    /// conclude by accident. It happened: `strip_doc_comments` matched `//`
+    /// inside `///` and then hunted for a block-comment close in a line
+    /// comment, swallowing every documented declaration in the file, and
+    /// `public_api_unchanged` silently reported no change for all of them.
+    ///
+    /// Refusing the parse is stronger than a later assertion. An assertion can
+    /// be skipped, disabled, or removed under pressure; an unconstructible
+    /// value cannot be. It also keeps the failure *loud* rather than
+    /// *plausible*, which is the whole lesson: three times now, a correct-looking
+    /// empty or partial value has produced a confidently wrong answer, and every
+    /// one was caught by running rather than by reading.
+    DegenerateSignature {
+        /// The kind of declaration it was, e.g. `function_item`.
+        kind: &'static str,
+        /// Its name, when it has one.
+        name: String,
+        /// 1-based line.
+        line: u32,
+    },
 }
 
 impl std::fmt::Display for ParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::GrammarUnavailable(e) => write!(f, "Rust grammar unavailable: {e}"),
+            Self::DegenerateSignature { kind, name, line } => write!(
+                f,
+                "a {kind} `{name}` (line {line}) has no readable signature. \
+                 Not comparing it: an empty signature reads as unchanged, which \
+                 is the one conclusion a two-tree comparison must never reach by \
+                 accident."
+            ),
             Self::ParseErrors { count, first_line } => {
                 write!(f, "{count} parser error node(s)")?;
                 if let Some(l) = first_line {
@@ -324,6 +355,31 @@ pub fn parse(source: &str) -> Result<ParsedFile, ParseError> {
 
     let mut collector = Collector::default();
     collector.walk(root, source, &mut Vec::new());
+    // The invariant, enforced where the value is made rather than checked
+    // where it is used. `ParsedFile` therefore cannot contain a `PublicItem`
+    // with an empty signature, so a gate cannot report "no change" by
+    // accident -- and no later code needs to remember to check.
+    if let Some(bad) = collector
+        .items
+        .iter()
+        .find(|i| i.signature.trim().is_empty())
+    {
+        return Err(ParseError::DegenerateSignature {
+            kind: bad.kind.as_str(),
+            name: bad.path.clone(),
+            line: bad.line,
+        });
+    }
+    // Belt and braces. The check above makes this unreachable, which is the
+    // point: a `debug_assert` documents the invariant and costs nothing in
+    // release, and if it ever fires the real check above has been removed.
+    debug_assert!(
+        collector
+            .items
+            .iter()
+            .all(|i| !i.signature.trim().is_empty()),
+        "a public item with an empty signature escaped the check above"
+    );
     Ok(ParsedFile {
         source: Arc::from(source),
         items: Arc::new(collector.items),
@@ -624,12 +680,11 @@ impl Collector {
         kind: ItemKind,
         node: tree_sitter::Node<'_>,
     ) {
-        let _ = node;
         self.items.push(PublicItem {
             path: join(path, name),
             signature,
             kind,
-            line: 0,
+            line: node.start_position().row as u32 + 1,
         });
     }
 }

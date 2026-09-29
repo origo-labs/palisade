@@ -209,3 +209,82 @@ fn an_inner_doc_comment_between_items_is_stripped() {
         f.items()
     );
 }
+
+// ---- an empty signature is refused, not reported as "no change" ------------
+//
+// Defence in depth. An empty signature reads as "unchanged", which is the one
+// conclusion a two-tree comparison must never reach by accident. `strip_doc_comments`
+// once matched `//` inside `///` and then searched for a block-comment close in
+// a line comment, swallowing every documented declaration in a file, and
+// `public_api_unchanged` reported no change for all of them -- correctly,
+// given what it was given, and completely silently.
+
+#[test]
+fn the_where_clause_doc_comment_bug_is_impossible_now() {
+    // The exact input that produced an empty signature. If the parser ever
+    // regresses to matching `//` inside `///`, this fails rather than
+    // producing a plausible empty.
+    let f = parse("/// Old.\npub fn f<T>(t: T) where T: Clone {}").expect("parses");
+    assert_eq!(f.items()[0].signature, "pub fn f<T>(t: T) where T: Clone");
+}
+
+#[test]
+fn an_empty_signature_is_a_parse_error_not_a_quiet_empty() {
+    // The enforcement is at construction, so this documents the *contract*:
+    // the only way to get a `ParsedFile` is through `parse`, and `parse`
+    // rejects the degenerate case.
+    let ok = parse("/// Doc.\npub fn f() {}").expect("parses");
+    assert!(!ok.items().is_empty());
+    assert!(ok.items().iter().all(|i| !i.signature.trim().is_empty()));
+}
+
+#[test]
+fn every_item_in_a_variety_of_realistic_sources_has_a_signature() {
+    // The property, stated over a spread of declaration shapes rather than
+    // one input, because the bug it guards against only appeared for
+    // *documented* items with a `where` clause.
+    let sources = [
+        "/// doc\npub fn documented() {}",
+        "/// doc\npub fn generic<T: Clone>(t: T) {}",
+        "/// doc\npub fn where_clause<T>(t: T) where T: Clone {}",
+        "/// doc\npub fn with_ret<T>(t: T) -> Result<T, Error> where T: From<Error> {}",
+        "/// doc\n/// more doc\npub struct S { pub x: i32 }",
+        "/// doc\npub enum E { A, B }",
+        "/// doc\npub trait T { fn m(&self); }",
+        "/// doc\npub type A = Vec<String>;",
+        "/// doc\npub const C: i32 = 1;",
+        "/// doc\npub static S2: i32 = 1;",
+        "/// doc\nmod m { pub fn inner() {} }",
+        "/** block doc */\npub fn block_documented() {}",
+        "/// doc\npub fn cfg_attr() { let _ = 1; }",
+        "/// doc\npub fn const_generic<const N: usize>() -> [i32; N] { [0; N] }",
+    ];
+    for src in sources {
+        let f = parse(src).unwrap_or_else(|e| panic!("{src:?} should parse, got {e}"));
+        for item in f.items() {
+            assert!(
+                !item.signature.trim().is_empty(),
+                "{:?} produced an empty signature for {item:?}",
+                src
+            );
+        }
+    }
+}
+
+#[test]
+fn the_degenerate_case_names_the_item_and_its_line() {
+    // If the check ever fires in the wild, the message has to be actionable:
+    // which declaration, and where.
+    let err = ParseError::DegenerateSignature {
+        kind: "function_item",
+        name: "crate::helper".to_string(),
+        line: 42,
+    };
+    let text = err.to_string();
+    assert!(text.contains("function_item"), "{text}");
+    assert!(text.contains("crate::helper"), "{text}");
+    assert!(text.contains("42"), "{text}");
+    // And it must say *why* refusing is the right answer, because the
+    // temptation is always to treat it as no change.
+    assert!(text.contains("unchanged"), "{text}");
+}

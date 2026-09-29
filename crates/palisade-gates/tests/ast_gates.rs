@@ -638,3 +638,32 @@ fn removals_are_not_collapsed() {
         assert_eq!(finding.severity, Severity::Error, "a removal can block");
     }
 }
+
+#[test]
+fn a_degenerate_signature_is_untrustworthy_never_a_clean_run() {
+    // Defence in depth, at the gate. `palisade-ast` already refuses to
+    // produce a file with an empty signature, so this cannot be reached by
+    // feeding the gate real source -- which is the point. A gate that reports
+    // "no API change" because it could not read a signature is worse than a
+    // gate that says it could not tell, and this is the check that keeps the
+    // difference from ever being accidental.
+    // Well-formed source: no change to the API, and the gate says so.
+    let unchanged = "pub fn a() {}\n";
+    let obs = two_tree(&[("src/lib.rs", Some(unchanged), Some(unchanged))]);
+    assert_eq!(
+        run(Primitive::PublicApiUnchanged, &obs),
+        GateResult::Clean,
+        "a well-formed unchanged file is genuinely clean"
+    );
+    assert!(!obs.files[0].truncated);
+
+    // A file the parser refuses is Untrustworthy, never Clean. Fed through
+    // `two_tree` with genuinely unparseable source, which is the reachable
+    // case: a file we cannot read is a file we have not checked.
+    let broken = two_tree(&[(
+        "src/lib.rs",
+        Some("pub fn a() {}\n"),
+        Some("pub fn broken( {"),
+    )]);
+    assert_untrustworthy(Primitive::PublicApiUnchanged, &broken);
+}

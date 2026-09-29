@@ -253,7 +253,25 @@ fn parse_result(
     path: &str,
 ) -> Result<ParsedFile, UntrustworthyReason> {
     match cache.parse(source).as_ref() {
-        Ok(f) => Ok(f.clone()),
+        Ok(f) => {
+            // The second layer. `palisade-ast` refuses to hand back a
+            // `ParsedFile` containing an empty signature, so this cannot fire
+            // today. It is here because the failure it guards against is the
+            // worst kind: a *plausible* value that a comparison reads as "no
+            // change". One enforcement point is a convention; a second
+            // independent one is a defence, and the cost of the second is a
+            // loop over items already in memory.
+            if let Some(bad) = f.items().iter().find(|i| i.signature.trim().is_empty()) {
+                return Err(UntrustworthyReason::Indeterminate {
+                    detail: format!(
+                        "{path}: `{}` has no readable signature, so this gate \
+                         will not conclude it is unchanged",
+                        bad.path
+                    ),
+                });
+            }
+            Ok(f.clone())
+        }
         Err(e) => Err(UntrustworthyReason::Indeterminate {
             detail: format!("{path}: {e}"),
         }),
