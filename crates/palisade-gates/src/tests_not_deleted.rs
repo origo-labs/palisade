@@ -1,181 +1,162 @@
 //! `tests_not_deleted` — were tests removed, or made not to run?
 //!
-//! Three signals, none of which needs a build:
+//! Two-tree and AST-based. The set of test **identities** is compared, not a
+//! count, and that is the whole point:
 //!
-//! 1. A file that looks like a test disappeared from the two-tree view.
-//! 2. A `#[test]` or `#[bench]` count went *down* in a file that survived.
-//! 3. A skip marker was added — `#[ignore]`, `#[should_panic]` without an
-//!    expected value, or a `.skip(` / `xit(` / `xdescribe(` call.
+//! - Comparing names catches a **delete-and-replace** pair that a count
+//!   cannot. Remove one test and add another and the count is unchanged, while
+//!   a test somebody was relying on is gone. This gate existed in M1 counting
+//!   `#[test]` attributes, and M2 replaced it because a count is a weaker
+//!   statement than an identity and the text matcher underneath it was doing
+//!   an AST gate's job.
+//! - The `is_test_path` heuristic is **gone**. A deleted file is parsed at
+//!   the base commit and the tests it declared are reported by name, so
+//!   "is this a test file" no longer has to be guessed. A heuristic here had
+//!   two failure modes — missing a test in an oddly named file, and reporting
+//!   on a directory called `contest/` — and now has neither.
+//! - Framework attributes are recognised, not just bare `#[test]`. A gate that
+//!   only knows `#[test]` reports "nothing removed" on a repository that
+//!   writes `#[tokio::test]`, which is the failure mode of a check that has
+//!   never met the codebase it runs on.
 //!
-//! Every count is taken over whole files on both sides of the tree, never over
-//! diff text. `EVIDENCE.md` §6 records the first implementation of the
-//! predecessor's version of this check scoring 38% because it stripped the
-//! diff's `+`/`-` markers and then anchored its patterns on them. Diff text is
-//! a rendering of a change; the count is a property of the file.
-//!
-//! `cargo test -- --list` gives a stronger inventory — real test names, not
-//! attributes — and arrives in M3 as a `consumes` edge from `checks_green`.
-//! Until then the report says which signals it used, rather than implying
-//! full coverage.
+//! `cargo test -- --list` gives the real inventory — names as the compiler
+//! sees them, including macro-generated tests — and arrives in M3 as a
+//! `consumes` edge from `checks_green`. Until then this is a static reading of
+//! the source, and the report says so rather than implying full coverage.
 
-use palisade_orchestrate::Finding;
+use std::collections::BTreeSet;
+
+use palisade_ast::{ParseCache, ParsedFile, TestFn};
+use palisade_orchestrate::{Finding, UntrustworthyReason};
 
 use crate::{GateContext, GateResult, truncated};
 
-/// Does this path look like a test, bench, or fuzz target?
-///
-/// A heuristic, and stated as one: a gate that claims to detect deleted tests
-/// is bounded by what "looks like a test" means. The falsifiable part is the
-/// *deletion* check, which is exact for any path this accepts, and the
-/// `[dependencies]`-style false positive is watched for in M5's corpus.
-fn is_test_path(path: &str) -> bool {
-    let p = path.replace('\\', "/");
-    let segments: Vec<&str> = p.split('/').collect();
-    for seg in &segments {
-        match *seg {
-            "tests" | "test" | "benches" | "bench" | "fuzz" | "fixtures" => return true,
-            _ => {}
-        }
-    }
-    let file = segments.last().copied().unwrap_or_default();
-    file.starts_with("test_")
-        || file.ends_with("_test.rs")
-        || file.ends_with("_tests.rs")
-        || file.ends_with("_bench.rs")
-        || file.ends_with(".test.ts")
-        || file.ends_with(".spec.ts")
-}
-
-/// Count the test-defining attributes in a source file.
-///
-/// Line-anchored and comment-aware: a `#[test]` inside a doc comment is prose,
-/// not a test, and counting it would make this gate cry wolf on documentation
-/// changes. That is the difference between a gate people keep and one that
-/// gets switched off — and a gate that gets switched off takes its
-/// neighbours with it.
-fn count_test_attrs(src: &str) -> usize {
-    src.lines().filter(|l| is_attr(l, "test")).count()
-}
-
-fn count_skip_attrs(src: &str) -> usize {
-    src.lines()
-        .filter(|l| is_attr(l, "ignore") || is_attr(l, "should_panic"))
-        .count()
-}
-
-/// Whether a line is a bare `#[name]` or `#[name(...)]` attribute, excluding
-/// comments and doc comments.
-///
-/// The attribute *path* is compared, not the raw text, so `#[test]`,
-/// `#[test = "x"]` and `#[tokio::test]` are all recognised while
-/// `#[testify]` is not. Getting this wrong is not a subtle bug: a naive
-/// `starts_with("test")` counts `#[testify]`, and a naive equality against the
-/// text after `#[` counts *nothing at all*, which makes the gate pass on every
-/// repository while appearing calibrated.
-fn is_attr(line: &str, name: &str) -> bool {
-    let t = line.trim_start();
-    if t.starts_with("//") {
-        return false;
-    }
-    let Some(rest) = t.strip_prefix("#[") else {
-        return false;
-    };
-    // Cut the path at the first argument list or the closing bracket.
-    let end = rest.find(['(', ']']).unwrap_or(rest.len());
-    let path = rest[..end].trim().trim_start_matches("::");
-    // A path-qualified attribute such as `#[tokio::test]` counts as `test`.
-    path.rsplit("::").next().is_some_and(|last| last == name)
-}
-
-/// A framework-level skip: `.skip(`, `xit(`, `xdescribe(`, `test.todo`.
-fn count_framework_skips(src: &str) -> usize {
-    let mut n = 0;
-    for line in src.lines() {
-        let t = line.trim_start();
-        if t.starts_with("//") {
-            continue;
-        }
-        for pat in [".skip(", "xit(", "xdescribe(", "test.todo", "xtest("] {
-            if t.contains(pat) {
-                n += 1;
-                break;
-            }
-        }
-    }
-    n
-}
-
 /// The gate.
 pub fn run(ctx: &GateContext<'_>) -> GateResult {
+    let cache = ParseCache::new();
     let mut findings = Vec::new();
-    for view in &ctx.observation.files {
-        // A rename keeps the base side under the original path.
-        let base = view.base.as_deref();
-        let head = view.head.as_deref();
+    let mut saw_rust = false;
 
-        // 1. A test file vanished.
-        if head.is_none() && is_test_path(&view.path) {
-            findings.push(Finding::new(
-                ctx.gate.id.clone(),
-                ctx.gate.primitive,
-                ctx.gate.severity,
-                Some(view.path.clone().into()),
-                None,
-                "present at the base commit",
-                "deleted",
-                format!("`{}` looks like a test and was deleted", view.path),
-                ctx.origin(),
-            ));
+    for view in &ctx.observation.files {
+        if !view.path.ends_with(".rs") {
             continue;
         }
-        let Some(head) = head else { continue };
+        saw_rust = true;
         if view.truncated {
             return GateResult::Untrustworthy(truncated(&view.path));
         }
-        let Some(base) = base else {
-            // A new file can only add tests. Nothing to compare.
-            continue;
+
+        // Both sides. A deleted file has no head, and every test it declared
+        // is a removal — which falls out of the set comparison for free.
+        let base = match view.base.as_deref() {
+            Some(src) => match parse(&cache, src, &view.path) {
+                Ok(f) => Some(f),
+                Err(e) => return GateResult::Untrustworthy(e),
+            },
+            None => None,
+        };
+        let head = match view.head.as_deref() {
+            Some(src) => match parse(&cache, src, &view.path) {
+                Ok(f) => Some(f),
+                Err(e) => return GateResult::Untrustworthy(e),
+            },
+            None => None,
         };
 
-        // 2. A test count went down in a file that survived. A rename moved
-        //    the content, so the original path is the honest base.
-        let before = count_test_attrs(base);
-        let after = count_test_attrs(head);
-        if after < before {
+        // A file that was only added cannot have lost a test.
+        let Some(base) = base.as_ref() else { continue };
+
+        let base_ids: BTreeSet<String> = base.tests().iter().map(TestFn::id).collect();
+        // A deleted file has no head, so it has no tests, so every test it
+        // declared is a removal. This is the case the `is_test_path` heuristic
+        // used to guess at, and getting it from the parse instead means the
+        // guess is gone rather than merely improved.
+        let head_ids: BTreeSet<String> = head
+            .as_ref()
+            .map(|h| h.tests().iter().map(TestFn::id).collect())
+            .unwrap_or_default();
+
+        // Removals.
+        let removed: Vec<&TestFn> = base
+            .tests()
+            .iter()
+            .filter(|t| !head_ids.contains(&t.id()))
+            .collect();
+        if !removed.is_empty() {
+            let names: Vec<String> = removed.iter().map(|t| t.id()).collect();
             findings.push(Finding::new(
                 ctx.gate.id.clone(),
                 ctx.gate.primitive,
                 ctx.gate.severity,
                 Some(view.path.clone().into()),
                 None,
-                format!("{before} `#[test]` attributes"),
-                format!("{after} `#[test]` attributes"),
+                format!("{} test(s): {}", base_ids.len(), names.join(", ")),
+                format!("{} test(s)", head_ids.len()),
                 format!(
-                    "{} test(s) appear to have been removed from `{}`",
-                    before - after,
-                    view.path
+                    "{} test(s) removed from `{}`: {}",
+                    removed.len(),
+                    view.path,
+                    names.join(", ")
                 ),
                 ctx.origin(),
             ));
         }
 
-        // 3. A skip marker was added.
-        let skips_before = count_skip_attrs(base) + count_framework_skips(base);
-        let skips_after = count_skip_attrs(head) + count_framework_skips(head);
-        if skips_after > skips_before {
-            findings.push(Finding::new(
-                ctx.gate.id.clone(),
-                ctx.gate.primitive,
-                ctx.gate.severity,
-                Some(view.path.clone().into()),
-                None,
-                format!("{skips_before} skip marker(s)"),
-                format!("{skips_after} skip marker(s)"),
-                format!("a test skip marker was added to `{}`", view.path),
-                ctx.origin(),
-            ));
+        // Newly skipped. A test that gains `#[ignore]` still exists and still
+        // runs in some configurations, so it is reported separately from a
+        // removal — but it is a way of not running a test without deleting
+        // it, and a gate that only watched for deletions would miss it.
+        let Some(head) = head.as_ref() else { continue };
+        for t in head.tests() {
+            let id = t.id();
+            if !base_ids.contains(&id) {
+                continue; // a new test, even a skipped one
+            }
+            let Some(base_t) = base.tests().iter().find(|b| b.id() == id) else {
+                continue;
+            };
+            if (t.ignored || t.should_panic) && !base_t.ignored && !base_t.should_panic {
+                let marker = if t.ignored {
+                    "#[ignore]"
+                } else {
+                    "#[should_panic]"
+                };
+                findings.push(Finding::new(
+                    ctx.gate.id.clone(),
+                    ctx.gate.primitive,
+                    ctx.gate.severity,
+                    Some(view.path.clone().into()),
+                    None,
+                    "runs",
+                    marker,
+                    format!("`{id}` in `{}` was marked {marker}", view.path),
+                    ctx.origin(),
+                ));
+            }
         }
     }
 
+    // No `.rs` file in the observation means no `.rs` file changed, which
+    // means no test changed. Sound for the same reason as the equivalent
+    // branch in `dependency_surface_unchanged`: the view is built from the diff
+    // of the same two trees this gate compares, so absence means "unchanged"
+    // rather than "unexamined". It would be unsound under a status-derived
+    // view, which is why the reasoning is written down rather than assumed.
+    let _ = saw_rust;
+
     GateResult::findings(findings)
+}
+
+/// Parse a file, turning a refusal into the gate's `Untrustworthy` outcome.
+///
+/// A file that does not parse is not counted. A static reading of a broken
+/// file is a reading of whatever happened to be legible, and a gate that
+/// reports a confident count from it is worse than a gate that declines.
+fn parse(cache: &ParseCache, source: &str, path: &str) -> Result<ParsedFile, UntrustworthyReason> {
+    match cache.parse(source).as_ref() {
+        Ok(f) => Ok(f.clone()),
+        Err(e) => Err(UntrustworthyReason::Indeterminate {
+            detail: format!("{path}: {e}"),
+        }),
+    }
 }

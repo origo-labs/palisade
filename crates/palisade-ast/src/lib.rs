@@ -72,6 +72,7 @@ pub struct ParsedFile {
     items: Arc<Vec<PublicItem>>,
     unsafe_sites: Arc<Vec<UnsafeSite>>,
     suppressions: Arc<Vec<Suppression>>,
+    tests: Arc<Vec<TestFn>>,
 }
 
 impl ParsedFile {
@@ -93,6 +94,42 @@ impl ParsedFile {
     /// Every diagnostic suppression, with the attribute it came from.
     pub fn suppressions(&self) -> &[Suppression] {
         &self.suppressions
+    }
+
+    /// Every test function, by identity.
+    ///
+    /// Identity rather than a count. `tests_not_deleted` compares the *set* of
+    /// names across two trees, which catches a delete-and-replace pair that a
+    /// count delta cannot see: remove one test and add another and the count
+    /// is unchanged, while a test a human was relying on is gone.
+    pub fn tests(&self) -> &[TestFn] {
+        &self.tests
+    }
+}
+
+/// A test function, identified by name and by where it lives.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct TestFn {
+    /// Module path, so two same-named tests in different modules are distinct.
+    pub path: String,
+    /// The function name.
+    pub name: String,
+    /// 1-based line.
+    pub line: u32,
+    /// `#[ignore]`, so the test still exists but does not run.
+    pub ignored: bool,
+    /// `#[should_panic]`, which changes what passing means.
+    pub should_panic: bool,
+}
+
+impl TestFn {
+    /// A stable identity for comparing two trees.
+    pub fn id(&self) -> String {
+        if self.path.is_empty() {
+            self.name.clone()
+        } else {
+            format!("{}::{}", self.path, self.name)
+        }
     }
 }
 
@@ -292,6 +329,7 @@ pub fn parse(source: &str) -> Result<ParsedFile, ParseError> {
         items: Arc::new(collector.items),
         unsafe_sites: Arc::new(collector.unsafe_sites),
         suppressions: Arc::new(collector.suppressions),
+        tests: Arc::new(collector.tests),
     })
 }
 
@@ -348,6 +386,7 @@ struct Collector {
     items: Vec<PublicItem>,
     unsafe_sites: Vec<UnsafeSite>,
     suppressions: Vec<Suppression>,
+    tests: Vec<TestFn>,
 }
 
 impl Collector {
@@ -375,6 +414,9 @@ impl Collector {
                         let vis = is_public(child, source);
                         if vis {
                             self.push_item(path, &name, sig, ItemKind::Function, child);
+                        }
+                        if let Some(test) = as_test(child, source, path, &name) {
+                            self.tests.push(test);
                         }
                         if has_modifier(child, "unsafe") {
                             self.unsafe_sites.push(UnsafeSite {
@@ -592,6 +634,58 @@ impl Collector {
     }
 }
 
+/// Every attribute on a declaration, parsed.
+///
+/// The attribute *path* is compared, not raw text, so `#[test]`,
+/// `#[test = "x"]` and `#[tokio::test]` are all recognised and `#[testify]`
+/// is not. Getting this wrong is not subtle: a naive equality against the text
+/// after `#[` matches nothing at all, which makes a gate pass on every
+/// repository while appearing calibrated.
+fn attributes_of(node: tree_sitter::Node<'_>, source: &str) -> Vec<Attribute> {
+    let mut out = Vec::new();
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        if child.kind() != "attributes" {
+            continue;
+        }
+        let mut inner = child.walk();
+        for attr in child.children(&mut inner) {
+            if attr.kind() == "attribute_item" {
+                if let Some(a) = parse_attribute(attr, source) {
+                    out.push(a);
+                }
+            }
+        }
+    }
+    out
+}
+
+/// A test attribute, if the function carries one.
+///
+/// Recognised across the common frameworks rather than only bare `#[test]`,
+/// because a gate that only knows `#[test]` reports "no tests removed" on a
+/// repository that writes `#[tokio::test]` — the failure mode of a check that
+/// has never met the codebase it runs on.
+fn as_test(
+    node: tree_sitter::Node<'_>,
+    source: &str,
+    path: &[String],
+    name: &str,
+) -> Option<TestFn> {
+    let attrs = attributes_of(node, source);
+    let has = |want: &str| attrs.iter().any(|a| a.last_segment() == want);
+    if !(has("test") || has("test_case") || has("rstest") || has("bench")) {
+        return None;
+    }
+    Some(TestFn {
+        path: path.join("::"),
+        name: name.to_string(),
+        line: node.start_position().row as u32 + 1,
+        ignored: has("ignore"),
+        should_panic: has("should_panic"),
+    })
+}
+
 /// The signature of a function: the declaration without its body.
 ///
 /// A body change is not an API change, and including it would make every
@@ -739,35 +833,70 @@ fn is_public(node: tree_sitter::Node<'_>, source: &str) -> bool {
     })
 }
 
+/// A parsed attribute: its path and its arguments, with no judgement about
+/// what the attribute *means*.
+///
+/// The judgement belongs to the caller, because "is this a diagnostic
+/// suppression" and "is this a test" are different questions about the same
+/// syntax, and a parser that decides both at once gets one of them wrong.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Attribute {
+    /// The attribute path as written, e.g. `allow` or `tokio::test`.
+    pub path: String,
+    /// Comma-separated arguments, quotes stripped.
+    pub args: Vec<String>,
+    /// 1-based line of the `#[`.
+    pub line: u32,
+}
+
+impl Attribute {
+    /// The last `::` segment, so `tokio::test` yields `test`.
+    pub fn last_segment(&self) -> &str {
+        self.path.rsplit("::").next().unwrap_or(&self.path)
+    }
+}
+
+fn parse_attribute(node: tree_sitter::Node<'_>, source: &str) -> Option<Attribute> {
+    let text = node_text(node, source);
+    let inner = text.strip_prefix("#[")?.strip_suffix(']')?;
+    let (path, args) = match inner.split_once(['(', '=']) {
+        Some((a, rest)) => (a.trim(), rest.trim_end_matches(')')),
+        None => (inner.trim(), ""),
+    };
+    Some(Attribute {
+        path: path.to_string(),
+        args: args
+            .split(',')
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(|s| s.trim_matches('"').to_string())
+            .collect(),
+        line: node.start_position().row as u32 + 1,
+    })
+}
+
+/// The diagnostic attributes. `#[derive(..)]` and `#[test]` are not
+/// suppressions, and treating them as such would make this gate fire on
+/// every derive in the codebase.
+fn is_diagnostic_attribute(path: &str) -> bool {
+    matches!(path, "allow" | "expect" | "warn" | "deny" | "forbid")
+}
+
 fn suppression_from(
     node: tree_sitter::Node<'_>,
     source: &str,
     path: &[String],
 ) -> Option<Suppression> {
-    let text = node_text(node, source);
-    let inner = text.strip_prefix("#[")?.strip_suffix(']')?;
-    let (attribute, args) = match inner.split_once(['(', '=']) {
-        Some((a, rest)) => (a.trim(), rest.trim_end_matches(')')),
-        None => (inner.trim(), ""),
-    };
-    // Only diagnostic suppressions. `#[derive(..)]` and friends are not
-    // suppressions, and treating them as such would make this gate fire on
-    // every derive.
-    if !matches!(attribute, "allow" | "expect" | "warn" | "deny" | "forbid") {
+    let attr = parse_attribute(node, source)?;
+    if !is_diagnostic_attribute(&attr.path) {
         return None;
     }
-    let lints: Vec<String> = args
-        .split(',')
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .map(|s| s.trim_matches('"').to_string())
-        .collect();
     Some(Suppression {
         path: path.join("::"),
-        attribute: attribute.to_string(),
-        lints,
+        attribute: attr.path,
+        lints: attr.args,
         // Set by the caller, which knows what the attribute is attached to.
         module_wide: false,
-        line: node.start_position().row as u32 + 1,
+        line: attr.line,
     })
 }

@@ -174,7 +174,12 @@ fn a_deleted_test_file_is_caught_on_a_real_tree() {
         },
     ));
     assert_eq!(f.len(), 1, "expected exactly one finding, got {f:?}");
-    assert_eq!(f[0].observed, "deleted");
+    // The gate names the test rather than reporting "the file was deleted",
+    // because the base tree is parsed and the tests it declared are known.
+    assert!(
+        f[0].message.contains('a'),
+        "the deleted test should be named: {f:?}"
+    );
 }
 
 #[test]

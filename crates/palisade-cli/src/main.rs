@@ -129,13 +129,14 @@ fn run(cli: Cli) -> Result<Verdict, String> {
     let budget = resolve_budget(cli_budget, Some(&contract))?;
 
     let obs = capture(&repo, &base, budget, true)?;
-    let outcomes: Vec<GateOutcome> = contract.gates.iter().map(|g| run_gate(g, &obs)).collect();
+    let reports: Vec<GateReport> = contract.gates.iter().map(|g| run_gate(g, &obs)).collect();
+    let outcomes: Vec<GateOutcome> = reports.iter().map(|r| r.outcome.clone()).collect();
     let verdict = reduce(&ReductionInput {
         outcomes: &outcomes,
         ..Default::default()
     });
 
-    print_report(&contract, &outcomes, verdict);
+    print_report(&contract, &reports, verdict);
     Ok(verdict)
 }
 
@@ -179,12 +180,33 @@ fn load_contract(root: &Utf8PathBuf) -> Result<Contract, String> {
     palisade_contract::parse::parse(&source).map_err(|e| format!("{path}: {e}"))
 }
 
-fn run_gate(gate: &palisade_contract::Gate, obs: &Observation) -> GateOutcome {
+/// One gate's outcome *and* every finding it produced.
+///
+/// The two are separate because one `GateOutcome` carries one finding, and
+/// reducing several to the most severe is fine for a verdict and fatal for a
+/// report. PRD 7 is explicit: "a block without the diff hunk, the gate id, the
+/// expected and observed value, and a stable fingerprint is a bug" — and a
+/// report that shows one of three findings is a block with the other two
+/// missing. An earlier version of this file collapsed and dropped, with a
+/// comment claiming the rest were printed. They were not.
+struct GateReport {
+    gate_id: String,
+    primitive: &'static str,
+    outcome: GateOutcome,
+    findings: Vec<palisade_orchestrate::Finding>,
+}
+
+fn run_gate(gate: &palisade_contract::Gate, obs: &Observation) -> GateReport {
     if gate.severity == Severity::Off {
         // Reported as `off`, never as a pass: a reader must be able to see what
         // was not checked.
-        return GateOutcome::Skipped {
-            reason: palisade_orchestrate::SkipReason::DeclaredOff,
+        return GateReport {
+            gate_id: gate.id.to_string(),
+            primitive: gate.primitive.as_str(),
+            outcome: GateOutcome::Skipped {
+                reason: palisade_orchestrate::SkipReason::DeclaredOff,
+            },
+            findings: Vec::new(),
         };
     }
     let result = registry::dispatch(
@@ -194,31 +216,36 @@ fn run_gate(gate: &palisade_contract::Gate, obs: &Observation) -> GateOutcome {
             observation: obs,
         },
     );
-    match result {
-        GateResult::Clean => GateOutcome::Pass {
-            origin: palisade_orchestrate::Origin::Analyzed {
-                primitive: gate.primitive,
-            },
-        },
-        GateResult::Findings(f) => GateOutcome::Fail(collapse(f)),
-        GateResult::Untrustworthy(reason) => GateOutcome::Untrustworthy {
-            reason,
-            origin: palisade_orchestrate::Origin::Analyzed {
-                primitive: gate.primitive,
-            },
-        },
+    let origin = palisade_orchestrate::Origin::Analyzed {
+        primitive: gate.primitive,
+    };
+    let (outcome, findings) = match result {
+        GateResult::Clean => (GateOutcome::Pass { origin }, Vec::new()),
+        GateResult::Findings(f) => {
+            let worst = worst_of(&f);
+            (GateOutcome::Fail(worst), f)
+        }
+        GateResult::Untrustworthy(reason) => {
+            (GateOutcome::Untrustworthy { reason, origin }, Vec::new())
+        }
+    };
+    GateReport {
+        gate_id: gate.id.to_string(),
+        primitive: gate.primitive.as_str(),
+        outcome,
+        findings,
     }
 }
 
-/// One `GateOutcome` can carry one finding, so several findings from one gate
-/// are reduced to the most severe. The rest are printed by the report, so
-/// nothing is hidden — the reduction is about the verdict, not the evidence.
-fn collapse(findings: Vec<palisade_orchestrate::Finding>) -> palisade_orchestrate::Finding {
-    let mut findings = findings;
-    let mut worst = findings.remove(0);
+/// The finding that decides the verdict for a gate: the most severe one.
+///
+/// Every finding is still reported by [`print_report`]; this only picks which
+/// single one the verdict algebra sees.
+fn worst_of(findings: &[palisade_orchestrate::Finding]) -> palisade_orchestrate::Finding {
+    let mut worst = findings[0].clone();
     for f in findings {
         if severity_rank(f.severity) > severity_rank(worst.severity) {
-            worst = f;
+            worst = f.clone();
         }
     }
     worst
@@ -233,31 +260,33 @@ fn severity_rank(s: Severity) -> u8 {
     }
 }
 
-fn print_report(contract: &Contract, outcomes: &[GateOutcome], verdict: Verdict) {
+fn print_report(contract: &Contract, reports: &[GateReport], verdict: Verdict) {
     println!(
         "contract:  {} gate(s), version {}",
         contract.gates.len(),
         contract.version
     );
     println!();
-    for outcome in outcomes {
-        match outcome {
-            GateOutcome::Pass { origin } => {
-                println!("  pass           {}", primitive_of(origin));
+    for report in reports {
+        match &report.outcome {
+            GateOutcome::Pass { .. } => {
+                println!("  pass           {}", report.primitive);
             }
             GateOutcome::Skipped { .. } => {
                 println!("  off            (declared off, not checked)");
             }
-            GateOutcome::Untrustworthy { reason, origin } => {
-                println!(
-                    "  ERROR          {}: {}",
-                    primitive_of(origin),
-                    reason.detail()
-                );
+            GateOutcome::Untrustworthy { reason, .. } => {
+                println!("  ERROR          {}: {}", report.primitive, reason.detail());
             }
-            GateOutcome::Fail(f) => {
-                println!("  {:<14} [{}] {}", f.severity, f.gate_id, f.message);
-                println!("                 {} -> {}", f.expected, f.observed);
+            GateOutcome::Fail(_) => {
+                // Every finding, not just the one that decided the verdict.
+                for f in &report.findings {
+                    println!("  {:<8} [{}] {}", f.severity, report.gate_id, f.message);
+                    println!(
+                        "            {} -> {}   [{}]",
+                        f.expected, f.observed, f.fingerprint
+                    );
+                }
             }
         }
     }
@@ -277,13 +306,6 @@ fn print_report(contract: &Contract, outcomes: &[GateOutcome], verdict: Verdict)
         "reviewed: {}",
         contract.judgement.reviewed.as_deref().unwrap_or("<none>")
     );
-}
-
-fn primitive_of(origin: &palisade_orchestrate::Origin) -> String {
-    match origin {
-        palisade_orchestrate::Origin::Analyzed { primitive } => primitive.as_str().to_string(),
-        palisade_orchestrate::Origin::Delegated { tool, .. } => tool.as_str().to_string(),
-    }
 }
 
 fn print_observation(obs: &Observation) {

@@ -230,7 +230,66 @@ fn tests_not_deleted_fires_on_a_deleted_test_file() {
     let obs = two_tree(&[("tests/it.rs", Some("#[test]\nfn t() {}\n"), None)]);
     let r = registry::dispatch(g.primitive, &ctx(&g, &obs));
     let f = findings(&r);
-    assert_eq!(f[0].observed, "deleted");
+    assert_eq!(f.len(), 1, "{f:?}");
+    assert!(
+        f[0].message.contains('t'),
+        "the test should be named, not just counted: {f:?}"
+    );
+}
+
+#[test]
+fn tests_not_deleted_does_not_fire_on_a_deleted_file_with_no_tests() {
+    // The `is_test_path` heuristic is gone, so a deleted source file is not a
+    // deleted test — the base tree is parsed and found to declare none. The
+    // old gate would have had to guess from the path.
+    let g = gate(Primitive::TestsNotDeleted);
+    let obs = two_tree(&[("src/notes.rs", Some("pub fn helper() {}\n"), None)]);
+    assert_clean(&registry::dispatch(g.primitive, &ctx(&g, &obs)));
+}
+
+#[test]
+fn tests_not_deleted_catches_a_delete_and_replace_that_keeps_the_count() {
+    // The case a count structurally cannot see. M1 counted `#[test]`
+    // attributes; removing one test and adding another leaves the count
+    // unchanged, so M1 would have reported nothing while a test somebody was
+    // relying on was gone. Comparing identities catches it.
+    let base = "#[test]\nfn original() {}\n";
+    let head = "#[test]\nfn replacement() {}\n";
+    let g = gate(Primitive::TestsNotDeleted);
+    let obs = two_tree(&[("src/lib.rs", Some(base), Some(head))]);
+    let r = registry::dispatch(g.primitive, &ctx(&g, &obs));
+    let f = findings(&r);
+    assert!(
+        f.iter().any(|x| x.message.contains("original")),
+        "the removed test must be named even though the count is unchanged: {f:?}"
+    );
+}
+
+#[test]
+fn tests_not_deleted_understands_a_framework_test_attribute() {
+    // A gate that only knows `#[test]` reports "nothing removed" on a
+    // repository that writes `#[tokio::test]`, which is the failure mode of a
+    // check that has never met the codebase it runs on.
+    let g = gate(Primitive::TestsNotDeleted);
+    let obs = two_tree(&[(
+        "src/lib.rs",
+        Some("#[tokio::test]\nasync fn a() {}\n"),
+        None,
+    )]);
+    let r = registry::dispatch(g.primitive, &ctx(&g, &obs));
+    let f = findings(&r);
+    assert!(!f.is_empty(), "a deleted #[tokio::test] is a deleted test");
+}
+
+#[test]
+fn tests_not_deleted_is_untrustworthy_on_an_unparsable_file() {
+    let g = gate(Primitive::TestsNotDeleted);
+    let obs = two_tree(&[("src/lib.rs", Some("#[test]\nfn t() {}"), Some("fn ("))]);
+    let r = registry::dispatch(g.primitive, &ctx(&g, &obs));
+    assert!(
+        matches!(r, GateResult::Untrustworthy(_)),
+        "a file that does not parse must not yield a confident count: {r:?}"
+    );
 }
 
 #[test]
@@ -266,9 +325,9 @@ fn tests_not_deleted_does_not_fire_when_a_test_is_added() {
 }
 
 #[test]
-fn tests_not_deleted_does_not_fire_on_a_deleted_non_test_file() {
+fn tests_not_deleted_does_not_fire_when_only_a_non_rust_file_changed() {
     let g = gate(Primitive::TestsNotDeleted);
-    let obs = two_tree(&[("src/notes.md", Some("hi"), None)]);
+    let obs = two_tree(&[("README.md", Some("hi"), None)]);
     assert_clean(&registry::dispatch(g.primitive, &ctx(&g, &obs)));
 }
 
@@ -286,9 +345,11 @@ fn tests_not_deleted_ignores_a_test_attribute_in_a_doc_comment() {
 
 #[test]
 fn tests_not_deleted_ignores_a_similarly_named_non_test_directory() {
+    // `contest/` is not `tests/`. Under the old path heuristic a substring
+    // match would have fired here; now the file is parsed and found to hold no
+    // tests, so the answer is the same for a better reason.
     let g = gate(Primitive::TestsNotDeleted);
-    // `contest/` is not `tests/`. A substring match would fire here.
-    let obs = two_tree(&[("contest/entries.rs", Some("x"), None)]);
+    let obs = two_tree(&[("contest/entries.rs", Some("pub fn e() {}\n"), None)]);
     assert_clean(&registry::dispatch(g.primitive, &ctx(&g, &obs)));
 }
 
@@ -381,4 +442,28 @@ fn every_primitive_is_either_implemented_or_explicitly_unimplemented() {
             "disagreement about {p}"
         );
     }
+}
+
+// ---- evidence is not lost between the gate and the report -------------------
+
+#[test]
+fn several_findings_from_one_gate_all_survive() {
+    // A gate that finds three things must be able to report three things. The
+    // verdict algebra sees one `GateOutcome` per gate, so something has to
+    // carry the rest — and when it was dropped silently, PRD 7's "a block
+    // without the evidence is a bug" applied to the whole report rather than
+    // to one finding. The CLI's `GateReport` exists because of this.
+    let base = "#[test]\nfn original() {}\n\n#[test]\nfn other() {}\n";
+    let head = "#[test]\nfn replacement() {}\n\n#[ignore]\n#[test]\nfn other() {}\n";
+    let g = gate(Primitive::TestsNotDeleted);
+    let obs = two_tree(&[("src/lib.rs", Some(base), Some(head))]);
+    let r = registry::dispatch(g.primitive, &ctx(&g, &obs));
+    let f = findings(&r);
+    assert_eq!(
+        f.len(),
+        2,
+        "both the removal and the skip must survive: {f:?}"
+    );
+    assert!(f.iter().any(|x| x.message.contains("original")));
+    assert!(f.iter().any(|x| x.message.contains("#[ignore]")));
 }

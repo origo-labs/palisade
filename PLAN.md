@@ -509,11 +509,10 @@ Gates:
   change". `cargo metadata` remains the escalation if M5's corpus shows the
   direct parse misses real changes; it is a build-graph dependency and would
   make this a `Delegated` gate.
-- `tests_not_deleted` — three signals, all over whole files on both sides,
-  never over diff text: a test-looking path disappeared; a `#[test]` count went
-  down in a surviving file; a skip marker was added. `cargo test -- --list`
-  gives a stronger inventory and arrives in M3 as a `consumes` edge from
-  `checks_green`.
+- `tests_not_deleted` — **M1's text counter, replaced in M2 by the AST.** See
+  the M2 note below; comparing test *identities* rather than a count catches a
+  delete-and-replace pair that a count structurally cannot, and removing the
+  `is_test_path` heuristic removed two false-positive modes at once.
 - `paths_unchanged` — component-wise prefix matching, so `fixtures_extra/` is
   not inside `fixtures/`. Declaring no paths is `Untrustworthy`, not a pass.
 
@@ -654,6 +653,41 @@ positive:
    character the first pass has not reached. Writing the obvious one-pass
    version and having a fixture catch it is the argument for
    must-not-fire fixtures all over again.
+
+**`tests_not_deleted` moved here too.** M1 shipped it as a text counter, and
+that was the one gate in the suite doing an AST gate's job. Replacing it was
+not a like-for-like swap, it was strictly stronger in three ways:
+
+1. **Identities, not counts.** The set of test names is compared across two
+   trees, so removing `original` and adding `replacement` is caught even
+   though the count is unchanged. A count cannot express that, and
+   `tests_not_deleted_catches_a_delete_and_replace_that_keeps_the_count`
+   pins it.
+2. **The `is_test_path` heuristic is gone.** A deleted file is parsed at the
+   base commit and the tests it declared are reported *by name*. "Is this a
+   test file" no longer has to be guessed, which removes both the miss (a test
+   in an oddly named file) and the false positive (a directory called
+   `contest/`).
+3. **Framework attributes are recognised** — `#[tokio::test]`,
+   `#[test_case]`, `#[rstest]`, `#[bench]`, not just bare `#[test]`. A gate
+   that only knows `#[test]` reports "nothing removed" on a repository that
+   writes anything else, which is the failure mode of a check that has never
+   met the codebase it runs on.
+
+`cargo test -- --list` remains the stronger inventory — real names as the
+compiler sees them, including macro-generated tests — and lands in M3 as a
+`consumes` edge from `checks_green`.
+
+**A bug this exposed, which was not in the gate at all.** The CLI reduced
+each gate's findings to the single most severe one to feed the verdict algebra
+and then printed only that one, with a comment asserting the rest were
+printed. They were not. So a run that found three things reported one, and
+PRD 7's "a block without the evidence is a bug" applied to the whole report
+rather than to one finding. The CLI now carries a `GateReport` holding the
+outcome *and* every finding, and
+`several_findings_from_one_gate_all_survive` pins it. Worth recording because
+the comment was confidently false, and a false comment about evidence is
+worse than no comment.
 
 **Exit — met.** The public-API gate is demonstrated against all four real
 signature changes the plan named (renamed parameter, changed return type,
