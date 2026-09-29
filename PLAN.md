@@ -1,0 +1,607 @@
+# Palisade — build plan
+
+Derived from `PRD.md` (what), `EVIDENCE.md` (what we know and what failed),
+`REFERENCE-slop-gate.md` (prior art worth copying). This document is *how*:
+decisions that close the PRD's open questions, module layout, the verdict
+algebra, milestones with exit criteria, and the test strategy that keeps the
+claims honest.
+
+Every design choice below traces to something in those three documents. Where
+this plan adds a decision the PRD left open, it is marked **[decision]** and
+carries the reason, so it can be argued with rather than rediscovered.
+
+---
+
+## 0. Ground rules
+
+These are not aspirations; each is a bug that already happened once.
+
+1. **A gate may only ever subtract.** There is no code path from any gate
+   result — deterministic or judged — to `accept`. Acceptance is the
+   conjunction of declared, enabled, non-`off` gates returning `pass`.
+   Enforced by a unit test that asserts the type system makes it unrepresentable
+   to construct an `accept` from a `Judged` value.
+2. **`error` is a first-class outcome, not a `block` and not a `pass`.** A gate
+   that cannot produce a trustworthy verdict says so. Predecessor bug: a
+   verifier that failed to start returned `returncode: None`, which the caller
+   mapped onto "tests failed". See `EVIDENCE.md` §5.
+3. **Unknown is an error.** Unknown contract keys, unknown check names, unknown
+   severities, unknown enum variants in gate output. Misspelling must never
+   weaken a contract. (`slop-gate` decision 2.)
+4. **Observations are collected on a dirty tree.** `git diff` reads unstaged
+   changes. If a state is committed before observation, the diff is empty and
+   the whole system scores at chance while reporting success. This was the
+   single most expensive bug in the predecessor programme. See `EVIDENCE.md`
+   "apparatus bugs" and §3 — the classifier's worst failures were on states
+   with empty diffs. **There is a regression test for this, in M0, before any
+   gate exists.**
+5. **Three targets, never conflated.** Acceptance ("is it tested"), rule
+   violations ("does this break a stated rule"), and residual judgement
+   ("is this on-topic") are three separate fields in the output schema with
+   three separate producers. `EVIDENCE.md` §5. The output type must make
+   combining them a compile error, or a reporting bug will do it for us.
+6. **Deterministic does not mean complete.** Every emitted artefact states what
+   it did not cover. `judgement.not_covered` is mandatory, may be empty, and
+   must carry a `reviewed` date.
+
+---
+
+## 1. Decisions closing the PRD's open questions
+
+### 1.1 Judgement tier: not in v1 **[decision]**
+
+PRD §10 asks whether the judgement tier earns its place. It does not yet.
+Evidence for it is 55% recall at 100% specificity on 16 states, with the framing
+tuned on those same states (`EVIDENCE.md` §2, §9), and recall 55% is
+explicitly "not adequate for one that blocks unattended work" — though
+`escalate` is exactly a tier that does not block.
+
+**v1 ships with no model in the loop at all.** The `judged` check exists in the
+schema, is `escalate`-only, and its implementation returns
+`GateOutcome::NotImplemented` — which by rule 2 is `error`, not `pass`. A
+project that declares one gets a loud, correct failure instead of a silent
+regression to a heuristic.
+
+The design is built so this is additive. `Provenance` already has a `Judged`
+variant, the verdict algebra already routes `escalate` separately, and M6 adds
+a third gate kind beside `Analyzed` and `Delegated` without touching the
+reduction or either existing kind. Shipping the seam now and the body later is
+strictly better than shipping the body and discovering the seam was
+load-bearing.
+
+**Exit gate for M6** (must all hold before the tier is enabled by default):
+a fresh holdout set, never used for framing, with recall and specificity
+published alongside the AUC table. If recall < 80% on that set, the tier stays
+opt-in and documented as such.
+
+### 1.2 Baselines: no bespoke artifact in v1 **[decision]**
+
+PRD §10 flags the baseline tradeoff. `slop-gate` needs an artifact keyed to
+commit + policy + tool version + build fingerprint. Reproducibility demands it;
+adoption cost argues against asking contributors to manage one.
+
+**v1 uses the git object store as the baseline.** `base` is a commit-ish;
+gates read the base tree with `git show <base>:<path>` and the head state from
+the working tree. The base commit is immutable, content-addressed, already
+versioned, and already subject to the repository's own retention policy. This
+is the "derive the baseline from CI cache storage" answer generalised one step
+further: git already *is* the cache.
+
+This makes most v1 gates **two-tree diff gates** (compare base tree to worktree
+tree) rather than single-tree checks, which is both more correct and one less
+moving part. A bespoke `palisade index` artifact is deferred until a
+measurement shows `git show` is the bottleneck — not before. We do not build
+reproducibility machinery for a performance problem we have not measured.
+
+Exception: `external_tool` gates hand `{base}`/`{head}` to `slop-gate`, which
+maintains its own artifact. That boundary is explicit; we do not wrap it.
+
+### 1.3 Who owns the contract: make staleness mechanical **[decision]**
+
+PRD §10: "a file nobody reviews is worse than no file". A `reviewed` date that
+nothing reads is a comment.
+
+Two built-in gates ship in M4, neither configurable, both default `warn`:
+
+| Built-in | Fires when |
+| --- | --- |
+| `contract_review_stale` | `[judgement].reviewed` is older than `review_interval_days` (default 180) |
+| `contract_not_loosened` | the contract file itself changed in this diff, and a gate was disabled, downgraded `error`→`warn`, had a suppression added, or had a threshold loosened — without a `reason` field in the same diff |
+
+`contract_not_loosened` is the generalised `slop-gate` decision 6: the tool
+audits its own configuration against the Goodhart attack. A worker optimising
+against the gate suite rather than the intent will start loosening gates, and
+that is a diff-visible event. Making it a gate rather than a convention is the
+whole point.
+
+Both are `warn` in v1. Promotion to `error` is a *project's* decision after
+calibration, per the contract language rules.
+
+### 1.4 Naming: `Palisade` stands for v1 **[decision]**
+
+Renaming costs a spec rewrite and buys nothing measurable. Revisit at first
+external release.
+
+### 1.5 Rule mass: the measurement, not a feature **[decision]**
+
+PRD §9 criterion 1 ("a majority of stated rules transcribe into gates") is the
+product-vs-demo test. It is not a build task; it is M5, and it requires
+corpora we do not control. M5 is scheduled as if it might fail, because if it
+fails, the PRD's thesis is wrong and that is worth knowing in month four rather
+than month eighteen.
+
+### 1.6 Observation budget: reserve the marker inside the budget **[decision]**
+
+PRD §7 already says it. Made concrete because getting it wrong is a silent
+correctness bug, not a crash: budget N bytes, allocate N − len(marker), clip,
+append marker. Total never exceeds N.
+
+---
+
+## 2. Repository layout
+
+```
+palisade/
+  Cargo.toml                    # workspace
+  crates/
+    palisade-contract/          # palisade.toml: parse, validate, deny-unknown
+    palisade-git/               # the only crate that shells out to git
+    palisade-observe/           # bounded observation capture (dirty tree!)
+    palisade-ast/               # tree-sitter-rust-orchard wrapper, cached parse
+    palisade-gates/             # Analyzed gates: one module per primitive, no I/O
+    palisade-exec/              # Delegated gates: the only crate that spawns
+                                #   non-git processes. Sole constructor of
+                                #   Provenance::Delegated.
+    palisade-orchestrate/       # verdict algebra, precedence, exit codes — pure
+    palisade-report/            # human | json | sarif 2.1.0
+    palisade-cli/               # binary: `palisade check`, `palisade init`
+  tests/
+    fixtures/                   # two tiny repos, planted violations, committed
+    verdict_algebra.rs          # rule 1, 2, 5 as property tests
+    dirty_tree_regression.rs    # the EVIDENCE apparatus bug
+  docs/
+    CONTRACT.md                 # generated from the schema, checked in CI
+```
+
+Six boundaries that matter, each enforced by a lint or a test rather than
+convention:
+
+- **`palisade-git` and `palisade-exec` are the only crates that spawn
+  processes.** Everything else takes data. This is what makes gates
+  unit-testable against fixtures with no repo and no subprocess.
+- **Gates come in two kinds, and the type says whose verdict it is.**
+  `Analyzed` gates are Palisade's own AST and diff analysis and perform no I/O:
+  `fn(&Observation) -> Vec<Finding>`. `Delegated` gates are a trusted external
+  process's verdict plus its evidence, constructed only by `palisade-exec`:
+  `checks_green` (`cargo fmt`/`clippy`/`test`) and `external_tool`. The
+  distinction is epistemic — "we diffed it" versus "cargo said so" — and it
+  belongs in the type rather than in a field someone has to remember to fill
+  in. Both flow into the same reduction, which stays pure.
+- **`palisade-gates` has no `std::process` in its dependency graph.** Enforced
+  by a `cargo-deny`/`cargo-machete` style check in CI, not by review. This
+  invariant is what keeps analyzed gates deterministic and calibratable, and
+  it is the reason the crate split exists.
+- **`palisade-ast` caches parses per file content hash.** Gates re-parse
+  otherwise, and the per-commit budget dies.
+- **`palisade-orchestrate` knows nothing about TOML, tree-sitter, or
+  processes.** It consumes a validated `Contract` and a `Vec<Finding>` and
+  returns a `Verdict`. Pure function, fully property-testable, and it stays
+  that way *because* process execution lives in `palisade-exec`.
+- **`palisade-report` is the only place SARIF is produced.** One serialiser, no
+  ad-hoc JSON in gates.
+- **No model client crate exists in v1.** Not stubbed, not feature-gated —
+  absent. Adding it in M6 is a visible diff.
+
+### 2.1 Dependencies (v1, pinned)
+
+| Crate | Why |
+| --- | --- |
+| `tree-sitter` + `tree-sitter-rust-orchard` | same parser as `slop-gate`; findings line up across the two tools |
+| `serde`, `serde_json` | contract + report |
+| `toml` (0.8+, with span info) | span-carrying parse errors are the difference between "line 41" and a wall of text |
+| `camino` | git paths are UTF-8 on the wire; on disk they are not |
+| `blake3` | content-addressed parse cache + observation fingerprints |
+| `clap` (derive) | CLI |
+| `rayon` | gates are embarrassingly parallel and independent |
+
+No async runtime. No HTTP client. No model SDK. If a dependency in this table
+ever needs the network at build or run time, that is a PRD amendment, not a
+Cargo change.
+
+---
+
+## 3. The verdict algebra
+
+This is the heart, and it is small enough to prove correct by exhaustion.
+
+```rust
+enum Provenance {
+    Analyzed { primitive: Primitive },            // Palisade's own analysis
+    Delegated { tool: ToolId, version: String }, // a trusted process said so
+    Judged,                                      // M6 only; never in v1
+}
+
+enum GateOutcome {
+    Pass { provenance: Provenance },
+    Fail(Finding),          // Finding carries its own Provenance
+    NotImplemented { primitive: Primitive },
+    Untrustworthy { reason: UntrustworthyReason, provenance: Provenance },
+    Skipped { reason: SkipReason },
+}
+
+enum Verdict { Accept, Block, Escalate, Error }
+```
+
+A `Finding`'s `provenance` is not a free field to be filled in — it is
+constructed from the `Provenance` on the `GateOutcome` that produced it, by
+`Analyzed` gates carrying `Primitive` and by `palisade-exec` carrying
+`ToolId`+`version`. There is no constructor that lets a gate claim a
+provenance it did not earn.
+
+### 3.0 The two gate kinds, and why they are separated
+
+`checks_green` and `external_tool` are not the same kind of thing as
+`dependency_surface_unchanged`. The first two are "run this and read the exit
+code"; their trustworthiness is inherited from a third party. The rest are
+Palisade's own AST and diff analysis; their trustworthiness is ours. Folding
+them into one shape would mean either a `Vec<Finding>` nested inside a
+`GateOutcome` with a second flattening path, or a fake "one gate, three
+sub-results" abstraction that both primitive kinds have to distort themselves
+to fit.
+
+Instead the two kinds have separate shapes — `Analyzed` returns
+`Vec<Finding>` from a pure function, `Delegated` is constructed only by
+`palisade-exec` — and both reduce through the same pure function. The payoff
+is that the exit-code-2 → `Untrustworthy` rule, the single most
+safety-critical piece of code in the tool, gets its own crate and its own
+exhaustive test table. `EVIDENCE.md` §5 is that exact rule's failure mode: a
+verifier that could not start and a verifier whose tests failed were
+indistinguishable to the caller, and it confounded an entire measurement
+programme. It does not get a home in the least-tested layer.
+
+`Skipped` is deliberately **not** `Pass`. A gate skipped because it is `off`
+does not participate in the conjunction, and is reported in the output as
+`off` — a reader can always see what was not checked. A gate skipped for any
+other reason (missing tool, unparseable file) is `Untrustworthy` and forces
+`Error`.
+
+Precedence, and it is total:
+
+```text
+any Untrustworthy           -> Error        (a gate that could not run has not passed)
+any NotImplemented declared -> Error
+any contract parse/validate failure -> Error
+any gate changed this diff  -> Warning      (non-blocking advisory, never a verdict)
+any Fail with severity=error       -> Block
+any Fail with severity=escalate    -> Escalate
+any Fail with severity=warn        -> (nothing)   # recorded, still Accept
+otherwise                          -> Accept
+```
+
+Two properties this buys, both tested in `verdict_algebra.rs`:
+
+- **Monotonicity.** Adding a new failing gate can never move `Block` to
+  `Accept`. Adding a new *untrustworthy* gate can never move any verdict to
+  `Accept`. Tested as a property over generated gate vectors.
+- **No acceptance from a model.** `Verdict::Accept` is only constructible in
+  `orchestrate` from a conjunction over `GateOutcome` variants that carry no
+  model provenance. In M6, `Judged` becomes a `Fail` with
+  `severity: escalate` and a forced `provenance: Judged` marker; the property
+  test asserts no input containing that marker yields `Accept`.
+- **Provenance is total.** Every `Finding` and every `Pass` has a
+  `Provenance`, and no `Provenance::Delegated` value can be constructed
+  outside `palisade-exec`. A test asserts the JSON and SARIF outputs both carry
+  it, because a report that cannot say whose verdict it is cannot be audited.
+
+### 3.1 Exit codes
+
+Aligned with `slop-gate` decision 5, extended by one:
+
+| Code | Verdict | Meaning |
+| --- | --- | --- |
+| 0 | `Accept` | every enabled gate passed |
+| 1 | `Block` | ≥1 error-severity failure |
+| 2 | `Error` | no trustworthy verdict could be produced |
+| 3 | `Escalate` | ≥1 escalate-severity finding, none blocking |
+
+`Error` is 2, not 1. That ordering is the whole lesson from the predecessor
+project and it is the one thing in this design most likely to be "simplified"
+away by a future contributor. It gets a comment, a test, and a line in
+`docs/CONTRACT.md`.
+
+`palisade-exec` owns the whole table, and it is the reason the crate exists:
+
+| Process outcome | `GateOutcome` |
+| --- | --- |
+| exit 0 | `Pass` |
+| exit 1 | `Fail`, one finding per reported diagnostic |
+| exit 2 | `Untrustworthy` — the tool could not produce a trustworthy result |
+| not found on `PATH` | `Untrustworthy` |
+| timed out | `Untrustworthy` |
+| killed by signal | `Untrustworthy` |
+| stdout not parseable as the declared `format` | `Untrustworthy` |
+| any other non-zero code | `Untrustworthy`, not `Fail` |
+
+The last row is the belt-and-braces version of the same lesson: an exit code
+Palisade does not recognise is not a verdict it is entitled to interpret.
+Only 0 and 1 mean anything, and only because the tools we invoke document
+that; everything else is "no trustworthy verdict", which is `Error`.
+
+### 3.2 Finding: what a block is made of
+
+PRD §7: "A block without the diff hunk, the gate id, the expected and observed
+value, and a stable fingerprint is a bug." So `Finding` is not a free-form
+string:
+
+```rust
+struct Finding {
+    gate_id: GateId,
+    primitive: Primitive,
+    severity: Severity,
+    path: Utf8PathBuf,          // repo-relative
+    hunk: Option<HunkRef>,      // line range in the *observed* file
+    expected: String,           // what the contract/base said
+    observed: String,           // what was found
+    message: String,            // human sentence, no facts not in the fields above
+    fingerprint: Fingerprint,   // blake3(gate_id, path, rule params, normalized finding)
+    provenance: Provenance,     // Analyzed | Delegated { tool, version } | Judged
+}
+```
+
+`fingerprint` is what lets CI tell "the same known finding" from "a new one",
+and what lets suppression be scoped to a finding rather than a file.
+`provenance` is what keeps the three targets from being conflated downstream,
+and makes "was this caught by a model" answerable in the artefact itself. It is
+derived from the producing `GateOutcome`, never supplied independently — see
+§3.
+
+Report formats: `human` (default, for a PR comment), `json` (machine, the
+three targets as separate top-level keys), `sarif` (2.1.0, so it lands in GitHub
+code scanning with no extra work). SARIF `partialFingerprints` carries
+`fingerprint`; `properties` carries `expected`/`observed`/`provenance`.
+
+---
+
+## 4. The contract
+
+`palisade.toml` at repo root. Strict `toml` with `deny_unknown_fields`
+everywhere, custom `Deserialize` for every enum (so `"erorr"` is a parse error
+naming the field, not a default), and span-carrying errors.
+
+Schema is what PRD §5 shows, plus four additions this plan makes:
+
+1. **`[budget] observation_bytes = 131072`** — explicit, because "bounded" with
+   no number is unbounded in practice.
+2. **`[baseline] ref = "origin/main"`** — makes the two-tree model legible in
+   the file. `{base}` templating resolves from here.
+3. **Per-gate `reason` is required when the gate changed** — feeds
+   `contract_not_loosened` (§1.3).
+4. **`[[gates]] consumes` / `provides`** — declared edges between a `Delegated`
+   gate and the `Analyzed` gates that read its output. `tests_not_deleted`
+   needs `cargo test -- --list` from `checks_green`, so it must declare it.
+   Pretending the gate list is an unordered set would hide a real dependency
+   on a subprocess result. `provides`/`consumes` are validated as a DAG at
+   contract load, and an undeclared edge is an error rather than a
+   nondeterministic read of an unpopulated slot.
+
+`docs/CONTRACT.md` is generated from the schema types and **diffed in CI**.
+Documentation that can drift from the parser is worse than none; the CI check
+makes the drift a build failure.
+
+Thresholds: every threshold the contract can set must name the curve it came
+from (`calibration = "curve:2026-11-rs-corpus-n420"`), per PRD §5.
+`cargo metadata` is available at runtime, so a contract that requires a
+threshold with no recorded calibration is a **validation error**, not a
+warning. This is stricter than `slop-gate` and it is deliberate: we have already
+paid for round-number thresholds once (`EVIDENCE.md` §7, §8).
+
+---
+
+## 5. Milestones
+
+Each milestone ends with a checkable exit criterion. No milestone starts before
+the previous one exits, and M0's regression test is written before any gate
+code exists.
+
+### M0 — Skeleton and the apparatus bug
+- Workspace, all nine crates, stubbed boundaries. `palisade-exec` ships empty
+  in M0 and is first populated in M3; its existence from the start is what
+  keeps the boundary from being retrofitted later.
+- `palisade-git` with exactly the operations gates need: `rev_parse`, `status
+  --porcelain`, `diff` (unstaged **and** staged, and untracked file contents),
+  `show`, `merge_base`.
+- `palisade-observe` with a hard byte budget and the marker-inside-the-budget
+  rule.
+- **`tests/dirty_tree_regression.rs`**: a fixture repo with one unstaged edit.
+  Assert the observation is non-empty, contains the edit, and that the same
+  fixture *committed* yields an explicitly-flagged empty diff rather than a
+  silent success. This is the `EVIDENCE.md` bug, frozen as a test, before it
+  can recur.
+- `palisade-orchestrate` verdict algebra with no gates registered.
+- CI: fmt, clippy `-D warnings`, test, `cargo deny`.
+
+**Exit:** a commit with no changes to the fixture yields `Accept` with an
+`observation: empty` record; a commit with an unstaged change yields a
+non-empty observation. Verdict algebra property tests pass over exhaustively
+enumerated gate vectors.
+
+### M1 — Two-tree diff gates
+First gates, chosen because they need no AST and no subprocess, so they
+validate the whole pipeline cheaply:
+- `dependency_surface_unchanged` — parse `Cargo.toml` directly as TOML and diff
+  the declared production surface: direct `[dependencies]`, `[dev-dependencies]`
+  kept separate, `[features]`, and `default-features` flags. Base tree vs worktree.
+  **Not** a regex over diff text; `EVIDENCE.md` §6 records exactly where a regex
+  version went wrong, and it missed the dependency addition outright.
+  A direct TOML parse is also what keeps this gate an `Analyzed` gate with no
+  subprocess in its path. `cargo metadata` is the *escalation* for workspace-wide
+  and target-specific resolution, and it is not wired in v1: it is a build-graph
+  dependency, and the declared direct surface is the thing a reviewer can
+  actually see in a diff. If M5's corpus shows the direct parse misses real
+  production dependency changes, that is a delegated addition via
+  `palisade-exec` with a recorded calibration.
+- `tests_not_deleted` — deleted/renamed test paths, plus an `#[test]`/`#[ignore]`
+  count delta from an AST parse. Both halves are `Analyzed`. The `cargo test
+  -- --list` inventory delta named in PRD §6 is a *stronger* signal and is
+  available as a delegated `provides` edge from `checks_green` in M3; until
+  then the AST count is the whole check, and the report says so rather than
+  implying full coverage. **The `EVIDENCE.md` regression:** the diff matcher
+  must anchor on `+`/`-` markers *before* stripping them, and the fixture suite
+  includes the exact `-> list[Note]` false positive that cost the predecessor
+  38%, as a must-not-fire case.
+- `paths_unchanged` — frozen paths from `[gates].paths`.
+- `secret_absent` — pattern scan over the bounded diff. Allowlist-documented
+  patterns; every pattern ships with a documented false-positive example, or
+  it does not ship (the secret gate is the classic source of crying wolf).
+- `suppressions_not_widened`, `unsafe_surface_unchanged` — these need the AST
+  crate but are pure diff comparisons, so they land here too.
+
+**Exit:** every gate has (a) a fixture that fires it, (b) a fixture that must
+*not* fire it, (c) a base-vs-head test proving it is not a single-tree check.
+Aggregate zero false positives across the negative fixtures — and that number
+is published with the fixture count, per §7.
+
+### M2 — AST and API surface
+- `palisade-ast` wrapper, content-hash parse cache, refusal to guess on parser
+  error nodes (`slop-gate`'s explicit choice; copy it).
+- `public_api_unchanged` — public item signatures via AST signature extraction
+  (not rustdoc; rustdoc is a build-graph dependency and we want this
+  sub-second). Baseline comparison against the base tree, never a pattern match
+  against current code. `EVIDENCE.md` §6 names this as the exact reason a
+  pattern match produced a false positive.
+- Full `Analyzed` primitive set from PRD §6. `checks_green` and `external_tool`
+  are `Delegated` and land in M3; until then they are `NotImplemented`, which by
+  the precedence rule is `Error`, not `Pass`. A project that declares them in
+  M0–M2 gets a loud failure rather than a silently absent check.
+
+**Exit:** all M1 gates plus the AST set pass; public-API gate demonstrated
+against a real signature change (renamed param, changed return type, widened
+bound, new trait impl) and against four benign ones.
+
+### M3 — `palisade-exec`, the delegated gates, and the report
+- `palisade-exec`: process spawn, per-tool argv from the contract, timeout,
+  capture, and the §3.1 exit-code table. `Delegated` is constructible nowhere
+  else in the workspace; a test asserts this by building `Delegated` from a
+  recording fake and by having CI run a check that no other crate references
+  `std::process::Command`.
+- `checks_green`: `cargo fmt --check`, `cargo clippy -- -D warnings`,
+  `cargo test`, each producing its own finding so a fmt failure is not
+  indistinguishable from a test failure. Feeds `tests_not_deleted` its
+  `cargo test -- --list` inventory over a declared `provides` edge.
+- `external_tool`: argv templating from `{base}`/`{head}`/`{index}`, SARIF
+  ingestion. A template variable that does not resolve is `Untrustworthy`, never
+  a literal `{base}` in an argv — a silently untemplated path is a gate that
+  reports on the wrong tree and looks green.
+- `palisade-report`: human, json (three separate top-level target keys), sarif
+  2.1.0.
+- `palisade init`: generate a starter `palisade.toml` seeded from the project's
+  detected ecosystem, with every gate at `warn`. It is an adoption tool and
+  must be impossible to run destructively.
+
+**Exit:** end-to-end `palisade check` on both fixture repos produces
+byte-stable SARIF across two runs on an unchanged tree (determinism check —
+a supervisor whose own output is nondeterministic is uncalibratable), and exit
+codes 0/1/2/3 are each reachable in a test. Every row of the §3.1 exit-code
+table has a test, and the JSON output for a delegated failure names the tool and
+its version.
+
+### M4 — The gates about gates
+- `contract_not_loosened`, `contract_review_stale` (§1.3).
+- Suppression records: `{gate_id, path, reason}` required, emitted in the
+  output artefact, counted in a report.
+- Severity-promotion guard: promoting a gate `warn`→`error` without a
+  `calibration` reference is a validation error (§4).
+- SARIF upload path, documented for GitHub Actions and GitLab CI.
+
+**Exit:** a commit that disables a gate without a reason blocks; with a reason
+it is a warning. A gate cannot be promoted to `error` without a named
+calibration corpus.
+
+### M5 — Validation on repositories we did not write
+PRD §9. Not optional and not parallelisable with anything else.
+
+- Three real Rust repositories, none authored by us, no tuning allowed.
+- For each: transcribe the project's *stated* rules into gates, recording
+  every rule that could not be transcribed and why. The transcription rate is
+  the primary number.
+- Corpus of real pull requests for false positives at `error` severity.
+  Published: N, FP count, and the threshold curve each threshold came from.
+- Publish the full result, including the criterion that failed, in `EVAL.md`.
+
+**Exit:** criteria 1–4 of PRD §9 measured and written down. If criterion 1
+fails, the plan stops and the PRD is amended — that is the decision this
+milestone exists to force, and it is a legitimate outcome, not a project
+failure.
+
+### M6 — Judgement tier (opt-in, gated on §1.1)
+Only after M5. Fresh holdout, forced choice over
+`no_change | on_topic | off_topic | contradicts_rules`, `escalate` severity
+only, provenance marked `Judged`, the acceptance-impossibility property test
+extended to cover it.
+
+---
+
+## 6. Test strategy
+
+Property and unit tests carry the invariants; fixtures carry the gates. Model
+tests do not exist in v1 (no model).
+
+| Layer | What | How |
+| --- | --- | --- |
+| Verdict algebra | rules 1, 2, 5, and the three-target separation | Exhaustive enumeration over small gate vectors + proptest for monotonicity |
+| `palisade-exec` | the §3.1 exit-code table, one row one test | A recording fake process; asserts timeout, missing binary, signal, and unknown exit code all yield `Untrustworthy` and `provenance: Delegated` naming the tool |
+| Provenance | "whose verdict is this" survives to the artefact | Test that `Provenance::Delegated` is unconstructible outside `palisade-exec`, plus a CI check that no other crate depends on `std::process` |
+| Gates | each fires, each stays silent | Two fixture repos, planted violations, committed; each gate gets a firing and a **must-not-fire** fixture |
+| Diff machinery | `EVIDENCE.md` apparatus bugs | Named regression tests, one per recorded bug (§1 of `EVIDENCE.md`, §4, §6) |
+| Observers | bounded observation | Property: for any input and any budget, output length ≤ budget, marker present exactly once |
+| Contract | `deny_unknown_fields` | Golden test: every mutation of a valid contract either parses identically or errors with a span. Property: no valid mutation exists that weakens a gate silently |
+| Contract | `provides`/`consumes` graph | Cycles rejected at load; an undeclared edge is a load error, not a nondeterministic read |
+| Report | determinism | Two runs on an unchanged tree produce identical bytes |
+| End-to-end | all four verdicts, all four exit codes | Fixture repos driven through the CLI |
+
+**Corpus discipline.** The predecessor's headline number (0/5 false positives
+for the LLM) is real but was framed on the same 16 states it was measured
+against (`EVIDENCE.md` §9). Therefore: any number Palisade publishes is
+tagged with the corpus it came from, the corpus is committed, and **no
+threshold is fitted on the same corpus it is reported against.** This is
+`slop-gate` decision 7 and the single most transferable habit in this
+project.
+
+---
+
+## 7. Risks
+
+| Risk | Impact | Mitigation |
+| --- | --- | --- |
+| Criterion 1 fails — real rules do not transcribe into gates | The thesis is wrong | M5 is early and blocking. It is the reason the plan stops and reopens the PRD rather than shipping M6 |
+| Per-commit budget blown by `cargo test` | Teams disable the tool | `checks_green` is a declared `Delegated` gate, so its cost is visible in the contract and disableable without touching code. The cost is the project's own CI cost, and the budget is measured and published from the start (criterion 2) |
+| Exit code collapsed into "failure" | The predecessor's most expensive bug returns | The §3.1 table is a crate of its own with one test per row; unknown codes are `Untrustworthy`; a CI check forbids process execution outside `palisade-exec` |
+| `secret_absent` cries wolf | Gate gets switched off, and everything with it | Every pattern ships with a documented false-positive example; `warn` default; FP counted in the M5 corpus like any other gate |
+| Contract becomes a ritual document | Manufactures confidence — the exact failure the PRD names | `contract_review_stale` + `contract_not_loosened`; both `warn` until a project has measured them |
+| Gate-gaming, Goodhart-style | Gates get loosened to pass work | `contract_not_loosened` is a diff-visible check, not a policy. Plus `slop-gate`'s suppression-growth gate as a second, independent witness |
+| Deterministic output drifts between versions | A passing run is not reproducible | Fingerprints in every finding; tool version in the report header; SARIF `partialFingerprints` |
+| The `Error`/`Block` collapse gets "simplified" away | The predecessor's worst bug returns | Distinct exit code, a comment naming the incident, a crate whose entire job is the exit-code table, and a test that fails if the two are ever unified |
+| Scope creep into a linter | Becomes the thing it complements | PRD §8 non-claims are quoted verbatim in the README; `checks_green` is the deliberate integration point, not a starting point |
+
+---
+
+## 8. Definition of done for v1
+
+1. `palisade check` runs a declared contract on a Rust repository and returns
+   exactly one of `accept | block | escalate | error`, with exit code 0/1/3/2.
+2. Every primitive in PRD §6 is implemented, or is `NotImplemented` and forces
+   `Error`. No primitive silently passes.
+3. Every finding and every `Pass` carries a `Provenance`, present in the JSON
+   and SARIF output. `Delegated` is constructible only by `palisade-exec`, and
+   CI fails if any other crate spawns a process.
+4. Zero false positives across the negative fixture suite, published with the
+   count.
+5. Every artefact states what it did not cover, from `judgement.not_covered`.
+6. M5's four criteria measured on three external repositories, published,
+   including any criterion that failed.
+7. `README.md` contains the PRD §8 non-claims verbatim.
+8. No network request at analysis time. No model in the loop. Single binary.
+
+Criterion 5 is the one that decides whether this is a tool you can rely on. The
+gates are the easy part; the gap being an owned, dated artefact is the part
+that is worth building.
