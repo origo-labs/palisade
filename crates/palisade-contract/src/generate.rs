@@ -225,11 +225,17 @@ const UNIMPLEMENTED_NOTE: &str = "\
 # check = \"secret_absent\"
 # severity = \"warn\"
 #
+# Needs a baseline artifact, which is the one piece of state this tool does not
+# manage for you: `slop-gate index --ref {base} --output <path>`, committed or
+# cached by your CI. The artifact is bound to the commit it was built from, so
+# it must be rebuilt when the base moves -- asking for a stale one is an error,
+# not a finding.
+#
 # [[gates]]
 # id = \"slop_gate\"
 # check = \"external_tool\"
 # tool = \"slop-gate\"
-# args = [\"check\", \"--base\", \"{base}\", \"--head\", \"{head}\"]
+# args = [\"check\", \"--base\", \"{base}\", \"--head\", \"{head}\", \"--index\", \"slop-gate-index.json\"]
 # format = \"sarif\"
 # severity = \"warn\"
 ";

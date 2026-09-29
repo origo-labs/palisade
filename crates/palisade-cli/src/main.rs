@@ -178,6 +178,10 @@ fn run(cli: Cli) -> Result<Verdict, String> {
 
     let obs = capture(&repo, &base, budget, true)?;
     let (cargo_version, tool_version) = tool_versions();
+    // The head being reviewed. `base` is the first parent; the head is the
+    // merge itself, which is the pair `slop-gate` and any other two-tree tool
+    // needs.
+    let head_ref = "HEAD";
     // Delegated gates run first, because a gate that `consumes` from one needs
     // what it provides. The contract declares the edge; this is where it is
     // honoured. A gate with no such edge simply sees no inventory, and makes
@@ -207,6 +211,7 @@ fn run(cli: Cli) -> Result<Verdict, String> {
             g,
             &obs,
             &base,
+            head_ref,
             &cargo_version,
             &tool_version,
             inventory.as_ref(),
@@ -433,7 +438,7 @@ fn built_in_gates(obs: &Observation, cargo_version: &str) -> Vec<GateRun> {
         // downgrade here. An earlier version applied one if *any* finding
         // was justified, which meant one recorded reason silently unblocked
         // every other loosening in the same diff.
-        run_gate(&g, obs, "HEAD", cargo_version, "unused", None)
+        run_gate(&g, obs, "HEAD", "HEAD", cargo_version, "unused", None)
     })
     .collect()
 }
@@ -448,6 +453,7 @@ fn run_gate(
     gate: &Gate,
     obs: &Observation,
     base: &str,
+    head_ref: &str,
     cargo_version: &str,
     tool_version: &str,
     inventory: Option<&palisade_exec::test_inventory::TestInventory>,
@@ -463,17 +469,48 @@ fn run_gate(
             let origin = palisade_exec::origin("cargo", cargo_version);
             palisade_exec::checks_green::run_checks(origin, timeout(gate)).0
         }
+
         Primitive::ExternalTool => {
-            let origin = palisade_exec::origin("external", tool_version);
+            // The program and its argv come from the contract, not from here.
+            // A hard-coded tool would be a gate that checks one specific
+            // third-party linter whether the project asked for it or not, and
+            // the project is the only thing that knows which linter it wants
+            // and where its baseline artefact lives.
+            // `parse` refuses an `external_tool` with no `tool`, so this is
+            // reachable only if a Gate were built by hand.
+            let Some(tool) = gate.tool.as_deref() else {
+                return GateRun::untrustworthy(
+                    gate.id.clone(),
+                    gate.primitive,
+                    palisade_orchestrate::UntrustworthyReason::ContractInvalid {
+                        detail: "an `external_tool` gate declares no `tool`".to_string(),
+                    },
+                    palisade_orchestrate::Origin::Delegated {
+                        tool: palisade_orchestrate::ToolId::new("external"),
+                        version: String::new(),
+                    },
+                );
+            };
+            let origin = palisade_exec::origin(tool, tool_version);
+            let format = match gate.format.as_deref() {
+                Some("lines") => palisade_exec::external_tool::OutputFormat::Lines,
+                _ => palisade_exec::external_tool::OutputFormat::Sarif,
+            };
+            // The index path is project state, not ours: it lives wherever the
+            // project's CI puts it.
             let values = palisade_exec::external_tool::TemplateValues {
                 base: base.to_string(),
-                head: "HEAD".to_string(),
-                index: String::new(),
+                head: head_ref.to_string(),
+                index: gate
+                    .args
+                    .iter()
+                    .find_map(|a| a.strip_prefix("--index=").map(str::to_string))
+                    .unwrap_or_default(),
             };
-            let format = palisade_exec::external_tool::OutputFormat::Sarif;
             palisade_exec::external_tool::run_tool(
-                "slop-gate",
-                &Vec::new(),
+                &gate.id,
+                tool,
+                &gate.args,
                 format,
                 &values,
                 timeout(gate),

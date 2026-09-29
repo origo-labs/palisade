@@ -276,6 +276,12 @@ pub struct Gate {
     /// Ceiling on a `Delegated` gate's runtime, in seconds. A ceiling on a
     /// runaway, not a target: `cargo test` on a large repository is minutes.
     pub timeout_seconds: Option<u64>,
+    /// The program an `external_tool` gate runs.
+    pub tool: Option<String>,
+    /// Its argv, with `{base}`, `{head}` and `{index}` substituted.
+    pub args: Vec<String>,
+    /// What the tool writes on stdout.
+    pub format: Option<String>,
     /// The published measurement that justifies this gate's severity.
     ///
     /// Required to *promote* a gate to `error` in a diff; a gate written as
@@ -311,6 +317,9 @@ impl Gate {
             consumes: Vec::new(),
             paths: Vec::new(),
             allow: Vec::new(),
+            tool: None,
+            args: Vec::new(),
+            format: None,
             timeout_seconds: None,
             calibration: None,
         }

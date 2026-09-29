@@ -205,6 +205,15 @@ struct RawGate {
     /// The published measurement behind this severity.
     #[serde(default)]
     calibration: Option<String>,
+    /// The program an `external_tool` gate runs.
+    #[serde(default)]
+    tool: Option<String>,
+    /// Its argv, with `{base}`, `{head}` and `{index}` placeholders.
+    #[serde(default)]
+    args: Vec<String>,
+    /// What the tool writes on stdout: `sarif` or `lines`.
+    #[serde(default)]
+    format: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -392,6 +401,39 @@ impl RawGate {
                 "gate `{id}` declares `paths`, which only `paths_unchanged` uses"
             )));
         }
+        if primitive == Primitive::ExternalTool {
+            // `tool` and `args` are the whole gate. Without them there is
+            // nothing to run, and a declared `external_tool` with no program
+            // would be a gate that silently does nothing -- the same class of
+            // hole as an unimplemented primitive, and the reason the
+            // unimplemented ones are refused outright.
+            let Some(tool) = self.tool.as_deref() else {
+                return Err(ContractError::Validation(format!(
+                    "gate `{id}` is `external_tool` but declares no `tool`"
+                )));
+            };
+            if self.args.is_empty() {
+                return Err(ContractError::Validation(format!(
+                    "gate `{id}` is `external_tool` but declares no `args`. An \
+                     empty argv would run `{tool}` with no arguments, which is \
+                     not a gate."
+                )));
+            }
+            match self.format.as_deref() {
+                None => {}
+                Some("sarif") | Some("lines") => {}
+                Some(other) => {
+                    return Err(ContractError::Validation(format!(
+                        "gate `{id}` declares format `{other}`; expected `sarif` or `lines`"
+                    )));
+                }
+            }
+        } else if self.tool.is_some() || !self.args.is_empty() || self.format.is_some() {
+            return Err(ContractError::Validation(format!(
+                "gate `{id}` declares `tool`/`args`/`format`, which only \
+                 `external_tool` uses"
+            )));
+        }
 
         Ok(Gate {
             id,
@@ -402,6 +444,9 @@ impl RawGate {
             consumes: self.consumes.clone(),
             paths: self.paths.clone(),
             allow: self.allow.clone(),
+            tool: self.tool.clone(),
+            args: self.args.clone(),
+            format: self.format.clone(),
             timeout_seconds: self.timeout_seconds,
             calibration: self.calibration.clone(),
         })
@@ -612,5 +657,67 @@ reviewed = "2026-09-28"
         let src = MINIMAL.replace("version = 1", "version = 2");
         let err = parse_contract(&src).unwrap_err();
         assert!(err.to_string().contains("version 2"), "{err}");
+    }
+}
+
+#[cfg(test)]
+mod external_tool_config_tests {
+    use super::*;
+
+    fn contract_with(gate: &str) -> Result<Contract, ContractError> {
+        parse_contract(&format!(
+            "version = 1\n[[gates]]\nid = \"g\"\ncheck = \"external_tool\"\n{gate}\n\
+             [judgement]\nreviewed = \"2026-09-28\"\n"
+        ))
+    }
+
+    #[test]
+    fn an_external_tool_gate_needs_a_tool_and_args() {
+        // Without them there is nothing to run, and a declared
+        // `external_tool` with no program would be a gate that silently does
+        // nothing -- the same hole as an unimplemented primitive, and the
+        // reason those are refused outright.
+        let err = contract_with("severity = \"warn\"").unwrap_err();
+        assert!(err.to_string().contains("no `tool`"), "{err}");
+        let err = contract_with("tool = \"slop-gate\"").unwrap_err();
+        assert!(err.to_string().contains("no `args`"), "{err}");
+    }
+
+    #[test]
+    fn a_well_formed_external_tool_gate_parses() {
+        let c = contract_with(
+            "tool = \"slop-gate\"\n\
+             args = [\"check\", \"--base\", \"{base}\", \"--head\", \"{head}\"]\n\
+             format = \"sarif\"\nseverity = \"warn\"",
+        )
+        .expect("valid");
+        let g = &c.gates[0];
+        assert_eq!(g.tool.as_deref(), Some("slop-gate"));
+        assert_eq!(g.format.as_deref(), Some("sarif"));
+        // The placeholders survive parsing; substitution happens at run time
+        // and an unresolved one is an error there.
+        assert!(g.args.contains(&"{base}".to_string()));
+    }
+
+    #[test]
+    fn an_unknown_output_format_is_rejected() {
+        // A typo here is a gate that silently parses nothing and looks clean.
+        let err = contract_with(
+            "tool = \"t\"\nargs = [\"check\"]\nformat = \"sraif\"\nseverity = \"warn\"",
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains("sraif"), "{err}");
+    }
+
+    #[test]
+    fn tool_keys_on_another_primitive_are_rejected() {
+        // A gate carrying `tool` but not being `external_tool` is a mistake
+        // that would otherwise read as a setting that does nothing.
+        let err = parse_contract(
+            "version = 1\n[[gates]]\nid = \"g\"\ncheck = \"tests_not_deleted\"\n\
+             tool = \"slop-gate\"\n[judgement]\nreviewed = \"2026-09-28\"\n",
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains("only `external_tool`"), "{err}");
     }
 }

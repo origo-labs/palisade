@@ -835,6 +835,11 @@ impl GateRunBuilder {
         }
     }
 
+    /// Whether any finding has been recorded.
+    pub fn has_findings(&self) -> bool {
+        !self.findings.is_empty()
+    }
+
     /// Collapse to a run.
     pub fn finish(self, gate_id: GateId, primitive: Primitive, origin: Origin) -> GateRun {
         if let Some(reason) = self.untrustworthy {

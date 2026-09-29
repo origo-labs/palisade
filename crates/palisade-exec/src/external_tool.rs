@@ -18,7 +18,7 @@ use std::time::Duration;
 
 use palisade_contract::{GateId, Primitive, Severity};
 use palisade_orchestrate::{
-    Finding, GateRunBuilder, Origin, Side, Subject, SubjectKind, UntrustworthyReason,
+    Finding, GateRunBuilder, Origin, Side, Subject, SubjectKind, ToolId, UntrustworthyReason,
 };
 
 use crate::{Completed, Interpretation, run, template_args};
@@ -45,6 +45,7 @@ pub struct TemplateValues {
 /// Run a declared tool, absorb its findings, and return the gate's run.
 #[allow(clippy::too_many_arguments)]
 pub fn run_tool(
+    gate_id: &GateId,
     program: &str,
     args: &[String],
     format: OutputFormat,
@@ -58,13 +59,15 @@ pub fn run_tool(
         Ok(a) => a,
         Err(e) => {
             builder.untrustworthy(UntrustworthyReason::ContractInvalid { detail: e });
-            return finish(builder, origin);
+            return finish(builder, gate_id, origin);
         }
     };
 
     let completed = run(program, &argv, timeout);
-    match completed.status.interpretation() {
-        Interpretation::Passed => {}
+    match completed
+        .status
+        .interpretation_with(crate::cargo_exit_codes())
+    {
         Interpretation::NoTrustworthyResult => {
             builder.untrustworthy(UntrustworthyReason::ToolCouldNotRun {
                 detail: format!(
@@ -72,30 +75,84 @@ pub fn run_tool(
                     Interpretation::NoTrustworthyResult.describe(completed.status)
                 ),
             });
-            return finish(builder, origin);
+            return finish(builder, gate_id, origin);
         }
-        Interpretation::Failed => {
-            let findings = match format.parse(&completed) {
+        // **Exit 0 does not mean "no findings".**
+        //
+        // `slop-gate` reports its findings on stdout and exits 0 when the
+        // findings are at `warning` level, exiting non-zero only for
+        // `error`. So a tool that reports problems without blocking reports
+        // them *and* says "I passed", and a gate that branches on the exit code
+        // alone discards every one of them.
+        //
+        // Found by running it: the first live invocation absorbed zero
+        // findings from a tool that had one, and the report said `pass`. The
+        // exit code answers "did the tool fail to do its job", and only the
+        // output answers "did the tool find something". A tool's exit code is
+        // a statement about the *tool*, never about the code it inspected.
+        Interpretation::Passed | Interpretation::Failed => {
+            let (tool_id, version) = match &origin {
+                Origin::Delegated { tool, version } => (tool.clone(), version.clone()),
+                Origin::Analyzed { .. } => (ToolId::new("external"), String::new()),
+            };
+            let findings = match format.parse(&completed, &tool_id, &version) {
                 Ok(f) => f,
                 Err(e) => {
+                    // Unparseable output is a real problem even when the tool
+                    // exited 0: something said "I passed" and then said
+                    // nothing we can read.
                     builder.untrustworthy(e);
-                    return finish(builder, origin);
+                    return finish(builder, gate_id, origin);
                 }
             };
             for f in findings {
                 builder.finding(f);
             }
+            if completed
+                .status
+                .interpretation_with(crate::cargo_exit_codes())
+                == Interpretation::Failed
+                && builder_is_empty(&builder)
+            {
+                // The tool failed and told us nothing about why. That is not
+                // a clean run, and not a set of findings either.
+                builder.untrustworthy(UntrustworthyReason::Indeterminate {
+                    detail: format!(
+                        "{program} exited {} and reported no diagnostic we could \
+                         read",
+                        exit_of(completed.status)
+                    ),
+                });
+            }
         }
     }
-    finish(builder, origin)
+    finish(builder, gate_id, origin)
 }
 
-fn finish(builder: GateRunBuilder, origin: Origin) -> palisade_orchestrate::GateRun {
-    builder.finish(
-        GateId::new("external_tool").expect("constant is valid"),
-        Primitive::ExternalTool,
-        origin,
-    )
+fn exit_of(status: crate::Outcome) -> i32 {
+    match status {
+        crate::Outcome::Exited(c) => c,
+        _ => -1,
+    }
+}
+
+fn builder_is_empty(b: &GateRunBuilder) -> bool {
+    !b.has_findings()
+}
+
+/// Stamp the run with the gate the *contract* declared.
+///
+/// Not the primitive's name. An earlier version hard-coded `external_tool`,
+/// and the report's reordering pass — which matches runs to contract entries
+/// by id — silently dropped the run. A gate that vanishes from its own report
+/// is the worst failure mode available: no error, no finding, and a verdict
+/// that looks earned.
+fn finish(
+    builder: GateRunBuilder,
+    gate_id: &GateId,
+    origin: Origin,
+) -> palisade_orchestrate::GateRun {
+    builder.finish(gate_id.clone(), Primitive::ExternalTool, origin)
 }
 
 /// What the tool writes on stdout.
@@ -126,7 +183,7 @@ impl OutputFormat {
         }
     }
 
-    /// Turn a tool's output into findings.
+    /// Turn a tool's output into findings, attributed to `tool`.
     ///
     /// # Errors
     ///
@@ -135,16 +192,29 @@ impl OutputFormat {
     /// cannot read has told us nothing usable, and the alternative — dropping
     /// the findings and reporting the failure — loses the only information the
     /// tool had.
-    pub fn parse(&self, completed: &Completed) -> Result<Vec<Finding>, UntrustworthyReason> {
+    pub fn parse(
+        &self,
+        completed: &Completed,
+        tool: &ToolId,
+        version: &str,
+    ) -> Result<Vec<Finding>, UntrustworthyReason> {
+        // Every absorbed finding carries the *real* tool, not a placeholder.
+        // A finding attributed to "external" is unattributable, and saying
+        // which third party produced a verdict is the single most useful thing
+        // the origin field carries.
+        let origin = Origin::Delegated {
+            tool: tool.clone(),
+            version: version.to_string(),
+        };
         match self {
-            Self::Sarif => parse_sarif_findings(&completed.stdout),
-            Self::Lines => Ok(parse_line_findings(&completed.stdout)),
+            Self::Sarif => parse_sarif_findings(&completed.stdout, &origin),
+            Self::Lines => Ok(parse_line_findings(&completed.stdout, &origin)),
         }
     }
 }
 
 /// `path:line: message` lines.
-fn parse_line_findings(text: &str) -> Vec<Finding> {
+fn parse_line_findings(text: &str, origin: &Origin) -> Vec<Finding> {
     text.lines()
         .filter(|l| !l.trim().is_empty())
         .map(|line| {
@@ -166,8 +236,8 @@ fn parse_line_findings(text: &str) -> Vec<Finding> {
                 // baseline we hold, so neither side carries a value.
                 Side::Absent,
                 Side::Absent,
-                format!("external tool: {message}"),
-                external_origin(),
+                format!("{}: {message}", origin_label(origin)),
+                origin.clone(),
             )
         })
         .collect()
@@ -179,10 +249,29 @@ fn parse_line_findings(text: &str) -> Vec<Finding> {
 /// shape is one we cannot faithfully represent, and silently dropping the
 /// parts we do not understand would be reporting a gate as having found less
 /// than it did.
-fn parse_sarif_findings(text: &str) -> Result<Vec<Finding>, UntrustworthyReason> {
+fn parse_sarif_findings(text: &str, origin: &Origin) -> Result<Vec<Finding>, UntrustworthyReason> {
+    // A tool may print a progress line before its report. Find the JSON object
+    // rather than requiring it to be the whole stream: a leading
+    // `Fetching index` is not a reason to throw away a valid SARIF document,
+    // and "did not parse" is a much less actionable message than the output it
+    // failed on. Bounded so a huge non-JSON stream is not scanned forever.
+    const SEARCH_WINDOW: usize = 64 * 1024;
+    let trimmed = text.trim_start();
+    let candidate = if trimmed.starts_with('{') {
+        trimmed
+    } else {
+        match trimmed.find('{') {
+            Some(i) if i < SEARCH_WINDOW => &trimmed[i..],
+            _ => trimmed,
+        }
+    };
     let value: serde_json::Value =
-        serde_json::from_str(text).map_err(|e| UntrustworthyReason::Indeterminate {
-            detail: format!("declared format is sarif but the output did not parse: {e}"),
+        serde_json::from_str(candidate).map_err(|e| UntrustworthyReason::Indeterminate {
+            detail: format!(
+                "declared format is sarif but the output did not parse: {e}. \\
+                 First bytes were: {:?}",
+                &text[..text.len().min(200)]
+            ),
         })?;
     let runs = value
         .get("runs")
@@ -264,8 +353,8 @@ fn parse_sarif_findings(text: &str) -> Result<Vec<Finding>, UntrustworthyReason>
                 line.map(|start| palisade_orchestrate::HunkRef { start, end: start }),
                 Side::Absent,
                 Side::Absent,
-                format!("external tool `{rule_id}`: {message}"),
-                external_origin(),
+                format!("{} `{rule_id}`: {message}", origin_label(origin)),
+                origin.clone(),
             ));
         }
     }
@@ -282,16 +371,11 @@ pub fn external_subject(rule_id: &str) -> Subject {
     Subject::new(EXTERNAL_SUBJECT, rule_id)
 }
 
-/// The origin absorbed findings carry. The tool's own identity, if the caller
-/// did not know better, is patched by the caller via `Finding::new`.
-///
-/// Kept separate so an absorbed finding is never attributed to Palisade's
-/// analysis, which would make a delegated verdict indistinguishable from an
-/// analyzed one in the report — the one thing `Origin` exists to prevent.
-fn external_origin() -> Origin {
-    Origin::Delegated {
-        tool: palisade_orchestrate::ToolId::new("external"),
-        version: String::new(),
+/// A readable name for the producing tool, for a message.
+fn origin_label(origin: &Origin) -> String {
+    match origin {
+        Origin::Delegated { tool, .. } => format!("external tool `{tool}`"),
+        Origin::Analyzed { primitive } => format!("gate `{primitive}`"),
     }
 }
 
@@ -333,11 +417,19 @@ mod tests {
             stdout: SARIF.to_string(),
             stderr: String::new(),
         };
-        let f = OutputFormat::Sarif.parse(&completed).expect("parses");
+        let f = OutputFormat::Sarif
+            .parse(&completed, &ToolId::new("slop-gate"), "0.5.0")
+            .expect("parses");
         assert_eq!(f.len(), 2);
+        // The message names the tool that produced it, not a placeholder.
         assert_eq!(
             f[0].message,
-            "external tool `near-clone`: duplicate implementation"
+            "external tool `slop-gate` `near-clone`: duplicate implementation"
+        );
+        assert!(
+            matches!(&f[0].origin, Origin::Delegated { tool, .. } if tool.as_str() == "slop-gate"),
+            "an absorbed finding must be attributed to the real tool: {:?}",
+            f[0].origin
         );
         assert_eq!(
             f[0].path.as_deref().map(camino::Utf8Path::as_str),
@@ -360,7 +452,9 @@ mod tests {
             stdout: sarif.to_string(),
             stderr: String::new(),
         };
-        let f = OutputFormat::Sarif.parse(&completed).expect("parses");
+        let f = OutputFormat::Sarif
+            .parse(&completed, &ToolId::new("slop-gate"), "0.5.0")
+            .expect("parses");
         assert!(f[0].message.contains("real-name"), "{:?}", f[0].message);
     }
 
@@ -374,7 +468,9 @@ mod tests {
             stdout: "not json at all".to_string(),
             stderr: String::new(),
         };
-        let err = OutputFormat::Sarif.parse(&completed).unwrap_err();
+        let err = OutputFormat::Sarif
+            .parse(&completed, &ToolId::new("slop-gate"), "0.5.0")
+            .unwrap_err();
         assert!(
             matches!(err, UntrustworthyReason::Indeterminate { .. }),
             "{err:?}"
@@ -388,7 +484,9 @@ mod tests {
             stdout: "src/a.rs:10: something\nsrc/b.rs:2: other\n".to_string(),
             stderr: String::new(),
         };
-        let f = OutputFormat::Lines.parse(&completed).expect("parses");
+        let f = OutputFormat::Lines
+            .parse(&completed, &ToolId::new("slop-gate"), "0.5.0")
+            .expect("parses");
         assert_eq!(f.len(), 2);
         assert_eq!(
             f[0].hunk,
@@ -408,6 +506,7 @@ mod tests {
     #[test]
     fn a_tool_that_cannot_run_is_untrustworthy() {
         let run = run_tool(
+            &GateId::new("t").unwrap(),
             "palisade-no-such-tool-xyz",
             &[],
             OutputFormat::Lines,
@@ -425,6 +524,7 @@ mod tests {
     #[test]
     fn an_untemplated_argument_is_refused_before_anything_runs() {
         let run = run_tool(
+            &GateId::new("t").unwrap(),
             "sh",
             &["--base".to_string(), "{bases}".to_string()],
             OutputFormat::Lines,
@@ -439,5 +539,122 @@ mod tests {
             } => assert!(detail.contains("{bases}"), "{detail}"),
             other => panic!("expected a contract error, got {other:?}"),
         }
+    }
+}
+
+#[cfg(test)]
+mod absorbed_findings_tests {
+    use super::*;
+    use crate::Outcome;
+
+    fn values() -> TemplateValues {
+        TemplateValues {
+            base: "base".into(),
+            head: "head".into(),
+            index: "idx.json".into(),
+        }
+    }
+
+    /// A tool that reports its findings and exits **0**, which is what
+    /// `slop-gate` does for anything at `warning` level.
+    const SARIF_WITH_FINDING: &str = r#"{
+      "version": "2.1.0",
+      "runs": [{ "tool": {"driver": {"rules": [{"id": "structural-erosion"}]}},
+        "results": [{"ruleId": "structural-erosion", "level": "warning",
+          "message": {"text": "structural erosion at 67.42%"},
+          "locations": [{"physicalLocation": {
+            "artifactLocation": {"uri": "src/search/hybrid.rs"},
+            "region": {"startLine": 156}}}]}]}]}"#;
+
+    /// A real program that behaves exactly that way, so the test is not
+    /// asserting against a stub. It writes a SARIF document and exits **0**,
+    /// which is the whole point: a tool that finds problems without blocking.
+    /// A unique name per test so two tests writing the same path cannot race.
+    fn tool_script(tag: &str, payload: &str) -> String {
+        let body = format!("#!/bin/sh\ncat <<'PALISADE_EOF'\n{payload}\nPALISADE_EOF\nexit 0\n");
+        let dir = std::env::temp_dir();
+        std::fs::create_dir_all(&dir).expect("tmp dir");
+        let path = dir.join(format!("palisade-et-{}-{tag}", std::process::id()));
+        std::fs::write(&path, body).expect("write tool");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).expect("chmod");
+        }
+        path.to_string_lossy().into_owned()
+    }
+
+    #[test]
+    fn exit_zero_with_findings_is_not_a_pass() {
+        // The bug this test exists for. `slop-gate` reports its findings on
+        // stdout and exits 0 at warning level, so a gate that branched on the
+        // exit code alone reported `pass` while absorbing nothing. The first
+        // live invocation did exactly that: a tool with one finding, and a
+        // report that said `pass`.
+        let tool = tool_script("exit0", SARIF_WITH_FINDING);
+        let run = run_tool(
+            &GateId::new("slop_gate").unwrap(),
+            &tool,
+            &[],
+            OutputFormat::Sarif,
+            &values(),
+            Duration::from_secs(10),
+            crate::origin("slop-gate", "0.5.0"),
+        );
+        assert_eq!(run.findings.len(), 1, "the finding must survive: {run:?}");
+        assert!(run.findings[0].message.contains("structural erosion"));
+    }
+
+    #[test]
+    fn the_run_carries_the_gate_the_contract_declared() {
+        // Not the primitive's name. An earlier version hard-coded
+        // `external_tool`, and the report's reordering pass -- which matches
+        // runs to contract entries by id -- silently dropped the run. A gate
+        // that vanishes from its own report is the worst failure available: no
+        // error, no finding, a verdict that looks earned.
+        let run = run_tool(
+            &GateId::new("slop_gate").unwrap(),
+            "sh",
+            &["-c".into(), "exit 0".into()],
+            OutputFormat::Lines,
+            &values(),
+            Duration::from_secs(10),
+            crate::origin("slop-gate", "0.5.0"),
+        );
+        assert_eq!(run.gate_id.as_str(), "slop_gate");
+    }
+
+    #[test]
+    fn a_progress_line_before_the_report_does_not_lose_it() {
+        // A tool that prints `Fetching index` before its JSON should not have
+        // its report thrown away, and the error should quote the bytes it
+        // could not read.
+        let text = format!("Fetching index\n{SARIF_WITH_FINDING}");
+        let completed = Completed {
+            status: Outcome::Exited(0),
+            stdout: text,
+            stderr: String::new(),
+        };
+        let f = OutputFormat::Sarif
+            .parse(&completed, &ToolId::new("slop-gate"), "0.5.0")
+            .expect("should find the report");
+        assert_eq!(f.len(), 1);
+    }
+
+    #[test]
+    fn genuinely_unparseable_output_quotes_what_it_saw() {
+        let completed = Completed {
+            status: Outcome::Exited(0),
+            stdout: "src/a.rs:1: some human output, not json".to_string(),
+            stderr: String::new(),
+        };
+        let err = OutputFormat::Sarif
+            .parse(&completed, &ToolId::new("slop-gate"), "0.5.0")
+            .unwrap_err();
+        let detail = err.detail();
+        assert!(
+            detail.contains("some human output"),
+            "the error must quote the output: {detail}"
+        );
     }
 }
