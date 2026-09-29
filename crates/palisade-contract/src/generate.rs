@@ -29,10 +29,20 @@ use crate::{GateId, Primitive, Severity};
 
 /// The conventional frozen paths a greenfield Rust project probably has.
 ///
-/// Seeded so `paths_unchanged` does something meaningful on day one. A path
-/// that is not present costs nothing: the gate only fires on paths that are
-/// actually touched.
-pub const CONVENTIONAL_FROZEN_PATHS: &[&str] = &["fixtures", "testdata", "benches", "examples"];
+/// **Only paths whose contents are *inputs to a test*.** A frozen directory
+/// is one where an edit changes what the tests measure rather than what they
+/// assert, so freezing it keeps a comparison honest.
+///
+/// `benches` and `examples` are deliberately **not** here, and the M5 corpus
+/// said so: seeding `benches` made `paths_unchanged` fire on four merges in
+/// `warmplane`, every one of them a commit that *added* a Criterion
+/// benchmark. Freezing a directory that exists to be added to is a gate that
+/// reports the normal act of improving performance, and a gate that does that
+/// gets switched off.
+///
+/// A path that is not present costs nothing: the gate only fires on paths that
+/// are actually touched.
+pub const CONVENTIONAL_FROZEN_PATHS: &[&str] = &["fixtures", "testdata"];
 
 /// The gap a generated contract admits to on a greenfield project.
 ///
@@ -282,6 +292,35 @@ mod tests {
             .find(|g| g.primitive == Primitive::PathsUnchanged)
             .expect("the paths gate is in the menu");
         assert!(!paths.paths.is_empty());
+    }
+
+    #[test]
+    fn a_directory_that_exists_to_be_added_to_is_not_frozen() {
+        // Found by the corpus: seeding `benches` made `paths_unchanged` fire
+        // on four `warmplane` merges, every one of them a commit that added a
+        // Criterion benchmark. A frozen directory is one where an edit changes
+        // what a test *measures*; a benchmark directory changes what a benchmark
+        // measures, which is the entire point of it.
+        let c = parse_contract(&generate("2026-09-29", 0)).expect("valid");
+        let paths = &c
+            .gates
+            .iter()
+            .find(|g| g.primitive == Primitive::PathsUnchanged)
+            .expect("the paths gate is in the menu")
+            .paths;
+        for should_not_be_frozen in ["benches", "examples", "src", "tests"] {
+            assert!(
+                !paths.iter().any(|p| p == should_not_be_frozen),
+                "`{should_not_be_frozen}` should not be frozen by default"
+            );
+        }
+        // And the ones that are inputs to a test still are.
+        for should_be_frozen in ["fixtures", "testdata"] {
+            assert!(
+                paths.iter().any(|p| p == should_be_frozen),
+                "`{should_be_frozen}` should be frozen by default"
+            );
+        }
     }
 
     #[test]
