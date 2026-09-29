@@ -24,12 +24,12 @@
 use std::collections::BTreeMap;
 
 use palisade_ast::{ParseCache, ParsedFile, Suppression};
-use palisade_orchestrate::{Finding, UntrustworthyReason};
+use palisade_orchestrate::{Finding, Side, Subject, SubjectKind, UntrustworthyReason};
 
 use crate::{GateContext, GateResult, truncated};
 
 /// A suppression keyed by where it sits, for comparing two trees.
-type Surface = BTreeMap<String, Suppression>;
+type Surface = BTreeMap<SuppressionKey, Suppression>;
 
 /// The gate.
 pub fn run(ctx: &GateContext<'_>) -> GateResult {
@@ -67,10 +67,16 @@ pub fn run(ctx: &GateContext<'_>) -> GateResult {
                     ctx.gate.id.clone(),
                     ctx.gate.primitive,
                     ctx.gate.severity,
+                    // The subject names the suppression, not the map key. The
+                    // key exists to match two trees together and leaks
+                    // implementation shape; a subject of `::allow` tells a
+                    // reader nothing, and the message would then be about the
+                    // file while the subject was about the key.
+                    Subject::new(SubjectKind::Suppression, render(head_s)),
                     Some(view.path.clone().into()),
                     None,
-                    "no suppression here at the base commit",
-                    render(head_s),
+                    Side::Absent,
+                    Side::value(render(head_s)),
                     message_for_addition(&view.path, head_s),
                     ctx.origin(),
                 ));
@@ -81,10 +87,11 @@ pub fn run(ctx: &GateContext<'_>) -> GateResult {
                     ctx.gate.id.clone(),
                     ctx.gate.primitive,
                     ctx.gate.severity,
+                    Subject::new(SubjectKind::Suppression, render(head_s)),
                     Some(view.path.clone().into()),
                     None,
-                    render(base_s),
-                    render(head_s),
+                    Side::value(render(base_s)),
+                    Side::value(render(head_s)),
                     grown,
                     ctx.origin(),
                 ));
@@ -141,11 +148,33 @@ fn widened(base: &Suppression, head: &Suppression) -> Option<String> {
     None
 }
 
+/// The message names the suppression, not just its category. A reader who has
+/// to cross-reference the subject field to learn *which* allow was added is
+/// doing the report's job by hand.
 fn message_for_addition(path: &str, s: &Suppression) -> String {
     if s.is_wildcard() {
-        format!("a wildcard diagnostic suppression was added to `{path}`")
+        format!(
+            "a wildcard diagnostic suppression `{}` was added to `{path}`",
+            render(s)
+        )
     } else {
-        format!("a diagnostic suppression was added to `{path}`")
+        format!(
+            "a diagnostic suppression `{}` was added to `{path}`",
+            render(s)
+        )
+    }
+}
+
+/// Kept for the match between two trees. Not a subject name: this is a lookup
+/// key, and a reader should never see it.
+type SuppressionKey = String;
+
+/// The lookup key for a suppression: where it sits, and which attribute it is.
+fn suppression_key(path: &str, attribute: &str) -> SuppressionKey {
+    if path.is_empty() {
+        attribute.to_string()
+    } else {
+        format!("{path}::{attribute}")
     }
 }
 
@@ -177,7 +206,7 @@ fn parse_failure(cache: &ParseCache, source: &str, path: &str) -> GateResult {
 fn surface(f: &ParsedFile) -> Surface {
     f.suppressions()
         .iter()
-        .map(|s| (format!("{}::{}", s.path, s.attribute), s.clone()))
+        .map(|s| (suppression_key(&s.path, &s.attribute), s.clone()))
         .collect()
 }
 

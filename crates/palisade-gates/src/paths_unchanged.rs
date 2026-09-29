@@ -60,10 +60,16 @@ pub fn run(ctx: &GateContext<'_>) -> GateResult {
                         ctx.gate.id.clone(),
                         ctx.gate.primitive,
                         ctx.gate.severity,
+                        palisade_orchestrate::Subject::new(
+                            palisade_orchestrate::SubjectKind::Path,
+                            path,
+                        ),
                         Some(path.into()),
                         None,
-                        format!("`{frozen}` is frozen"),
-                        "modified",
+                        // A policy gate, not a two-tree one: the baseline side
+                        // is the contract's declaration, not a tree.
+                        palisade_orchestrate::Side::value(format!("frozen by `{frozen}`")),
+                        palisade_orchestrate::Side::value("modified"),
                         format!("frozen path `{path}` was touched"),
                         ctx.origin(),
                     ));

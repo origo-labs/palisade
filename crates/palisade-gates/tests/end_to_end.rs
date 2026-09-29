@@ -148,11 +148,16 @@ fn a_test_removed_after_being_committed_is_still_caught() {
             observation: &obs,
         },
     ));
-    assert!(
-        f.iter()
-            .any(|x| x.expected.contains('2') && x.observed.contains('1')),
-        "expected the 2 -> 1 test count drop, got {f:?}"
-    );
+    // Both sides render the same way, so the pair is comparable: the removed
+    // test is on the before side and not the after side.
+    let removed = f
+        .iter()
+        .find(|x| x.subject.kind == palisade_orchestrate::SubjectKind::Test)
+        .unwrap_or_else(|| panic!("no test finding, got {f:?}"));
+    assert_eq!(removed.subject.name, "b");
+    assert!(removed.expected.render().contains('b'));
+    assert!(!removed.observed.render().contains('b'));
+    assert_eq!(removed.change(), palisade_orchestrate::ChangeKind::Changed);
 }
 
 #[test]
@@ -289,7 +294,7 @@ fn a_real_unsafe_block_is_caught() {
             observation: &obs,
         },
     ));
-    assert!(f.iter().any(|x| x.observed.contains('1')), "{f:?}");
+    assert!(f.iter().any(|x| x.observed.render().contains('1')), "{f:?}");
 }
 
 #[test]

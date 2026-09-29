@@ -23,7 +23,7 @@
 
 use std::collections::BTreeMap;
 
-use palisade_orchestrate::{Finding, HunkRef, UntrustworthyReason};
+use palisade_orchestrate::{Finding, HunkRef, Side, Subject, SubjectKind, UntrustworthyReason};
 
 use crate::{GateContext, GateResult, truncated};
 
@@ -174,13 +174,11 @@ pub fn run(ctx: &GateContext<'_>) -> GateResult {
             ctx.gate.id.clone(),
             ctx.gate.primitive,
             ctx.gate.severity,
+            Subject::new(SubjectKind::File, manifest_path),
             Some(manifest_path.into()),
             None,
-            "an existing production dependency surface",
-            format!(
-                "a new manifest declaring {} production dependencies",
-                head_surface.dependencies.len()
-            ),
+            Side::Absent,
+            Side::counted("production dependency", head_surface.dependencies.len()),
             "Cargo.toml is new; its whole dependency surface is unreviewed",
             ctx.origin(),
         )]);
@@ -206,9 +204,9 @@ pub fn run(ctx: &GateContext<'_>) -> GateResult {
                 ctx,
                 manifest_path,
                 name,
-                "absent",
-                &describe(declared),
-                "a new production dependency",
+                Side::Absent,
+                Side::value(describe(declared)),
+                &format!("production dependency `{name}` was added"),
             ));
         }
     }
@@ -218,9 +216,9 @@ pub fn run(ctx: &GateContext<'_>) -> GateResult {
                 ctx,
                 manifest_path,
                 name,
-                &describe(declared),
-                "absent",
-                "a production dependency was removed",
+                Side::value(describe(declared)),
+                Side::Absent,
+                &format!("production dependency `{name}` was removed"),
             ));
         }
     }
@@ -244,8 +242,8 @@ pub fn run(ctx: &GateContext<'_>) -> GateResult {
                 ctx,
                 manifest_path,
                 name,
-                &before,
-                &after,
+                Side::value(before),
+                Side::value(after),
                 &format!("production dependency `{name}` changed its {what}"),
             ));
         }
@@ -258,15 +256,15 @@ pub fn run(ctx: &GateContext<'_>) -> GateResult {
                 ctx,
                 manifest_path,
                 name,
-                "absent",
-                &render(head_list),
+                Side::Absent,
+                Side::value(render(head_list)),
             )),
             Some(base_list) if base_list != head_list => findings.push(feature_finding(
                 ctx,
                 manifest_path,
                 name,
-                &render(base_list),
-                &render(head_list),
+                Side::value(render(base_list)),
+                Side::value(render(head_list)),
             )),
             Some(_) => {}
         }
@@ -277,8 +275,8 @@ pub fn run(ctx: &GateContext<'_>) -> GateResult {
                 ctx,
                 manifest_path,
                 name,
-                &render(base_list),
-                "absent",
+                Side::value(render(base_list)),
+                Side::Absent,
             ));
         }
     }
@@ -338,19 +336,20 @@ fn dep_finding(
     ctx: &GateContext<'_>,
     path: &str,
     name: &str,
-    expected: &str,
-    observed: &str,
+    expected: Side,
+    observed: Side,
     message: &str,
 ) -> Finding {
     Finding::new(
         ctx.gate.id.clone(),
         ctx.gate.primitive,
         ctx.gate.severity,
+        Subject::new(SubjectKind::Dependency, name),
         Some(path.into()),
         Some(HunkRef { start: 0, end: 0 }),
         expected,
         observed,
-        format!("{message}: {name}"),
+        message,
         ctx.origin(),
     )
 }
@@ -359,18 +358,19 @@ fn feature_finding(
     ctx: &GateContext<'_>,
     path: &str,
     name: &str,
-    expected: &str,
-    observed: &str,
+    expected: Side,
+    observed: Side,
 ) -> Finding {
     Finding::new(
         ctx.gate.id.clone(),
         ctx.gate.primitive,
         ctx.gate.severity,
+        Subject::new(SubjectKind::Feature, format!("features.{name}")),
         Some(path.into()),
         Some(HunkRef { start: 0, end: 0 }),
         expected,
         observed,
-        format!("[features].{name} changed"),
+        format!("[features].{name} {}", "changed"),
         ctx.origin(),
     )
 }

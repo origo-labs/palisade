@@ -238,21 +238,171 @@ pub struct Finding {
     pub primitive: Primitive,
     /// What it does to the verdict.
     pub severity: Severity,
+    /// What is being compared, in a form a consumer can branch on. Without it
+    /// the two sides are two sentences and a reader has to guess what kind of
+    /// thing is being talked about.
+    pub subject: Subject,
     /// Repository-relative location, when the finding has one.
     pub path: Option<camino::Utf8PathBuf>,
     /// Line range in the observed file, when the finding is located.
     pub hunk: Option<HunkRef>,
-    /// What the contract or the baseline said.
-    pub expected: String,
-    /// What was actually found.
-    pub observed: String,
-    /// A human sentence. Must contain no fact absent from the fields above,
-    /// so a reader can rely on the structured fields instead of parsing prose.
+    /// The contract's or the baseline's side of the comparison.
+    pub expected: Side,
+    /// The worktree's side of the comparison.
+    pub observed: Side,
+    /// A human sentence naming the subject and the change. Carries nuance a
+    /// generic renderer cannot — why an addition is not a break, how to
+    /// silence one — but is a *hint*, not the source of truth: everything a
+    /// consumer needs is in `subject`, `expected` and `observed`. A test
+    /// asserts every message names its subject, so the prose cannot drift away
+    /// from the fields it describes.
     pub message: String,
     /// Stable across runs and across unrelated line movement.
     pub fingerprint: Fingerprint,
     /// Who produced it, derived from the producing outcome.
     pub origin: Origin,
+}
+
+/// What a finding is about.
+///
+/// Present so a report or a SARIF consumer can branch on the kind without
+/// parsing prose, and so both sides of a comparison are unambiguously about
+/// the same thing.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Subject {
+    /// What sort of thing this is.
+    pub kind: SubjectKind,
+    /// Which one.
+    pub name: String,
+}
+
+impl Subject {
+    /// Name a subject.
+    pub fn new(kind: SubjectKind, name: impl Into<String>) -> Self {
+        Self {
+            kind,
+            name: name.into(),
+        }
+    }
+}
+
+/// What sort of thing a finding is about.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum SubjectKind {
+    /// A declared production dependency.
+    Dependency,
+    /// A `[features]` entry.
+    Feature,
+    /// A test function, by module path and name.
+    Test,
+    /// A public item, by module path and name.
+    PublicItem,
+    /// A kind of `unsafe` surface, by count.
+    UnsafeSurface,
+    /// A diagnostic suppression.
+    Suppression,
+    /// A whole file, for a deletion where the unit is the file.
+    File,
+    /// A path, for a frozen-path policy check.
+    Path,
+    /// The contract itself.
+    Contract,
+}
+
+impl SubjectKind {
+    /// The word a message uses for this kind of subject.
+    pub const fn noun(self) -> &'static str {
+        match self {
+            Self::Dependency => "dependency",
+            Self::Feature => "feature",
+            Self::Test => "test",
+            Self::PublicItem => "public item",
+            Self::UnsafeSurface => "unsafe surface",
+            Self::Suppression => "suppression",
+            Self::File => "file",
+            Self::Path => "path",
+            Self::Contract => "contract",
+        }
+    }
+}
+
+/// One side of a comparison.
+///
+/// `Absent` is a value, not the string `"absent"`. Three gates had invented
+/// three different spellings of it, and a consumer had no way to tell "not
+/// present" from "present and equal to the word absent".
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Side {
+    /// The thing was not present on this side of the comparison.
+    Absent,
+    /// The thing was present, with this rendering.
+    Value(String),
+}
+
+impl Side {
+    /// A present value.
+    pub fn value(s: impl Into<String>) -> Self {
+        Self::Value(s.into())
+    }
+
+    /// A named set, rendered the same way wherever it appears.
+    ///
+    /// A shared renderer is what makes the two sides comparable. One gate
+    /// rendered its before-side as a list and its after-side as a count, which
+    /// is why its report line read `2 test(s): a, b -> 1 test(s)`.
+    pub fn listed(items: &[String]) -> Self {
+        match items.len() {
+            0 => Self::Absent,
+            1 => Self::Value(items[0].clone()),
+            n => Self::Value(format!("{n} ({})", items.join(", "))),
+        }
+    }
+
+    /// A count with a unit, rendered the same way on both sides.
+    pub fn counted(unit: &str, n: usize) -> Self {
+        Self::Value(format!("{n} {unit}{}", if n == 1 { "" } else { "s" }))
+    }
+
+    /// The rendering, for a report.
+    pub fn render(&self) -> String {
+        match self {
+            Self::Absent => "(absent)".to_string(),
+            Self::Value(v) => v.clone(),
+        }
+    }
+}
+
+impl fmt::Display for Side {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.render())
+    }
+}
+
+/// What kind of change a finding describes.
+///
+/// **Derived from the two sides, never stated in prose.** This is the property
+/// that makes the pair worth having: a consumer classifies a finding by
+/// comparing `expected` and `observed`, and cannot be misled by a message that
+/// says "widened" on a pair that is actually an addition.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ChangeKind {
+    /// Present in the worktree, absent from the baseline or the contract.
+    Added,
+    /// Present in the baseline, absent from the worktree.
+    Removed,
+    /// Present on both sides, with different values.
+    Changed,
+}
+
+impl ChangeKind {
+    /// The word a message uses.
+    pub const fn verb(self) -> &'static str {
+        match self {
+            Self::Added => "added",
+            Self::Removed => "removed",
+            Self::Changed => "changed",
+        }
+    }
 }
 
 /// A line range in the observed file, 1-based and inclusive.
@@ -276,27 +426,29 @@ impl Finding {
         gate_id: GateId,
         primitive: Primitive,
         severity: Severity,
+        subject: Subject,
         path: Option<camino::Utf8PathBuf>,
         hunk: Option<HunkRef>,
-        expected: impl Into<String>,
-        observed: impl Into<String>,
+        expected: Side,
+        observed: Side,
         message: impl Into<String>,
         origin: Origin,
     ) -> Self {
-        let expected = expected.into();
-        let observed = observed.into();
         let path_s = path.as_deref().map_or("", camino::Utf8Path::as_str);
         let fingerprint = Fingerprint::of(&[
             gate_id.as_str(),
             primitive.as_str(),
             path_s,
-            &expected,
-            &observed,
+            subject.kind.noun(),
+            &subject.name,
+            &expected.render(),
+            &observed.render(),
         ]);
         Self {
             gate_id,
             primitive,
             severity,
+            subject,
             path,
             hunk,
             expected,
@@ -305,6 +457,39 @@ impl Finding {
             fingerprint,
             origin,
         }
+    }
+
+    /// What kind of change this finding describes, derived from the two sides.
+    ///
+    /// The one property that makes `expected`/`observed` worth having over two
+    /// free-text fields: a consumer classifies the finding by comparing them,
+    /// so a message that says "widened" cannot make an addition look like a
+    /// broadening.
+    pub fn change(&self) -> ChangeKind {
+        match (&self.expected, &self.observed) {
+            (Side::Absent, Side::Value(_)) => ChangeKind::Added,
+            (Side::Value(_), Side::Absent) => ChangeKind::Removed,
+            (Side::Value(_), Side::Value(_)) => ChangeKind::Changed,
+            // A subject that is on neither side is a check that fired without
+            // a comparison, e.g. a policy gate. Reported as `Changed` because
+            // something about it is not as declared.
+            (Side::Absent, Side::Absent) => ChangeKind::Changed,
+        }
+    }
+
+    /// A sentence naming the subject and the change.
+    ///
+    /// The fallback rendering, used where a gate has no nuance to add. A
+    /// generated sentence can never disagree with the fields it is generated
+    /// from, which is why it exists alongside the free-form `message` rather
+    /// than instead of it.
+    pub fn describe(&self) -> String {
+        format!(
+            "{} `{}` {}",
+            self.subject.kind.noun(),
+            self.subject.name,
+            self.change().verb()
+        )
     }
 
     /// Whether this finding should reach a human rather than block. Judged

@@ -361,6 +361,64 @@ that; everything else is "no trustworthy verdict", which is `Error`.
 
 ### 3.2 Finding: what a block is made of
 
+#### The `expected` / `observed` contract
+
+Settled before M3, because it is what the JSON and SARIF serialisers encode and
+three consumers will depend on.
+
+**The pair carries a relation. The message does not.**
+
+Before this was pinned down, the six gates between them had invented **three
+spellings of absence** — `"absent"`, `"absent at the base commit"`, and
+`"no suppression here at the base commit"` — and **four cases where the two
+sides were not the same kind of thing**: a list before and a count after
+(`2 test(s): a, b -> 1 test(s)`), a count before and a sentence after, a
+sentence before and a value after, and a sentence before and a state after. A
+consumer could not tell "not present" from "present and equal to the word
+absent", and could not compare the two sides without knowing which gate wrote
+them.
+
+The rules, each of them tested:
+
+1. **`expected` and `observed` are two renderings of the same subject, one
+   from the baseline and one from the head, using the same grammar.** Both come
+   from the same renderer — `Side::listed`, `Side::counted` — precisely so
+   this cannot drift.
+2. **Absence is a value, not a string.** `Side::Absent`, rendered `(absent)`.
+   One spelling, and it is distinguishable from a value that happens to be the
+   word "absent".
+3. **`Subject` names what is being compared**, machine-readably, so a consumer
+   branches on `SubjectKind` instead of parsing prose.
+4. **The change kind is *derived* from the pair**, never stated:
+
+   | expected | observed | `ChangeKind` |
+   | --- | --- | --- |
+   | `Absent` | `Value` | `Added` |
+   | `Value` | `Absent` | `Removed` |
+   | `Value` | `Value` | `Changed` |
+
+   So a gate that writes "widened" on an addition cannot make an addition read
+   as a broadening. `the_message_cannot_relabel_a_finding` pins that.
+5. **`message` is a hint, not the source of truth.** It carries nuance a
+   generic renderer cannot — why an addition is not a break, how to silence
+   one — but `describe()` generates a canonical sentence from the fields, and
+   a test asserts every message names its subject so the prose cannot drift.
+6. **The fingerprint includes the subject**, so two findings that differ only
+   in what they are about cannot collide and a suppression scoped to one does
+   not silence the other.
+
+This is a policy gate, not a two-tree one, and still fits:
+
+```text
+path changed: fixtures/data.json
+          frozen by `fixtures` -> modified
+```
+
+A policy gate's baseline side is the contract's declaration rather than a tree,
+and the pair still says which of the two moved.
+
+
+
 PRD §7: "A block without the diff hunk, the gate id, the expected and observed
 value, and a stable fingerprint is a bug." So `Finding` is not a free-form
 string:

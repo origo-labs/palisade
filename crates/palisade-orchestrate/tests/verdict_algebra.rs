@@ -11,8 +11,8 @@
 
 use palisade_contract::{GateId, Primitive, Severity};
 use palisade_orchestrate::{
-    Advisory, Finding, GateOutcome, Origin, ReductionInput, SkipReason, ToolId,
-    UntrustworthyReason, Verdict, reduce,
+    Advisory, ChangeKind, Finding, GateOutcome, Origin, ReductionInput, Side, SkipReason, Subject,
+    SubjectKind, ToolId, UntrustworthyReason, Verdict, reduce,
 };
 
 fn gate(name: &str) -> GateId {
@@ -34,10 +34,11 @@ fn fail(primitive: Primitive, severity: Severity) -> GateOutcome {
         gate("g"),
         primitive,
         severity,
+        Subject::new(SubjectKind::Dependency, "serde"),
         None,
         None,
-        "expected",
-        "observed",
+        Side::value("expected"),
+        Side::value("observed"),
         "m",
         analyzed(primitive),
     ))
@@ -342,14 +343,18 @@ fn findings_carry_provenance() {
         gate("g"),
         Primitive::SecretAbsent,
         Severity::Error,
+        Subject::new(SubjectKind::Dependency, "api-key"),
         Some("src/lib.rs".into()),
         Some(palisade_orchestrate::HunkRef { start: 1, end: 2 }),
-        "no key",
-        "key present",
+        Side::Absent,
+        Side::value("key present"),
         "credential in diff",
         analyzed(Primitive::SecretAbsent),
     );
     assert!(matches!(f.origin, Origin::Analyzed { .. }));
+    // The subject is a first-class field, not something the message has to
+    // carry, so a consumer never parses prose to learn what it is looking at.
+    assert_eq!(f.subject.name, "api-key");
 }
 
 #[test]
@@ -358,10 +363,11 @@ fn fingerprints_are_stable_and_content_derived() {
         gate("g"),
         Primitive::SecretAbsent,
         Severity::Warn,
+        Subject::new(SubjectKind::Dependency, "api-key"),
         Some("src/lib.rs".into()),
         None,
-        "no key",
-        "key present",
+        Side::Absent,
+        Side::value("key present"),
         "m",
         analyzed(Primitive::SecretAbsent),
     );
@@ -369,10 +375,11 @@ fn fingerprints_are_stable_and_content_derived() {
         gate("g"),
         Primitive::SecretAbsent,
         Severity::Warn,
+        Subject::new(SubjectKind::Dependency, "api-key"),
         Some("src/lib.rs".into()),
         None,
-        "no key",
-        "key present",
+        Side::Absent,
+        Side::value("key present"),
         "a different human sentence",
         analyzed(Primitive::SecretAbsent),
     );
@@ -384,12 +391,138 @@ fn fingerprints_are_stable_and_content_derived() {
         gate("g"),
         Primitive::SecretAbsent,
         Severity::Warn,
+        Subject::new(SubjectKind::Dependency, "api-key"),
         Some("src/other.rs".into()),
         None,
-        "no key",
-        "key present",
+        Side::Absent,
+        Side::value("key present"),
         "m",
         analyzed(Primitive::SecretAbsent),
     );
     assert_ne!(a.fingerprint, c.fingerprint);
+}
+
+// ---- expected / observed: the settled meaning ------------------------------
+//
+// The pair is only worth having if the *kind of change* is derivable from it
+// rather than stated in prose. These tests are the contract for the SARIF and
+// JSON serialisers M3 is about to write, and they are why `message` is a hint
+// rather than the source of truth.
+
+fn finding(expected: Side, observed: Side) -> Finding {
+    Finding::new(
+        gate("g"),
+        Primitive::TestsNotDeleted,
+        Severity::Error,
+        Subject::new(SubjectKind::Test, "a"),
+        Some("src/lib.rs".into()),
+        None,
+        expected,
+        observed,
+        "whatever the gate felt like saying",
+        analyzed(Primitive::TestsNotDeleted),
+    )
+}
+
+#[test]
+fn a_finding_is_classified_by_comparing_its_two_sides() {
+    assert_eq!(
+        finding(Side::Absent, Side::value("x")).change(),
+        ChangeKind::Added
+    );
+    assert_eq!(
+        finding(Side::value("x"), Side::Absent).change(),
+        ChangeKind::Removed
+    );
+    assert_eq!(
+        finding(Side::value("x"), Side::value("y")).change(),
+        ChangeKind::Changed
+    );
+}
+
+#[test]
+fn the_message_cannot_relabel_a_finding() {
+    // The report labels findings by `change()`, never by the message, so a
+    // gate that writes "widened" on an addition cannot make an addition read as
+    // a broadening. Two findings with the same sides classify the same way
+    // however differently they are worded.
+    let wrong = Finding::new(
+        gate("g"),
+        Primitive::SuppressionsNotWidened,
+        Severity::Error,
+        Subject::new(SubjectKind::Suppression, "#[allow(clippy::a)]"),
+        None,
+        None,
+        Side::Absent,
+        Side::value("#[allow(clippy::a)]"),
+        "a diagnostic suppression was widened",
+        analyzed(Primitive::SuppressionsNotWidened),
+    );
+    assert_eq!(wrong.change(), ChangeKind::Added);
+    assert!(wrong.message.contains("widened"));
+    assert_ne!(wrong.change(), ChangeKind::Changed);
+}
+
+#[test]
+fn the_generated_sentence_cannot_disagree_with_the_fields() {
+    let added = finding(Side::Absent, Side::value("x"));
+    assert_eq!(added.describe(), "test `a` added");
+    let removed = finding(Side::value("x"), Side::Absent);
+    assert_eq!(removed.describe(), "test `a` removed");
+    let changed = finding(Side::value("x"), Side::value("y"));
+    assert_eq!(changed.describe(), "test `a` changed");
+}
+
+#[test]
+fn absence_is_one_value_not_three_spellings() {
+    // Three gates had invented "absent", "absent at the base commit" and "no
+    // suppression here at the base commit". A consumer could not tell "not
+    // present" from "present and equal to the word absent". Now there is one
+    // value, and rendering it is the only place a string appears.
+    assert_eq!(Side::Absent.render(), "(absent)");
+    assert_eq!(Side::value("absent").render(), "absent");
+    assert_ne!(Side::Absent, Side::value("absent"));
+}
+
+#[test]
+fn a_set_renders_the_same_way_on_both_sides() {
+    // The renderer is shared precisely so this holds. It was not: one gate
+    // printed a list before and a count after, and the report read
+    // `2 test(s): a, b -> 1 test(s)`.
+    assert_eq!(Side::listed(&["a".into()]).render(), "a");
+    assert_eq!(Side::listed(&["a".into(), "b".into()]).render(), "2 (a, b)");
+    assert_eq!(Side::listed(&[]), Side::Absent);
+    assert_eq!(Side::counted("unsafe block", 1).render(), "1 unsafe block");
+    assert_eq!(Side::counted("unsafe block", 2).render(), "2 unsafe blocks");
+}
+
+#[test]
+fn the_fingerprint_includes_the_subject_so_two_findings_do_not_collide() {
+    // Two findings that differ only in what they are about must not share a
+    // fingerprint, or a suppression scoped to one would silence the other.
+    let a = Finding::new(
+        gate("g"),
+        Primitive::TestsNotDeleted,
+        Severity::Error,
+        Subject::new(SubjectKind::Test, "one"),
+        None,
+        None,
+        Side::Absent,
+        Side::value("x"),
+        "m",
+        analyzed(Primitive::TestsNotDeleted),
+    );
+    let b = Finding::new(
+        gate("g"),
+        Primitive::TestsNotDeleted,
+        Severity::Error,
+        Subject::new(SubjectKind::Test, "two"),
+        None,
+        None,
+        Side::Absent,
+        Side::value("x"),
+        "m",
+        analyzed(Primitive::TestsNotDeleted),
+    );
+    assert_ne!(a.fingerprint, b.fingerprint);
 }

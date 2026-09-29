@@ -32,7 +32,7 @@ use std::collections::BTreeMap;
 
 use palisade_ast::{ParseCache, ParsedFile, PublicItem};
 use palisade_contract::Severity;
-use palisade_orchestrate::{Finding, UntrustworthyReason};
+use palisade_orchestrate::{Finding, Side, Subject, SubjectKind, UntrustworthyReason};
 
 use crate::{GateContext, GateResult, truncated};
 
@@ -71,18 +71,17 @@ pub fn run(ctx: &GateContext<'_>) -> GateResult {
                     ctx.gate.id.clone(),
                     ctx.gate.primitive,
                     ctx.gate.severity,
+                    Subject::new(SubjectKind::File, view.path.clone()),
                     Some(view.path.clone().into()),
                     None,
-                    format!(
-                        "{} public item(s): {}",
-                        base.items().len(),
-                        base.items()
+                    Side::listed(
+                        &base
+                            .items()
                             .iter()
-                            .map(|i| i.path.as_str())
-                            .collect::<Vec<_>>()
-                            .join(", ")
+                            .map(|i| i.path.clone())
+                            .collect::<Vec<_>>(),
                     ),
-                    "the file was deleted",
+                    Side::Absent,
                     format!("`{}` declared public API and was deleted", view.path),
                     ctx.origin(),
                 ));
@@ -120,10 +119,11 @@ pub fn run(ctx: &GateContext<'_>) -> GateResult {
                 ctx.gate.id.clone(),
                 ctx.gate.primitive,
                 ctx.gate.severity,
+                Subject::new(SubjectKind::PublicItem, path.clone()),
                 Some(view.path.clone().into()),
                 None,
-                format!("{signature}  (present at the base commit)"),
-                "absent",
+                Side::value(signature.clone()),
+                Side::Absent,
                 format!("public {} `{path}` was removed", kind_of(&base, path)),
                 ctx.origin(),
             ));
@@ -141,10 +141,11 @@ pub fn run(ctx: &GateContext<'_>) -> GateResult {
                 ctx.gate.id.clone(),
                 ctx.gate.primitive,
                 ctx.gate.severity,
+                Subject::new(SubjectKind::PublicItem, path.clone()),
                 Some(view.path.clone().into()),
                 None,
-                base_sig.clone(),
-                head_sig.clone(),
+                Side::value(base_sig.clone()),
+                Side::value(head_sig.clone()),
                 format!("public {} `{path}` changed signature", kind_of(&head, path)),
                 ctx.origin(),
             ));
@@ -182,10 +183,11 @@ fn addition(ctx: &GateContext<'_>, path: &str, item: &PublicItem) -> Finding {
         ctx.gate.primitive,
         // Pinned, not read from the contract. See the module docs.
         Severity::Warn,
+        Subject::new(SubjectKind::PublicItem, item.path.clone()),
         Some(path.into()),
         None,
-        "absent at the base commit",
-        item.signature.clone(),
+        Side::Absent,
+        Side::value(item.signature.clone()),
         format!(
             "public {} `{}` was added. Additions are not a compatibility \
              break; list the path in `allow` to silence.",

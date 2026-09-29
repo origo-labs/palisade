@@ -19,7 +19,7 @@
 use std::collections::BTreeMap;
 
 use palisade_ast::{ParseCache, ParsedFile, UnsafeKind};
-use palisade_orchestrate::{Finding, UntrustworthyReason};
+use palisade_orchestrate::{Finding, Side, Subject, SubjectKind, UntrustworthyReason};
 
 use crate::{GateContext, GateResult, truncated};
 
@@ -62,10 +62,11 @@ pub fn run(ctx: &GateContext<'_>) -> GateResult {
                 ctx.gate.id.clone(),
                 ctx.gate.primitive,
                 ctx.gate.severity,
+                Subject::new(SubjectKind::UnsafeSurface, plural(*kind, *head_n)),
                 Some(view.path.clone().into()),
                 None,
-                format!("{base_n} unsafe {}", plural(*kind, base_n)),
-                format!("{head_n} unsafe {}", plural(*kind, *head_n)),
+                Side::counted(kind.as_str(), base_n),
+                Side::counted(kind.as_str(), *head_n),
                 format!(
                     "{} unsafe {} added to `{}`",
                     head_n - base_n,

@@ -281,10 +281,21 @@ fn print_report(contract: &Contract, reports: &[GateReport], verdict: Verdict) {
             GateOutcome::Fail(_) => {
                 // Every finding, not just the one that decided the verdict.
                 for f in &report.findings {
-                    println!("  {:<8} [{}] {}", f.severity, report.gate_id, f.message);
+                    // The derived change, not the message's word for it, so
+                    // the report cannot label a removal as a widening.
+                    println!(
+                        "  {:<8} [{}] {} {}: {}",
+                        f.severity,
+                        report.gate_id,
+                        f.subject.kind.noun(),
+                        f.change().verb(),
+                        f.subject.name
+                    );
                     println!(
                         "            {} -> {}   [{}]",
-                        f.expected, f.observed, f.fingerprint
+                        f.expected.render(),
+                        f.observed.render(),
+                        f.fingerprint
                     );
                 }
             }

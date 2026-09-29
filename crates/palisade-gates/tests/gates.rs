@@ -106,7 +106,12 @@ fn dependency_surface_fires_on_a_new_production_dependency() {
         f.iter().any(|x| x.message.contains("tokio")),
         "expected a finding naming tokio, got {f:?}"
     );
-    assert_eq!(f[0].expected, "absent", "the dependency was absent at base");
+    assert_eq!(
+        f[0].expected,
+        palisade_orchestrate::Side::Absent,
+        "the dependency was absent at base"
+    );
+    assert_eq!(f[0].change(), palisade_orchestrate::ChangeKind::Added);
 }
 
 #[test]
@@ -146,7 +151,7 @@ serde = { version = "1", default-features = false }
     let r = registry::dispatch(g.primitive, &ctx(&g, &obs));
     let f = findings(&r);
     assert!(
-        f.iter().any(|x| x.expected.contains("true")),
+        f.iter().any(|x| x.expected.render().contains("true")),
         "expected the default-features flip, got {f:?}"
     );
 }
@@ -300,10 +305,12 @@ fn tests_not_deleted_fires_on_a_removed_test_in_a_surviving_file() {
     let obs = two_tree(&[("src/lib.rs", Some(before), Some(after))]);
     let r = registry::dispatch(g.primitive, &ctx(&g, &obs));
     let f = findings(&r);
-    assert!(
-        f[0].observed.contains('1') && f[0].expected.contains('2'),
-        "expected 2 -> 1, got {f:?}"
-    );
+    // The pair is comparable: two tests before, one after, rendered the same
+    // way on both sides, and the removed one is named.
+    assert_eq!(f[0].subject.name, "b");
+    assert_eq!(f[0].expected.render(), "2 (a, b)");
+    assert_eq!(f[0].observed.render(), "a");
+    assert_eq!(f[0].change(), palisade_orchestrate::ChangeKind::Changed);
 }
 
 #[test]
@@ -466,4 +473,77 @@ fn several_findings_from_one_gate_all_survive() {
     );
     assert!(f.iter().any(|x| x.message.contains("original")));
     assert!(f.iter().any(|x| x.message.contains("#[ignore]")));
+}
+
+// ---- every gate obeys the settled expected/observed contract ---------------
+
+#[test]
+fn no_gate_produces_a_findings_whose_message_omits_its_subject() {
+    // `message` is a hint; `subject`, `expected` and `observed` are the truth.
+    // This keeps the prose from drifting away from the fields it describes,
+    // which is the failure the M2 follow-up found in the CLI.
+    /// (primitive, files) where each file is (path, base, head).
+    type Case = (Primitive, Vec<(&'static str, &'static str, &'static str)>);
+
+    let cases: Vec<Case> = vec![
+        (
+            Primitive::DependencySurfaceUnchanged,
+            vec![(
+                "Cargo.toml",
+                "[package]\nname=\"d\"\n[dependencies]\nserde=\"1\"\n",
+                "[package]\nname=\"d\"\n[dependencies]\nserde=\"1\"\ntokio=\"1\"\n",
+            )],
+        ),
+        (
+            Primitive::TestsNotDeleted,
+            vec![("src/lib.rs", "#[test]\nfn a() {}\n", "fn f() {}\n")],
+        ),
+        (
+            Primitive::PublicApiUnchanged,
+            vec![("src/lib.rs", "pub fn gone() {}\n", "pub fn kept() {}\n")],
+        ),
+        (
+            Primitive::UnsafeSurfaceUnchanged,
+            vec![(
+                "src/lib.rs",
+                "pub fn f() { let _x = 1; }\n",
+                "pub fn f() { unsafe { let _x = 1; } }\n",
+            )],
+        ),
+        (
+            Primitive::SuppressionsNotWidened,
+            vec![(
+                "src/lib.rs",
+                "pub fn f() {}\n",
+                "#[allow(clippy::all)]\npub fn f() {}\n",
+            )],
+        ),
+    ];
+
+    for (primitive, files) in cases {
+        let g = gate(primitive);
+        let files: Vec<(&str, Option<&str>, Option<&str>)> = files
+            .iter()
+            .map(|(p, b, h)| (*p, Some(*b), Some(*h)))
+            .collect();
+        let obs = two_tree(&files);
+        let r = registry::dispatch(primitive, &ctx(&g, &obs));
+        let produced = findings(&r);
+        assert!(
+            !produced.is_empty(),
+            "{primitive} produced nothing to check"
+        );
+        for f in produced {
+            assert!(
+                !f.subject.name.is_empty(),
+                "{primitive} produced a finding with no subject: {f:?}"
+            );
+            assert!(
+                f.message.contains(&f.subject.name) || f.subject.name.contains(&f.message),
+                "{primitive}: message {:?} does not name subject {:?}",
+                f.message,
+                f.subject.name
+            );
+        }
+    }
 }

@@ -27,7 +27,7 @@
 use std::collections::BTreeSet;
 
 use palisade_ast::{ParseCache, ParsedFile, TestFn};
-use palisade_orchestrate::{Finding, UntrustworthyReason};
+use palisade_orchestrate::{Finding, Side, Subject, SubjectKind, UntrustworthyReason};
 
 use crate::{GateContext, GateResult, truncated};
 
@@ -83,15 +83,24 @@ pub fn run(ctx: &GateContext<'_>) -> GateResult {
             .filter(|t| !head_ids.contains(&t.id()))
             .collect();
         if !removed.is_empty() {
+            // Both sides rendered the same way, so the pair is comparable. The
+            // previous version printed a list before and a count after, which
+            // is why the report read `2 test(s): a, b -> 1 test(s)`.
+            let before: Vec<String> = base.tests().iter().map(TestFn::id).collect();
+            let after: Vec<String> = head
+                .as_ref()
+                .map(|h| h.tests().iter().map(TestFn::id).collect())
+                .unwrap_or_default();
             let names: Vec<String> = removed.iter().map(|t| t.id()).collect();
             findings.push(Finding::new(
                 ctx.gate.id.clone(),
                 ctx.gate.primitive,
                 ctx.gate.severity,
+                Subject::new(SubjectKind::Test, names.join(", ")),
                 Some(view.path.clone().into()),
                 None,
-                format!("{} test(s): {}", base_ids.len(), names.join(", ")),
-                format!("{} test(s)", head_ids.len()),
+                Side::listed(&before),
+                Side::listed(&after),
                 format!(
                     "{} test(s) removed from `{}`: {}",
                     removed.len(),
@@ -125,10 +134,11 @@ pub fn run(ctx: &GateContext<'_>) -> GateResult {
                     ctx.gate.id.clone(),
                     ctx.gate.primitive,
                     ctx.gate.severity,
+                    Subject::new(SubjectKind::Test, id.clone()),
                     Some(view.path.clone().into()),
                     None,
-                    "runs",
-                    marker,
+                    Side::value("runs"),
+                    Side::value(marker),
                     format!("`{id}` in `{}` was marked {marker}", view.path),
                     ctx.origin(),
                 ));
