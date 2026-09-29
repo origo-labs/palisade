@@ -153,16 +153,23 @@ fn a_test_removed_after_being_committed_is_still_caught() {
             now_unix: FIXED_NOW,
         },
     ));
-    // Both sides render the same way, so the pair is comparable: the removed
-    // test is on the before side and not the after side.
     let removed = f
         .iter()
         .find(|x| x.subject.kind == palisade_orchestrate::SubjectKind::Test)
         .unwrap_or_else(|| panic!("no test finding, got {f:?}"));
+    // The subject names the test by its module path, not its file: the file is
+    // already the finding location, and putting it in the identity is what made
+    // a file-to-module split look like a deletion.
     assert_eq!(removed.subject.name, "b");
+    assert_eq!(
+        removed.path.as_deref().map(|p| p.as_str()),
+        Some("tests/a.rs")
+    );
+    // A removal is the test on the before side and absent after, so the change
+    // kind is derived rather than stated.
     assert!(removed.expected.render().contains('b'));
-    assert!(!removed.observed.render().contains('b'));
-    assert_eq!(removed.change(), palisade_orchestrate::ChangeKind::Changed);
+    assert_eq!(removed.observed, palisade_orchestrate::Side::Absent);
+    assert_eq!(removed.change(), palisade_orchestrate::ChangeKind::Removed);
 }
 
 #[test]

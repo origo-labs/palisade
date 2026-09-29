@@ -312,12 +312,13 @@ fn tests_not_deleted_fires_on_a_removed_test_in_a_surviving_file() {
     let obs = two_tree(&[("src/lib.rs", Some(before), Some(after))]);
     let r = registry::dispatch(g.primitive, &ctx(&g, &obs));
     let f = findings(&r);
-    // The pair is comparable: two tests before, one after, rendered the same
-    // way on both sides, and the removed one is named.
+    // Tree-level identity: the subject names the test by module path, and the
+    // finding is `Absent` on the after side because a removal is not a value
+    // change.
     assert_eq!(f[0].subject.name, "b");
-    assert_eq!(f[0].expected.render(), "2 (a, b)");
-    assert_eq!(f[0].observed.render(), "a");
-    assert_eq!(f[0].change(), palisade_orchestrate::ChangeKind::Changed);
+    assert_eq!(f[0].path.as_deref().map(|p| p.as_str()), Some("src/lib.rs"));
+    assert_eq!(f[0].observed, palisade_orchestrate::Side::Absent);
+    assert_eq!(f[0].change(), palisade_orchestrate::ChangeKind::Removed);
 }
 
 #[test]

@@ -926,20 +926,40 @@ that blocks on every new public function gets switched off), 2
 `#[allow(dead_code)]` across several merges. That is genuine suppression growth
 and exactly what M2's gate exists to catch.
 
-**The two `tests_not_deleted` findings are false positives, and the most
-valuable thing the dry run produced.** `src/http_v1.rs` was split into a
-module: it became `src/http_v1/mod.rs` plus eight new files, and 17 tests moved
-into `src/http_v1/tests.rs`. The gate saw one file lose its tests and reported
-`3 test(s) removed from src/daemon.rs` and `17 test(s) removed from
-src/http_v1.rs`. **Verified: 17 tests before, 17 after, none deleted.**
+**The two `tests_not_deleted` findings were false positives, and fixing them
+was the most valuable thing the dry run produced.** `src/http_v1.rs` was split
+into a module: it became `src/http_v1/mod.rs` plus eight new files, and 17
+tests moved into `src/http_v1/tests.rs`. The gate saw one file lose its tests
+and reported `3 test(s) removed from src/daemon.rs` and `17 test(s) removed
+from src/http_v1.rs`. **Verified: 17 before, 17 after, none deleted.**
 
-This is the same shape as the `EVIDENCE.md` §6 return-type false positive —
-one file's view of the world is not the repository's — and it is worse, because
-a file-to-module split is an ordinary refactor that a good agent does
-constantly. The fix is to compare test *identity across the whole tree*, not
-per file: a test that moved has not been deleted, and a test that exists
-nowhere has. That is a real design change to `tests_not_deleted`, and it is
-the first thing M5 should fix.
+Same shape as the `EVIDENCE.md` §6 return-type false positive — one file's
+view of the world is not the repository's — and worse, because a file-to-module
+split is an ordinary refactor a competent agent performs constantly. A gate
+that reports it gets disabled, and disabling it takes the real finding above
+with it.
+
+**Fixed: a test's identity is its module path and name, and the file is not
+part of it.** A test that *moved* has not been deleted; a test that exists
+*nowhere* has. Three things fell out of the fix, each caught by a test:
+
+- The subject names the test (`b`), not the file, and the file moves to the
+  finding's location. It said `src/lib.rs::works` for a test living in `mod b`.
+- A file that is **new** at head is not a gap in the base tree. Treating one
+  as a gap made every refactor that splits a file unanswerable — the M5 false
+  positive arriving through the other door, and my first fix made it worse
+  before the fixture caught it.
+- A file that is **deleted** is a removal, not a gap. That is the one case
+  where a missing head side is the answer rather than an obstacle to it.
+
+And the bound is now stated: a tree-wide comparison cannot conclude from a
+partial tree, so a file the observation could not read both sides of yields
+`Untrustworthy`. The tests it did not read might be the ones that went. Same
+refusal as an unparseable file, for the same reason.
+
+**Re-run after the fix: 137 merges across six repositories, zero errors, zero
+false positives, and the real `#[allow(dead_code)]` finding still reported.**
+`tests_not_deleted` is silent on all 104 warmplane merges.
 
 **Two harness bugs, both mine, both instructive.** The first dry-run harness
 checked merges out in the working repository and left it dirty — the exact class

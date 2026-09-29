@@ -362,3 +362,69 @@ fn suppressions_are_untrustworthy_on_an_unparsable_file() {
     let obs = two_tree(&[("src/lib.rs", Some("pub fn f() {}"), Some("#[allow("))]);
     assert_untrustworthy(Primitive::SuppressionsNotWidened, &obs);
 }
+
+// ---- the M5 dry-run false positive, frozen ---------------------------------
+
+#[test]
+fn splitting_a_file_into_a_module_is_not_a_test_deletion() {
+    // The M5 dry run over `warmplane` reported `17 test(s) removed from
+    // src/http_v1.rs` on a merge where that file had been split into a module:
+    // it became `mod.rs` plus eight new files and the tests moved into
+    // `tests.rs`. Verified 17 before, 17 after, none deleted.
+    //
+    // A file-to-module split is an ordinary refactor that a competent agent
+    // performs constantly, so a gate that reports it is a gate that gets
+    // disabled — and disabling it takes the real findings with it. This is the
+    // same shape as the `EVIDENCE.md` 6 return-type false positive: one
+    // file's view of the world is not the repository's.
+    let base = "#[test]\nfn alpha() {}\n\n#[test]\nfn beta() {}\n";
+    // The same two tests, now in a different file, plus a `mod.rs` that
+    // declares the module.
+    let head_mod = "mod tests;\n";
+    let head_tests = "#[test]\nfn alpha() {}\n\n#[test]\nfn beta() {}\n";
+
+    let obs = two_tree(&[
+        ("src/http_v1.rs", Some(base), Some(head_mod)),
+        ("src/http_v1/tests.rs", None, Some(head_tests)),
+    ]);
+    assert_clean(Primitive::TestsNotDeleted, &obs);
+}
+
+#[test]
+fn a_genuine_deletion_alongside_a_move_is_still_caught() {
+    // The fix must not swallow real findings: a test that moved is fine, a test
+    // that exists nowhere is not, and both can happen in one diff.
+    let base = "#[test]\nfn alpha() {}\n\n#[test]\nfn beta() {}\n";
+    let head = "#[test]\nfn alpha() {}\n";
+    let obs = two_tree(&[("src/lib.rs", Some(base), Some(head))]);
+    let r = run(Primitive::TestsNotDeleted, &obs);
+    let f = findings(&r);
+    assert_eq!(f.len(), 1, "{f:?}");
+    assert!(f[0].message.contains("beta"), "{f:?}");
+}
+
+#[test]
+fn same_named_tests_in_different_modules_stay_distinct() {
+    // Identity is module + name, so two tests called `works` in two modules are
+    // two tests and deleting one is a finding. Dropping the path from the
+    // identity must not mean dropping the module from it.
+    let base = "mod a { #[test] fn works() {} }\nmod b { #[test] fn works() {} }\n";
+    let head = "mod a { #[test] fn works() {} }\n";
+    let obs = two_tree(&[("src/lib.rs", Some(base), Some(head))]);
+    let r = run(Primitive::TestsNotDeleted, &obs);
+    let f = findings(&r);
+    assert_eq!(f.len(), 1, "one of the two was removed: {f:?}");
+    assert!(f[0].message.contains("b::works"), "{f:?}");
+}
+
+#[test]
+fn a_file_the_observation_cannot_read_both_sides_is_untrustworthy() {
+    // A partial tree cannot support "nothing was removed": the tests it did
+    // not read might be the ones that went. Same refusal as an unparseable
+    // file, and for the same reason.
+    let base = "#[test]\nfn alpha() {}\n";
+    let obs = two_tree(&[("src/lib.rs", Some(base), Some(base))]);
+    let mut obs = obs;
+    obs.files[0].truncated = true;
+    assert_untrustworthy(Primitive::TestsNotDeleted, &obs);
+}

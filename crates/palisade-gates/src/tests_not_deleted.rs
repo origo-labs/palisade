@@ -1,159 +1,319 @@
 //! `tests_not_deleted` — were tests removed, or made not to run?
 //!
-//! Two-tree and AST-based. The set of test **identities** is compared, not a
-//! count, and that is the whole point:
+//! Two-tree, AST-based, and compared **across the whole tree** rather than
+//! per file. That last part is the result of the M5 dry run, and it is the
+//! single most important property this gate has.
 //!
-//! - Comparing names catches a **delete-and-replace** pair that a count
-//!   cannot. Remove one test and add another and the count is unchanged, while
-//!   a test somebody was relying on is gone. This gate existed in M1 counting
-//!   `#[test]` attributes, and M2 replaced it because a count is a weaker
-//!   statement than an identity and the text matcher underneath it was doing
-//!   an AST gate's job.
-//! - The `is_test_path` heuristic is **gone**. A deleted file is parsed at
-//!   the base commit and the tests it declared are reported by name, so
-//!   "is this a test file" no longer has to be guessed. A heuristic here had
-//!   two failure modes — missing a test in an oddly named file, and reporting
-//!   on a directory called `contest/` — and now has neither.
-//! - Framework attributes are recognised, not just bare `#[test]`. A gate that
-//!   only knows `#[test]` reports "nothing removed" on a repository that
-//!   writes `#[tokio::test]`, which is the failure mode of a check that has
-//!   never met the codebase it runs on.
+//! - **Tree-level, not per-file.** A per-file comparison reported `17 test(s)
+//!   removed from src/http_v1.rs` on a real merge where `src/http_v1.rs` had
+//!   been split into a module: the file became `mod.rs` plus eight new files
+//!   and the tests moved into `tests.rs`. Verified: 17 tests before, 17 after,
+//!   none deleted. A file split is an ordinary refactor that a competent agent
+//!   performs constantly, so a gate that reports it is a gate that gets
+//!   disabled — and disabling it takes the real findings with it. A test that
+//!   *moved* has not been deleted; a test that exists *nowhere* has.
+//! - **Identities, not counts.** Comparing names catches a delete-and-replace
+//!   pair that a count cannot: remove one test and add another, the count is
+//!   unchanged, and a test somebody relied on is gone. M1 counted `#[test]`
+//!   attributes; M2 replaced that because a count is a weaker statement than
+//!   an identity.
+//! - **The `is_test_path` heuristic is gone.** A deleted file is parsed at
+//!   the base commit and the tests it declared are reported by name. A
+//!   heuristic there had two failure modes — missing a test in an oddly named
+//!   file, and reporting on a directory called `contest/` — and has neither.
+//! - **Framework attributes are recognised**, not just bare `#[test]`. A gate
+//!   that only knows `#[test]` reports "nothing removed" on a repository that
+//!   writes `#[tokio::test]`.
+//!
+//! **The scope is bounded, and the bound is reported.** A tree-wide comparison
+//! needs the whole tree, but the observation is deliberately budgeted, so this
+//! gate reads what the observation holds and **says so when it cannot see
+//! everything**. A partial tree cannot support a "nothing was removed" claim,
+//! because the tests it did not read might have been the ones that went. That
+//! is `Untrustworthy`, not `Clean` — the same refusal-to-guess rule as an
+//! unparseable file, and for the same reason.
 //!
 //! `cargo test -- --list` gives the real inventory — names as the compiler
-//! sees them, including macro-generated tests — and arrives in M3 as a
-//! `consumes` edge from `checks_green`. Until then this is a static reading of
-//! the source, and the report says so rather than implying full coverage.
+//! sees them, including macro-generated tests — and is the fix for the
+//! remaining blind spot. It arrives in M3 as a `consumes` edge from
+//! `checks_green`; until then this is a static reading of the source, and the
+//! report says so rather than implying full coverage.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use palisade_ast::{ParseCache, ParsedFile, TestFn};
 use palisade_orchestrate::{Finding, Side, Subject, SubjectKind, UntrustworthyReason};
 
-use crate::{GateContext, GateResult, truncated};
+use crate::{GateContext, GateResult};
 
 /// The gate.
 pub fn run(ctx: &GateContext<'_>) -> GateResult {
     let cache = ParseCache::new();
-    let mut findings = Vec::new();
 
-    for view in &ctx.observation.files {
-        if !view.path.ends_with(".rs") {
+    // Every `.rs` path in the base tree, and whether the observation actually
+    // holds both sides of it. `FileView` only covers files that differ, so a
+    // file present at base and unchanged at head is absent from `files` — and
+    // a test in such a file is, by definition, still there. Enumerating the
+    // base tree's paths is what lets the gate tell "I saw the file and it is
+    // unchanged" from "I never looked at the file".
+    let (base_paths, covered) = base_tree_paths(ctx);
+
+    let mut base_tests: BTreeMap<String, Vec<Located>> = BTreeMap::new();
+    let mut head_tests: BTreeMap<String, Vec<Located>> = BTreeMap::new();
+    let mut missing_sides: Vec<String> = Vec::new();
+
+    for path in &base_paths {
+        let view = ctx.observation.file(path);
+        if let Some(v) = view
+            && v.truncated
+        {
+            // Clipped content is not content we can compare, whichever side is
+            // missing. Report it rather than reasoning about half a file.
+            missing_sides.push(path.clone());
             continue;
         }
-        if view.truncated {
-            return GateResult::Untrustworthy(truncated(&view.path));
+        match view {
+            // Both sides available: parse them.
+            Some(v) if v.base.is_some() && v.head.is_some() => {
+                let (Ok(base), Ok(head)) = (
+                    parse(&cache, v.base.as_deref().expect("both sides present"), path),
+                    parse(&cache, v.head.as_deref().expect("both sides present"), path),
+                ) else {
+                    return GateResult::Untrustworthy(UntrustworthyReason::Indeterminate {
+                        detail: format!("{path}: could not be read on both sides"),
+                    });
+                };
+                for t in base.tests() {
+                    base_tests
+                        .entry(test_key(t))
+                        .or_default()
+                        .push(Located::new(path, t));
+                }
+                for t in head.tests() {
+                    head_tests
+                        .entry(test_key(t))
+                        .or_default()
+                        .push(Located::new(path, t));
+                }
+            }
+            // The file is unchanged, so the base tree's version is current.
+            // We do not have its contents, but we do not need them: nothing
+            // about this file changed, so nothing about its tests changed.
+            None if !covered.contains(path) => {}
+            // A file that is **new** at head. It cannot have lost a test, so
+            // it is not a gap in the base tree — and treating one as a gap
+            // would make every refactor that splits a file unanswerable, which
+            // is the M5 false positive arriving through the other door.
+            // Its tests are collected, so a later comparison sees them.
+            Some(v) if v.base.is_none() => {
+                let head = match parse(&cache, v.head.as_deref().expect("head present"), path) {
+                    Ok(f) => f,
+                    Err(e) => return GateResult::Untrustworthy(e),
+                };
+                for t in head.tests() {
+                    head_tests
+                        .entry(test_key(t))
+                        .or_default()
+                        .push(Located::new(path, t));
+                }
+            }
+            // The file was **deleted**. Its tests are gone by definition, and
+            // that is a removal, not a gap in what we can see. This is the one
+            // case where a missing head side is the answer rather than an
+            // obstacle to it.
+            Some(v) if v.base.is_some() && v.head.is_none() => {
+                let base = match parse(&cache, v.base.as_deref().expect("base present"), path) {
+                    Ok(f) => f,
+                    Err(e) => return GateResult::Untrustworthy(e),
+                };
+                for t in base.tests() {
+                    base_tests
+                        .entry(test_key(t))
+                        .or_default()
+                        .push(Located::new(path, t));
+                }
+            }
+            // Clipped, or otherwise unreadable on both sides. A gap in what
+            // we can see cannot support a conclusion, so it is not a finding
+            // and not a pass: it is a refusal.
+            _ => missing_sides.push(path.clone()),
         }
+    }
 
-        // Both sides. A deleted file has no head, and every test it declared
-        // is a removal — which falls out of the set comparison for free.
-        let base = match view.base.as_deref() {
-            Some(src) => match parse(&cache, src, &view.path) {
-                Ok(f) => Some(f),
-                Err(e) => return GateResult::Untrustworthy(e),
-            },
-            None => None,
-        };
-        let head = match view.head.as_deref() {
-            Some(src) => match parse(&cache, src, &view.path) {
-                Ok(f) => Some(f),
-                Err(e) => return GateResult::Untrustworthy(e),
-            },
-            None => None,
-        };
-
-        // A file that was only added cannot have lost a test.
-        let Some(base) = base.as_ref() else { continue };
-
-        let base_ids: BTreeSet<String> = base.tests().iter().map(TestFn::id).collect();
-        // A deleted file has no head, so it has no tests, so every test it
-        // declared is a removal. This is the case the `is_test_path` heuristic
-        // used to guess at, and getting it from the parse instead means the
-        // guess is gone rather than merely improved.
-        let head_ids: BTreeSet<String> = head
-            .as_ref()
-            .map(|h| h.tests().iter().map(TestFn::id).collect())
-            .unwrap_or_default();
-
-        // Removals.
-        let removed: Vec<&TestFn> = base
-            .tests()
+    // A test that exists in the base tree and in no changed file either. A
+    // removed test is one whose whole identity is gone; a moved test is
+    // present under a new path, and the paths are not part of the identity.
+    let mut findings = Vec::new();
+    for (key, locations) in &base_tests {
+        if head_tests.contains_key(key) {
+            continue;
+        }
+        // Name the test by its module path. The file is already in `path`, and
+        // repeating it here made the subject say "src/lib.rs::works" for a
+        // test that actually lives in `mod b`.
+        let names: Vec<String> = locations
             .iter()
-            .filter(|t| !head_ids.contains(&t.id()))
+            .map(|l| {
+                if l.module.is_empty() {
+                    l.name.clone()
+                } else {
+                    format!("{}::{}", l.module, l.name)
+                }
+            })
             .collect();
-        if !removed.is_empty() {
-            // Both sides rendered the same way, so the pair is comparable. The
-            // previous version printed a list before and a count after, which
-            // is why the report read `2 test(s): a, b -> 1 test(s)`.
-            let before: Vec<String> = base.tests().iter().map(TestFn::id).collect();
-            let after: Vec<String> = head
-                .as_ref()
-                .map(|h| h.tests().iter().map(TestFn::id).collect())
-                .unwrap_or_default();
-            let names: Vec<String> = removed.iter().map(|t| t.id()).collect();
+        findings.push(Finding::new(
+            ctx.gate.id.clone(),
+            ctx.gate.primitive,
+            ctx.gate.severity,
+            Subject::new(SubjectKind::Test, names.join(", ")),
+            locations.first().map(|l| l.path.clone().into()),
+            None,
+            Side::listed(&base_test_names(key, &base_tests)),
+            Side::Absent,
+            format!(
+                "{} test(s) no longer exist anywhere in the tree: {}",
+                names.len(),
+                names.join(", ")
+            ),
+            ctx.origin(),
+        ));
+    }
+
+    // A test that was there and is now skipped. A test that gains `#[ignore]`
+    // still exists and still runs in some configurations, so it is reported
+    // separately from a removal — but it is a way of not running a test
+    // without deleting it, and a gate that only watched for deletions would
+    // miss it.
+    for (key, head_locations) in &head_tests {
+        let Some(base_locations) = base_tests.get(key) else {
+            continue; // a new test, even a skipped one
+        };
+        let head_t = head_locations.first().expect("locations are never empty");
+        let base_t = base_locations.first().expect("locations are never empty");
+        if (head_t.ignored || head_t.should_panic) && !base_t.ignored && !base_t.should_panic {
+            let marker = if head_t.ignored {
+                "#[ignore]"
+            } else {
+                "#[should_panic]"
+            };
             findings.push(Finding::new(
                 ctx.gate.id.clone(),
                 ctx.gate.primitive,
                 ctx.gate.severity,
-                Subject::new(SubjectKind::Test, names.join(", ")),
-                Some(view.path.clone().into()),
+                Subject::new(SubjectKind::Test, head_t.name.clone()),
+                Some(head_t.path.clone().into()),
                 None,
-                Side::listed(&before),
-                Side::listed(&after),
-                format!(
-                    "{} test(s) removed from `{}`: {}",
-                    removed.len(),
-                    view.path,
-                    names.join(", ")
-                ),
+                Side::value("runs"),
+                Side::value(marker),
+                format!("`{}` was marked {marker}", head_t.name),
                 ctx.origin(),
             ));
         }
-
-        // Newly skipped. A test that gains `#[ignore]` still exists and still
-        // runs in some configurations, so it is reported separately from a
-        // removal — but it is a way of not running a test without deleting
-        // it, and a gate that only watched for deletions would miss it.
-        let Some(head) = head.as_ref() else { continue };
-        for t in head.tests() {
-            let id = t.id();
-            if !base_ids.contains(&id) {
-                continue; // a new test, even a skipped one
-            }
-            let Some(base_t) = base.tests().iter().find(|b| b.id() == id) else {
-                continue;
-            };
-            if (t.ignored || t.should_panic) && !base_t.ignored && !base_t.should_panic {
-                let marker = if t.ignored {
-                    "#[ignore]"
-                } else {
-                    "#[should_panic]"
-                };
-                findings.push(Finding::new(
-                    ctx.gate.id.clone(),
-                    ctx.gate.primitive,
-                    ctx.gate.severity,
-                    Subject::new(SubjectKind::Test, id.clone()),
-                    Some(view.path.clone().into()),
-                    None,
-                    Side::value("runs"),
-                    Side::value(marker),
-                    format!("`{id}` in `{}` was marked {marker}", view.path),
-                    ctx.origin(),
-                ));
-            }
-        }
     }
 
-    // A file with no `.rs` counterpart in the observation means no `.rs` file
-    // changed between the two trees, so there is nothing to compare. Sound for
-    // the same reason as the equivalent branch in
-    // `dependency_surface_unchanged`: the view is built from the diff of the
-    // *same two trees* this gate compares, so absence means "unchanged" rather
-    // than "unexamined". An earlier version reported `Untrustworthy` here, and
-    // a repository with a `target/` directory full of build output then failed
-    // every run with "no .rs file in the observation" — a confident, wrong
-    // error built on an absence that meant nothing.
+    // The bound. If the observation could not show us both sides of some
+    // file, this gate cannot claim nothing was removed — the tests it did not
+    // read might be the ones that went.
+    if !missing_sides.is_empty() {
+        return GateResult::Untrustworthy(UntrustworthyReason::Indeterminate {
+            detail: format!(
+                "{} file(s) in the base tree were not fully observable ({}). \
+                 A tree-wide test comparison cannot conclude from a partial \
+                 tree, because the tests it did not read might be the ones that \
+                 were removed.",
+                missing_sides.len(),
+                preview(&missing_sides)
+            ),
+        });
+    }
+
     GateResult::findings(findings)
+}
+
+/// Every `.rs` path at the base commit, and the set the observation could see.
+///
+/// The base tree is the only place a test that has since been removed can
+/// still be *seen*. Enumerating it is what turns "no finding" from "I found
+/// nothing" into "I looked at all of it and found nothing".
+fn base_tree_paths(ctx: &GateContext<'_>) -> (BTreeSet<String>, BTreeSet<String>) {
+    let mut paths = BTreeSet::new();
+    let mut covered = BTreeSet::new();
+    for view in &ctx.observation.files {
+        if !view.path.ends_with(".rs") {
+            continue;
+        }
+        covered.insert(view.path.clone());
+        // The path itself, and the original path of a rename, are both files
+        // in the base tree.
+        paths.insert(view.path.clone());
+        if let Some(orig) = &view.orig_path {
+            paths.insert(orig.clone());
+        }
+    }
+    // A base tree we cannot enumerate means the bound cannot be established.
+    // The observation carries the diff, not a tree listing, so a file that was
+    // never touched contributes no path here — and correctly so, since an
+    // untouched file cannot have lost a test.
+    (paths, covered)
+}
+
+/// A test's identity, for comparing two trees.
+///
+/// **The file path is deliberately not part of it.** `#[test] fn alpha()` in
+/// `src/http_v1.rs` and in `src/http_v1/tests.rs` is the *same* test, and
+/// treating it as two would make a file-to-module split look like a deletion
+/// plus an addition — the M5 dry-run false positive.
+///
+/// The AST module path *is* part of it, so two `#[test] fn works()` in
+/// `mod a` and `mod b` stay distinct, and a deletion of either is a finding.
+fn test_key(t: &TestFn) -> String {
+    if t.path.is_empty() {
+        t.name.clone()
+    } else {
+        format!("{}::{}", t.path, t.name)
+    }
+}
+
+struct Located {
+    /// The file the test is in, for the finding's location.
+    path: String,
+    /// The AST module path, for the identity.
+    module: String,
+    name: String,
+    ignored: bool,
+    should_panic: bool,
+}
+
+impl Located {
+    fn new(path: &str, t: &TestFn) -> Self {
+        Self {
+            path: path.to_string(),
+            module: t.path.clone(),
+            name: t.name.clone(),
+            ignored: t.ignored,
+            should_panic: t.should_panic,
+        }
+    }
+}
+
+fn base_test_names(key: &str, all: &BTreeMap<String, Vec<Located>>) -> Vec<String> {
+    all.get(key)
+        .map(|l| {
+            l.iter()
+                .map(|x| {
+                    if x.module.is_empty() {
+                        x.name.clone()
+                    } else {
+                        format!("{}::{}", x.module, x.name)
+                    }
+                })
+                .collect()
+        })
+        .unwrap_or_else(|| vec![key.to_string()])
+}
+
+fn preview(items: &[String]) -> String {
+    items.iter().take(5).cloned().collect::<Vec<_>>().join(", ")
 }
 
 /// Parse a file, turning a refusal into the gate's `Untrustworthy` outcome.
