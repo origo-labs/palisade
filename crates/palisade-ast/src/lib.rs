@@ -686,18 +686,94 @@ fn as_test(
     })
 }
 
-/// The signature of a function: the declaration without its body.
+/// The signature of a function: the declaration without its body, and without
+/// its documentation.
 ///
 /// A body change is not an API change, and including it would make every
-/// implementation edit a finding.
+/// implementation edit a finding. A *doc comment* change is not an API change
+/// either, and the M5 corpus said so: on `pearls`, 7 of 8 "signature changed"
+/// findings differed only in documentation prose, with a reader unable to see
+/// which change was real. Doc comments are stripped for comparison, so a
+/// change that lives only in a comment is not an API change.
+///
+/// The corpus check is the one to trust, because it cuts both ways: `0-4` to
+/// `0-31` written in a doc comment *was* a real behavioural change that
+/// happened to be recorded in a comment. A doc comment that contradicts the
+/// code is a documentation bug, which is a different gate than this one and
+/// belongs in `not_covered`.
+/// The declaration without its body, with its documentation removed.
+///
+/// The body is cut by **byte range**, not by finding a `{` in the rendered
+/// text. Finding a brace was wrong in two ways: a `where` clause or a const
+/// generic argument can contain one, and an attribute's *value* can. Both made
+/// the signature come out empty, which reads as "no change" and silently
+/// disables the gate for that item. Found by
+/// `a_real_signature_change_still_shows_through_doc_comments`.
 fn signature_of(node: tree_sitter::Node<'_>, source: &str) -> String {
-    let text = node_text(node, source);
-    match text.find('{') {
-        Some(i) => text[..i].trim_end().to_string(),
-        None => text,
+    let bytes = source.as_bytes();
+    let start = node.start_byte();
+    let end = node
+        .child_by_field_name("body")
+        .map_or(node.end_byte(), |b| b.start_byte());
+    let text = String::from_utf8_lossy(&bytes[start..end]);
+    let stripped = strip_doc_comments(&text);
+    if stripped.is_empty() && !text.trim().is_empty() {
+        // A diagnostic aid that has already caught one bug and is cheap to
+        // keep: a declaration whose signature came out empty is either a
+        // parse oddity or a bug here, and an empty signature reads as "no
+        // change", which silently disables the gate.
+        eprintln!(
+            "palisade-ast: signature_of produced nothing for {kind:?}: {text:?}",
+            kind = node.kind()
+        );
     }
+    stripped
 }
 
+/// Remove `///`, `//!` and `/** */` comments from a declaration's text.
+fn strip_doc_comments(text: &str) -> String {
+    // Match the *longest* marker at each position. Taking the first match
+    // among `///`, `//!`, `/**` and `/*` by position alone pairs `//` with the
+    // `///` that starts it, then hunts for a block-comment close in what is
+    // really a line comment -- which swallowed the rest of the declaration and
+    // left an empty signature. An empty signature reads as "no change", so the
+    // gate silently stopped working for every documented item.
+    const MARKERS: [&str; 4] = ["///", "//!", "/**", "/*"];
+    let mut out = String::with_capacity(text.len());
+    let mut i = 0usize;
+
+    while i < text.len() {
+        let Some(marker_len) = MARKERS
+            .iter()
+            .find(|m| text[i..].starts_with(**m))
+            .map(|m| m.len())
+        else {
+            let ch = text[i..].chars().next().expect("i is on a boundary");
+            out.push(ch);
+            i += ch.len_utf8();
+            continue;
+        };
+        let start = i + marker_len;
+        if marker_len == 3 {
+            // A line comment: ends at the newline.
+            // `break` rather than assigning `i`: the loop is about to end and
+            // the assignment would never be read.
+            match text[start..].find('\n') {
+                Some(nl) => i = start + nl,
+                None => break,
+            }
+        } else {
+            match text[start..].find("*/") {
+                Some(close) => i = start + close + 2,
+                None => break,
+            }
+        }
+        // A stripped comment must not join the text on either side of it into
+        // one token, or a `///` line above `pub fn` glues onto what follows.
+        out.push(' ');
+    }
+    normalise(&out)
+}
 /// Whether a node kind is a declaration whose attributes we harvest.
 fn is_declaration(kind: &str) -> bool {
     matches!(
@@ -724,9 +800,14 @@ fn join(path: &[String], name: &str) -> String {
     }
 }
 
+/// A declaration's text, with its documentation removed.
+///
+/// Used for every kind, not just functions. A struct whose doc comment grew a
+/// paragraph has not changed shape, and a report that says it has is a report
+/// a reader stops believing.
 fn node_text(node: tree_sitter::Node<'_>, source: &str) -> String {
     node.utf8_text(source.as_bytes())
-        .map(normalise)
+        .map(strip_doc_comments)
         .unwrap_or_default()
 }
 

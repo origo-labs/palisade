@@ -551,3 +551,90 @@ fn removal_still_works_with_an_inventory_present() {
         "a removal must still be reported: {f:?}"
     );
 }
+
+// ---- additions are collapsed, removals are not ------------------------------
+
+#[test]
+fn many_additions_collapse_into_one_finding() {
+    // The M5 corpus produced 905 of 924 findings as individual additions, and
+    // 391 of them on a single `warmplane` merge. Every one is correct and
+    // every one is `warn`, so nothing blocked -- but a report that opens with
+    // 391 paragraphs is a report nobody reads.
+    let base = "pub fn kept() {}\n";
+    let mut head = String::from("pub fn kept() {}\n");
+    for i in 0..25 {
+        head.push_str(&format!("pub fn added_{i}() {{}}\n"));
+    }
+    let obs = two_tree(&[("src/lib.rs", Some(base), Some(&head))]);
+    let r = run(Primitive::PublicApiUnchanged, &obs);
+    let f = findings(&r);
+    assert_eq!(f.len(), 1, "25 additions should be one finding: {f:?}");
+    assert!(f[0].subject.name.contains('2'), "{}", f[0].subject.name);
+    assert!(f[0].message.contains("25"), "{}", f[0].message);
+    // The detail is bounded but present, and the overflow is stated rather
+    // than silently truncated.
+    assert!(
+        f[0].observed.render().contains("+17 more"),
+        "{}",
+        f[0].observed
+    );
+    // Still a warn: collapsing must not change what can block.
+    assert_eq!(f[0].severity, Severity::Warn);
+}
+
+#[test]
+fn a_single_addition_reads_as_singular() {
+    // The subject is what a consumer keys on, so a plural there is a defect
+    // rather than a typo. The message/subject agreement invariant caught this.
+    let g = gate(Primitive::PublicApiUnchanged);
+    let obs = two_tree(&[(
+        "src/lib.rs",
+        Some("pub fn kept() {}\n"),
+        Some("pub fn kept() {}\npub fn one_new() {}\n"),
+    )]);
+    let r = registry::dispatch(g.primitive, &ctx(&g, &obs));
+    let f = findings(&r);
+    assert_eq!(f[0].subject.name, "1 public item in this file");
+    assert!(
+        f[0].message.contains("1 public item was added"),
+        "{}",
+        f[0].message
+    );
+}
+
+#[test]
+fn a_new_file_whose_whole_surface_is_new_collapses_too() {
+    // Otherwise a whole new module produces a finding per item, which is the
+    // same noise in a different shape.
+    let head = "pub fn a() {}\npub fn b() {}\npub fn c() {}\npub struct D;\n";
+    let obs = two_tree(&[("src/new.rs", None, Some(head))]);
+    let r = run(Primitive::PublicApiUnchanged, &obs);
+    let f = findings(&r);
+    assert_eq!(f.len(), 1, "{f:?}");
+    assert!(f[0].message.contains("4 public items"), "{}", f[0].message);
+}
+
+#[test]
+fn removals_are_not_collapsed() {
+    // The asymmetry is deliberate. Additions are noise; removals are the thing
+    // a reader must not miss, and burying a removed public function inside a
+    // summary is how a real API break gets missed.
+    let mut base = String::new();
+    for i in 0..5 {
+        base.push_str(&format!("pub fn gone_{i}() {{}}\n"));
+    }
+    let head = String::new();
+    let obs = two_tree(&[("src/lib.rs", Some(&base), Some(&head))]);
+    let r = run(Primitive::PublicApiUnchanged, &obs);
+    let f = findings(&r);
+    // Five removals, each its own finding, plus the one collapsed addition --
+    // `kept` is new in this fixture, so it is an addition.
+    let removals: Vec<_> = f
+        .iter()
+        .filter(|x| x.message.contains("was removed"))
+        .collect();
+    assert_eq!(removals.len(), 5, "each removal is reported: {f:?}");
+    for finding in removals {
+        assert_eq!(finding.severity, Severity::Error, "a removal can block");
+    }
+}

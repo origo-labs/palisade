@@ -552,8 +552,19 @@ fn no_gate_produces_a_findings_whose_message_omits_its_subject() {
                 !f.subject.name.is_empty(),
                 "{primitive} produced a finding with no subject: {f:?}"
             );
+            // The message must name the subject. A *summary* subject is a
+            // count ("2 public items in this file") rather than a name, so
+            // the check is that the message carries the subject's opening
+            // words, not the whole string.
+            let head: String = f
+                .subject
+                .name
+                .split(" in ")
+                .next()
+                .unwrap_or(&f.subject.name)
+                .to_string();
             assert!(
-                f.message.contains(&f.subject.name) || f.subject.name.contains(&f.message),
+                f.message.contains(&head),
                 "{primitive}: message {:?} does not name subject {:?}",
                 f.message,
                 f.subject.name

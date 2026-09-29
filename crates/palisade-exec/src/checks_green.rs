@@ -174,15 +174,60 @@ fn first_diagnostics(completed: &Completed, n: usize) -> Vec<String> {
     } else {
         stderr
     };
-    let mut kept: Vec<String> = source
+
+    // Skip cargo's *progress* and count the diagnostics instead of taking the
+    // first N lines.
+    //
+    // Found by running the gate on `pearls`: the reported evidence was
+    // "Updating crates.io index | Locking 242 packages" while the real clippy
+    // errors began seven lines later. A finding that names the dependency
+    // download instead of the lint is not evidence, and a gate whose evidence
+    // is routinely about something else is a gate nobody reads the findings of.
+    // A *head* is a line that opens a diagnostic: `error: ...` or
+    // `warning: ...`. The `| 187 | ...` source excerpt and the `-->` pointer
+    // belong to a head, so counting them would overstate the number of
+    // problems by an order of magnitude.
+    let heads: Vec<&str> = source.iter().copied().filter(|l| is_head(l)).collect();
+    let chosen: Vec<&str> = if heads.is_empty() {
+        // Nothing recognisable. Report the head of the output rather than
+        // nothing, because "it failed and we cannot tell why" is itself the
+        // information.
+        source.iter().copied().take(n).collect()
+    } else {
+        heads.iter().copied().take(n).collect()
+    };
+
+    let mut kept: Vec<String> = chosen
         .iter()
-        .take(n)
-        .map(|l| l.trim().to_string())
+        .map(|l| l.split_whitespace().collect::<Vec<_>>().join(" "))
+        .filter(|l| !l.is_empty())
         .collect();
-    if source.len() > n {
-        kept.push(format!("(+{} more lines)", source.len() - n));
+    if heads.len() > kept.len() {
+        kept.push(format!("(+{} more)", heads.len() - kept.len()));
     }
     kept
+}
+
+/// Whether a line *opens* a diagnostic.
+fn is_head(line: &str) -> bool {
+    let t = line.trim_start();
+    if is_cargo_summary(t) {
+        return false;
+    }
+    t.starts_with("error: ") || t.starts_with("warning: ")
+}
+
+/// Whether a line is cargo's own summary of a failure rather than a diagnostic
+/// about the code. These are the lines that made a `pearls` finding name the
+/// dependency download instead of the lint.
+fn is_cargo_summary(t: &str) -> bool {
+    t.starts_with("error: could not compile")
+        || t.starts_with("error: build failed")
+        || t.starts_with("error: aborting")
+        || t.starts_with("error: failed to select a version")
+        || t.starts_with("error: failed to get")
+        || t.starts_with("error: no such command")
+        || t.starts_with("For more information about")
 }
 
 #[cfg(test)]
@@ -258,17 +303,24 @@ mod tests {
 
     #[test]
     fn diagnostics_are_bounded_and_say_so() {
+        // Realistic shape: a compiler diagnostic opens with `error: `, and
+        // cargo's own `error: could not compile` summary is not one of them.
         let noisy = Completed {
             status: crate::Outcome::Exited(1),
             stdout: String::new(),
             stderr: (0..500)
-                .map(|i| format!("error line {i}"))
+                .map(|i| format!("error: lint {i} fired here"))
+                .chain(std::iter::once(
+                    "error: could not compile `demo` (lib)".to_string(),
+                ))
                 .collect::<Vec<_>>()
                 .join("\n"),
         };
         let kept = first_diagnostics(&noisy, 3);
         assert_eq!(kept.len(), 4, "three plus the overflow marker: {kept:?}");
-        assert!(kept[3].contains("+497 more"));
+        // 500 diagnostics, not 501: cargo's summary is not a diagnostic, and
+        // counting it would overstate the number of problems.
+        assert!(kept[3].contains("+497 more"), "{kept:?}");
     }
 
     #[test]
@@ -297,5 +349,108 @@ mod tests {
             run.findings[0].change(),
             palisade_orchestrate::ChangeKind::Failed
         );
+    }
+}
+
+#[cfg(test)]
+mod diagnostic_selection_tests {
+    use super::*;
+    use crate::Outcome;
+
+    /// cargo's real output, condensed. The progress lines come first and the
+    /// diagnostics start at line 7.
+    const CLIPPY: &str = "\
+    Updating crates.io index
+     Locking 242 packages to latest compatible versions
+    Adding fastrand v0.2.1 (was not in lockfile)
+     Adding getrandom v0.2.15 (was not in lockfile)
+    Compiling cfg-if v1.0.4
+     Compiling memchr v2.8.2
+    error: consider using `sort_by_key`
+     --> src/lib.rs:187:9
+      |
+    187 |         _ => pearls.sort_by(|a, b| b.updated_at.cmp(&a.updated_at)),
+      |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      |
+    help: try
+    187 -         _ => pearls.sort_by(|a, b| b.updated_at.cmp(&a.updated_at)),
+    187 +         _ => pears.sort_by_key(|a| std::cmp::Reverse(a.updated_at)),
+    |
+    error: consider using `sort_by_key`
+     --> src/other.rs:12:5
+    error: could not compile `pearls-app` (lib) due to 5 previous errors
+    ";
+
+    fn clippy_output() -> Completed {
+        Completed {
+            status: Outcome::Exited(1),
+            stdout: String::new(),
+            stderr: CLIPPY.to_string(),
+        }
+    }
+
+    #[test]
+    fn the_evidence_names_the_lint_not_the_dependency_download() {
+        // Found by running the gate on `pearls`: the finding said "Updating
+        // crates.io index" while the real clippy errors started seven lines
+        // later. A finding that names the download instead of the lint is not
+        // evidence.
+        let kept = first_diagnostics(&clippy_output(), 5);
+        assert!(
+            kept.iter().any(|l| l.contains("sort_by_key")),
+            "the diagnostic must be the evidence: {kept:?}"
+        );
+        assert!(
+            !kept.iter().any(|l| l.contains("Updating crates.io")),
+            "cargo progress must not be reported as a diagnostic: {kept:?}"
+        );
+    }
+
+    #[test]
+    fn cargo_s_own_summary_is_not_counted_as_a_diagnostic() {
+        let kept = first_diagnostics(&clippy_output(), 20);
+        assert!(
+            !kept.iter().any(|l| l.contains("could not compile")),
+            "cargo's summary line is not a finding: {kept:?}"
+        );
+    }
+
+    #[test]
+    fn the_overflow_count_is_of_diagnostics_not_of_all_output() {
+        let kept = first_diagnostics(&clippy_output(), 1);
+        assert_eq!(kept.len(), 2, "one diagnostic plus the marker: {kept:?}");
+        assert!(kept[1].contains("+1 more"), "{kept:?}");
+    }
+
+    #[test]
+    fn unrecognisable_output_is_reported_rather_than_dropped() {
+        // "It failed and we cannot tell why" is itself the information. An
+        // empty `observed` would read as a pass.
+        let output = Completed {
+            status: Outcome::Exited(1),
+            stdout: String::new(),
+            stderr: "something went wrong and it is not a diagnostic\n".to_string(),
+        };
+        let kept = first_diagnostics(&output, 5);
+        assert_eq!(kept.len(), 1);
+        assert!(kept[0].contains("something went wrong"));
+    }
+
+    #[test]
+    fn an_empty_failure_still_reports_something() {
+        let output = Completed {
+            status: Outcome::Exited(1),
+            stdout: String::new(),
+            stderr: String::new(),
+        };
+        let kept = first_diagnostics(&output, 5);
+        assert!(kept.is_empty());
+        // And the caller says so rather than emitting a blank observation.
+        let msg = if kept.is_empty() {
+            "failed, with no diagnostic on stdout or stderr".to_string()
+        } else {
+            kept.join(" | ")
+        };
+        assert!(msg.contains("no diagnostic"), "{msg}");
     }
 }

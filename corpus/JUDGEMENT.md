@@ -41,9 +41,37 @@ and the one this measurement can support.
 
 | Gate | Findings | Judgement |
 | --- | --- | --- |
-| `public_api_unchanged` | 905 | 98% of the total. **All additions at `warn`, by design.** Not false positives — a new public item is real news — but *noise at this volume*, and a report that leads with 391 of them trains people to skim. See below. |
+| `public_api_unchanged` | 905 | 98% of the total, **all additions at `warn`, by design.** Not false positives — a new public item is real news — but noise at that volume. Now collapsed to one finding per file: **905 → 57 on `warmplane`**, and removals are *not* collapsed, because those are the ones a reader must not miss. |
 | `suppressions_not_widened` | 11 | **All real.** Every one is a genuine `#[allow]` added. `gliner2-candle` adds nine across two merges; `warmplane` one `#[allow(dead_code)]`. This gate is working. |
 | `tests_not_deleted` | 8 | **4 real, 4 were harness false positives** now fixed. See below. |
+
+## Three gate defects, all found by running on real code
+
+**Additions were not collapsed.** Fixed: one finding per file, carrying the
+count and a bounded sample of names, with the overflow stated rather than
+silently truncated. Removals and signature changes are untouched.
+
+**`checks_green` reported cargo's download noise instead of the lint.** On
+`pearls` the finding read "Updating crates.io index | Locking 242 packages"
+while the five real clippy errors began seven lines later. A finding that
+names the dependency download is not evidence, and a gate whose evidence is
+routinely about something else is a gate nobody reads findings of. Now selects
+diagnostic *heads* (`error: …`, `warning: …`), excludes cargo's own
+`could not compile` summary, and counts overflow in diagnostics rather than in
+lines of source excerpt.
+
+**Doc comments counted as signature.** On `pearls`, **7 of 8** "signature
+changed" findings differed only in `///` prose. A doc comment is not the API.
+Now stripped before comparison, and the three remaining findings are all
+genuine: a serde field renamed `compact_threshold_days` → `max_priority` (a
+breaking change for anyone serialising) and an added error type.
+
+Stripping it exposed a latent bug: `strip_doc_comments` matched `//` inside
+`///` and then searched for a block-comment close in what was really a line
+comment, swallowing the rest of the declaration. **An empty signature reads as
+"no change", so the gate had been silently disabled for every documented
+item** — which is most of a real codebase. Fixed, and the fix is why the
+new fixtures exist.
 
 ## Two harness defects, both found by this pass
 
@@ -110,10 +138,11 @@ volume is the fact that should drive it.
 
 ## Coverage gaps in this measurement
 
-- **`checks_green` is excluded** and therefore unmeasured. Eight of the ten
-  primitives have been run against real code; `checks_green` and
-  `external_tool` have not. It is the most expensive gate and the one a team
-  would notice first.
+- **`checks_green` was run on three small repositories** (`duiker`,
+  `pearls`, `rust-okf`: 6 merges, 18s cold on the smallest) and found real
+  clippy failures. It is still unmeasured on anything large, because
+  `cargo test --workspace` over 38 members is minutes per merge.
+  `external_tool` remains unmeasured entirely.
 - **No finding was judged by a second person.** Every number above is one
   opinion.
 - **`awakenworks/awaken` contributed nothing measurable** — 783 files, three

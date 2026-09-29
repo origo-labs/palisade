@@ -92,12 +92,18 @@ pub fn run(ctx: &GateContext<'_>) -> GateResult {
         };
 
         // A new file has no baseline; every item in it is an addition.
+        // Collapsed for the same reason, and for the same reason the
+        // per-file case is: a whole new module would otherwise produce a
+        // finding per item.
         let Some(base_src) = view.base.as_deref() else {
-            for item in head.items() {
-                if allowed.contains(&item.path.as_str()) {
-                    continue;
-                }
-                findings.push(addition(ctx, &view.path, item));
+            let added: Vec<PublicItem> = head
+                .items()
+                .iter()
+                .filter(|i| !allowed.contains(&i.path.as_str()))
+                .cloned()
+                .collect();
+            if !added.is_empty() {
+                findings.push(addition_summary(ctx, &view.path, &added));
             }
             continue;
         };
@@ -149,7 +155,9 @@ pub fn run(ctx: &GateContext<'_>) -> GateResult {
             ));
         }
 
-        // Additions.
+        // Additions, collapsed. See the module docs for why, and for why
+        // removals are not collapsed alongside them.
+        let mut added: Vec<PublicItem> = Vec::new();
         for path in head_surface.keys() {
             if base_surface.contains_key(path) {
                 continue;
@@ -160,7 +168,10 @@ pub fn run(ctx: &GateContext<'_>) -> GateResult {
             if allowed.contains(&path.as_str()) {
                 continue;
             }
-            findings.push(addition(ctx, &view.path, item));
+            added.push(item.clone());
+        }
+        if !added.is_empty() {
+            findings.push(addition_summary(ctx, &view.path, &added));
         }
     }
 
@@ -179,22 +190,51 @@ pub fn run(ctx: &GateContext<'_>) -> GateResult {
     GateResult::findings(findings)
 }
 
-fn addition(ctx: &GateContext<'_>, path: &str, item: &PublicItem) -> Finding {
+/// How many names one collapsed finding lists before it says "and N more".
+///
+/// Bounded because a finding whose `observed` field is 400 lines long is not
+/// evidence anybody can read, which is the same reason the M3 diagnostics are
+/// bounded.
+const ADDITION_SAMPLE: usize = 8;
+
+/// One finding for a batch of added public items, rather than one each.
+#[allow(clippy::too_many_lines)]
+fn addition_summary(ctx: &GateContext<'_>, path: &str, items: &[PublicItem]) -> Finding {
+    let n = items.len();
+    let names: Vec<String> = items
+        .iter()
+        .take(ADDITION_SAMPLE)
+        .map(|i| i.path.clone())
+        .collect();
+    let mut observed = names.join(", ");
+    if n > ADDITION_SAMPLE {
+        observed.push_str(&format!(" (+{} more)", n - ADDITION_SAMPLE));
+    }
+    let noun = if n == 1 { "item" } else { "items" };
+    // The subject and the message must agree, and the invariant test that
+    // checks that caught "1 public items" -- the subject is what a consumer
+    // keys on, so a plural there is a real defect rather than a typo.
+    let subject = format!("{n} public {noun} in this file");
+    let verb = if n == 1 { "was" } else { "were" };
     Finding::new(
         ctx.gate.id.clone(),
         ctx.gate.primitive,
         // Pinned, not read from the contract. See the module docs.
         Severity::Warn,
-        Subject::new(SubjectKind::PublicItem, item.path.clone()),
+        Subject::new(SubjectKind::PublicItem, subject),
         Some(path.into()),
         None,
         Side::Absent,
-        Side::value(item.signature.clone()),
+        Side::value(observed),
         format!(
-            "public {} `{}` was added. Additions are not a compatibility \
-             break; list the path in `allow` to silence.",
-            item.kind.as_str(),
-            item.path
+            "{n} public {noun} {verb} added, including {}. Additions are not \
+             a compatibility break; list a path in `allow` to silence them.",
+            names
+                .iter()
+                .take(3)
+                .map(|s| format!("`{s}`"))
+                .collect::<Vec<_>>()
+                .join(", ")
         ),
         ctx.origin(),
     )

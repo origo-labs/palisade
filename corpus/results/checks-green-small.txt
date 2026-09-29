@@ -1,0 +1,22 @@
+### duiker
+=== /Users/origo/src/duiker @ d799b7008c779ca5d56701ebc6a4b10452ed7026 ===
+replayed 1 of 1 merges   clean=1  with-findings=0  error=0  skipped=0
+### pearls
+=== /Users/origo/src/pearls @ 3ee1c9297704d5ca5660a2e25dbb06c469921fdc ===
+replayed 4 of 4 merges   clean=0  with-findings=4  error=0  skipped=0
+findings by primitive:
+     6  checks_green
+   checks_green | error | `cargo clippy` failed: Updating crates.io index | Locking 242 packages to latest compatible ver || exp=None obs=None
+   checks_green | error | `cargo clippy` failed: Updating crates.io index | Locking 242 packages to latest compatible ver || exp=None obs=None
+   checks_green | error | `cargo fmt` failed: Diff in /private/var/folders/7z/v9jlq_zj4jn5n04xjqkwr5400000gn/T/tmpzkwjo9e || exp=None obs=None
+   checks_green | error | `cargo clippy` failed: Updating crates.io index | Locking 242 packages to latest compatible ver || exp=None obs=None
+   checks_green | error | `cargo clippy` failed: Updating crates.io index | Locking 242 packages to latest compatible ver || exp=None obs=None
+   checks_green | error | `cargo fmt` failed: Diff in /private/var/folders/7z/v9jlq_zj4jn5n04xjqkwr5400000gn/T/tmpzkwjo9e || exp=None obs=None
+### rust-okf
+=== /Users/origo/src/rust-okf @ a6a2c69ec6c0f245668134d59d496327536e2b00 ===
+replayed 1 of 1 merges   clean=0  with-findings=1  error=0  skipped=0
+findings by primitive:
+     1  checks_green
+     1  public_api_unchanged
+   checks_green | error | `cargo test` failed: Compiling cfg-if v1.0.4 | Compiling itoa v1.0.18 | Compiling memchr v2.8.2 || exp=None obs=None
+   public_api_unchanged | warn | 8 public items were added, including `SearchParams`, `QueryFilterParams`, `DocumentsParams`. Ad || exp=None obs=SearchParams, QueryFilterParams, DocumentsParams, McpDo

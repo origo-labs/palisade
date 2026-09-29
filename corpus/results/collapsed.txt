@@ -1,0 +1,92 @@
+corpus: delegated gates excluded from /Users/origo/src/warmplane (8 analyzed gates)
+=== /Users/origo/src/warmplane @ 0cd572c00d120c8951f9afa4011cabe941977f5a ===
+replayed 104 of 104 merges   clean=81  with-findings=23  error=0  skipped=0
+findings by primitive:
+    57  public_api_unchanged
+     1  suppressions_not_widened
+   public_api_unchanged | warn | 1 public item was added, including `read_jsonrpc_until_id`. Additions are not a compatibility b || exp=None obs=read_jsonrpc_until_id
+   public_api_unchanged | warn | 6 public items were added, including `DEFAULT_KEYCHAIN_SERVICE`, `resolve_secret_value`, `get_o || exp=None obs=DEFAULT_KEYCHAIN_SERVICE, resolve_secret_value, get_os_
+   public_api_unchanged | warn | 3 public items were added, including `WebhookFormat`, `format_webhook_payload`, `verify_signatu || exp=None obs=WebhookFormat, format_webhook_payload, verify_signature
+   public_api_unchanged | warn | 4 public items were added, including `TestWebhookRequest`, `GenericCallbackPayload`, `handle_we || exp=None obs=TestWebhookRequest, GenericCallbackPayload, handle_webh
+   public_api_unchanged | warn | 11 public items were added, including `ClientDialect`, `ClientAppDef`, `ClientAppStatus`. Addit || exp=None obs=ClientDialect, ClientAppDef, ClientAppStatus, AttachOpt
+   public_api_unchanged | warn | 16 public items were added, including `TaskStatus`, `TaskRecord`, `TaskResponse`. Additions are || exp=None obs=TaskStatus, TaskRecord, TaskResponse, TaskResponse as (
+   public_api_unchanged | warn | 7 public items were added, including `UpdateTaskRequest`, `CancelTaskRequest`, `ListTasksRespon || exp=None obs=UpdateTaskRequest, CancelTaskRequest, ListTasksResponse
+   public_api_unchanged | warn | 18 public items were added, including `types`, `next_trace_id`, `EmbeddedWarmplane`. Additions  || exp=None obs=types, next_trace_id, EmbeddedWarmplane, start, start_f
+   public_api_unchanged | warn | 23 public items were added, including `Envelope`, `success`, `failure`. Additions are not a com || exp=None obs=Envelope, success, failure, WarmplaneError, new, operat
+   public_api_unchanged | warn | 1 public item was added, including `rbac_auth_middleware`. Additions are not a compatibility br || exp=None obs=rbac_auth_middleware
+   public_api_unchanged | warn | 3 public items were added, including `engine`, `middleware`, `models`. Additions are not a comp || exp=None obs=engine, middleware, models
+   public_api_unchanged | warn | 6 public items were added, including `RbacEngine`, `new`, `is_enabled`. Additions are not a com || exp=None obs=RbacEngine, new, is_enabled, default_role, compute_effe
+   public_api_unchanged | warn | 7 public items were added, including `RbacConfig`, `JwtConfig`, `resolve_secret`. Additions are || exp=None obs=RbacConfig, JwtConfig, resolve_secret, TokenAssignment,
+   public_api_unchanged | warn | 17 public items were added, including `SamplingContent`, `SamplingMessage`, `ModelPreferences`. || exp=None obs=SamplingContent, SamplingMessage, ModelPreferences, Cre
+   public_api_unchanged | warn | 15 public items were added, including `AtomicFile`, `new`, `path`. Additions are not a compatib || exp=None obs=AtomicFile, new, path, load_opt, load_or_default, save,
+   public_api_unchanged | warn | 1 public item was added, including `spawn_supervised_stdio_server`. Additions are not a compati || exp=None obs=spawn_supervised_stdio_server
+   public_api_unchanged | warn | 19 public items were added, including `ResilienceConfig`, `ResilienceConfig as (type_identifier || exp=None obs=ResilienceConfig, ResilienceConfig as (type_identifier)
+   public_api_unchanged | warn | 6 public items were added, including `BatchStep`, `BatchCallRequest`, `BatchStepResult`. Additi || exp=None obs=BatchStep, BatchCallRequest, BatchStepResult, BatchCall
+   public_api_unchanged | warn | 4 public items were added, including `DistillationOptions`, `from_args`, `is_active`. Additions || exp=None obs=DistillationOptions, from_args, is_active, distill_valu
+   public_api_unchanged | warn | 11 public items were added, including `AuditQueryFilter`, `AuditStore`, `in_memory`. Additions  || exp=None obs=AuditQueryFilter, AuditStore, in_memory, open_or_create
+   public_api_unchanged | warn | 3 public items were added, including `GENESIS_HASH`, `compute_event_hash`, `verify_record_hash` || exp=None obs=GENESIS_HASH, compute_event_hash, verify_record_hash
+   public_api_unchanged | warn | 3 public items were added, including `SiemDispatcher`, `new`, `dispatch_batch`. Additions are n || exp=None obs=SiemDispatcher, new, dispatch_batch
+   public_api_unchanged | warn | 5 public items were added, including `AuditEventType`, `AuditEventStatus`, `AuditEvent`. Additi || exp=None obs=AuditEventType, AuditEventStatus, AuditEvent, RawAuditE
+   public_api_unchanged | warn | 5 public items were added, including `chain`, `models`, `siem`. Additions are not a compatibili || exp=None obs=chain, models, siem, store, worker
+   public_api_unchanged | warn | 7 public items were added, including `AuditEventsQuery`, `AuditExportQuery`, `handle_list_audit || exp=None obs=AuditEventsQuery, AuditExportQuery, handle_list_audit_e
+   public_api_unchanged | warn | 8 public items were added, including `DEFAULT_AUDIT_BUFFER_CAPACITY`, `DEFAULT_AUDIT_FLUSH_INTE || exp=None obs=DEFAULT_AUDIT_BUFFER_CAPACITY, DEFAULT_AUDIT_FLUSH_INTE
+   public_api_unchanged | warn | 13 public items were added, including `ServerMsg`, `UpstreamCallError`, `CapabilityMeta`. Addit || exp=None obs=ServerMsg, UpstreamCallError, CapabilityMeta, ResourceM
+   public_api_unchanged | warn | 2 public items were added, including `initialize_state`, `run_daemon`. Additions are not a comp || exp=None obs=initialize_state, run_daemon
+   public_api_unchanged | warn | 3 public items were added, including `mount_upstream_server`, `unmount_upstream_server`, `reloa || exp=None obs=mount_upstream_server, unmount_upstream_server, reload_
+   public_api_unchanged | warn | 3 public items were added, including `DEFAULT_MCP_PROTOCOL_VERSION`, `resolve_secret`, `build_h || exp=None obs=DEFAULT_MCP_PROTOCOL_VERSION, resolve_secret, build_htt
+   public_api_unchanged | warn | 30 public items were added, including `AppState`, `builder`, `AppStateBuilder`. Additions are n || exp=None obs=AppState, builder, AppStateBuilder, servers, servers_ar
+   public_api_unchanged | warn | 5 public items were added, including `Policy`, `from_config`, `allows`. Additions are not a com || exp=None obs=Policy, from_config, allows, requires_approval, wildcar
+   public_api_unchanged | warn | 6 public items were added, including `lifecycle`, `policy`, `server`. Additions are not a compa || exp=None obs=lifecycle, policy, server, state, transport, types
+   public_api_unchanged | warn | `src/daemon.rs` declared public API and was deleted || exp=52 (ServerMsg, UpstreamCallError, CapabilityMeta, Resou obs=None
+   suppressions_not_widened | warn | a diagnostic suppression `#[allow(dead_code)]` was added to `src/daemon/state.rs` || exp=None obs=#[allow(dead_code)]
+   public_api_unchanged | warn | 1 public item was added, including `handle_ui_dashboard`. Additions are not a compatibility bre || exp=None obs=handle_ui_dashboard
+   public_api_unchanged | warn | 11 public items were added, including `handle_catalog_events`, `handle_search_capabilities`, `h || exp=None obs=handle_catalog_events, handle_search_capabilities, hand
+   public_api_unchanged | warn | 14 public items were added, including `CatalogEventsQuery`, `CatalogEventsResponse`, `CallCapab || exp=None obs=CatalogEventsQuery, CatalogEventsResponse, CallCapabili
+   public_api_unchanged | warn | 2 public items were added, including `handle_call_capability`, `handle_cancel_operation`. Addit || exp=None obs=handle_call_capability, handle_cancel_operation
+   public_api_unchanged | warn | 4 public items were added, including `handle_list_approvals`, `handle_get_approval`, `handle_ap || exp=None obs=handle_list_approvals, handle_get_approval, handle_appr
+   public_api_unchanged | warn | 5 public items were added, including `next_trace_id`, `check_if_none_match`, `make_etag_header` || exp=None obs=next_trace_id, check_if_none_match, make_etag_header, r
+   public_api_unchanged | warn | 7 public items were added, including `approvals_api`, `catalog`, `config_api`. Additions are no || exp=None obs=approvals_api, catalog, config_api, execute, helpers, t
+   public_api_unchanged | warn | 8 public items were added, including `handle_get_config`, `handle_upsert_server`, `handle_delet || exp=None obs=handle_get_config, handle_upsert_server, handle_delete_
+   public_api_unchanged | warn | `src/http_v1.rs` declared public API and was deleted || exp=41 (check_if_none_match, make_etag_header, CatalogEvent obs=None
+   public_api_unchanged | warn | 13 public items were added, including `ApprovalStatus`, `PendingApproval`, `ApprovalResolution` || exp=None obs=ApprovalStatus, PendingApproval, ApprovalResolution, Ap
+   public_api_unchanged | warn | 15 public items were added, including `catalog`, `cli_config`, `config`. Additions are not a co || exp=None obs=catalog, cli_config, config, config_import, context, da
+   public_api_unchanged | warn | 2 public items were added, including `handle_server_command`, `handle_config_command`. Addition || exp=None obs=handle_server_command, handle_config_command
+   public_api_unchanged | warn | 2 public items were added, including `interactive_add_server`, `parse_args_string`. Additions a || exp=None obs=interactive_add_server, parse_args_string
+   public_api_unchanged | warn | 4 public items were added, including `DiscoveredSource`, `discover_sources`, `parse_standard_mc || exp=None obs=DiscoveredSource, discover_sources, parse_standard_mcp_
+   public_api_unchanged | warn | 11 public items were added, including `RetryMetadata`, `safe`, `unsafe_op`. Additions are not a || exp=None obs=RetryMetadata, safe, unsafe_op, idempotent, Idempotency
+   public_api_unchanged | warn | 5 public items were added, including `OperationRegistry`, `new`, `register`. Additions are not  || exp=None obs=OperationRegistry, new, register, unregister, cancel
+   public_api_unchanged | warn | 4 public items were added, including `RequestContext`, `extract_header_str`, `resolve_request_i || exp=None obs=RequestContext, extract_header_str, resolve_request_id,
+   public_api_unchanged | warn | 1 public item was added, including `events`. Additions are not a compatibility break; list a pa || exp=None obs=events
+   public_api_unchanged | warn | 5 public items were added, including `CatalogEvent`, `CatalogEventStore`, `new`. Additions are  || exp=None obs=CatalogEvent, CatalogEventStore, new, record, get_event
+   public_api_unchanged | warn | 2 public items were added, including `LexicalMatchResult`, `score_lexical`. Additions are not a || exp=None obs=LexicalMatchResult, score_lexical
+   public_api_unchanged | warn | 3 public items were added, including `hybrid`, `lexical`, `vector`. Additions are not a compati || exp=None obs=hybrid, lexical, vector
+   public_api_unchanged | warn | 5 public items were added, including `CapabilitySearchResult`, `SearchFilter`, `HybridSearchEng || exp=None obs=CapabilitySearchResult, SearchFilter, HybridSearchEngin
+   public_api_unchanged | warn | 8 public items were added, including `VectorMatchResult`, `VectorSearchIndex`, `new`. Additions || exp=None obs=VectorMatchResult, VectorSearchIndex, new, search, Vect
+corpus: delegated gates excluded from /Users/origo/src/semble-rs (8 analyzed gates)
+=== /Users/origo/src/semble-rs @ ba85035205528cff078c8225d218c21ab321c7a1 ===
+replayed 22 of 22 merges   clean=18  with-findings=4  error=0  skipped=0
+findings by primitive:
+     4  public_api_unchanged
+   public_api_unchanged | warn | 6 public items were added, including `CacheLoc`, `resolve_source_key`, `run_cache_info`. Additi || exp=None obs=CacheLoc, resolve_source_key, run_cache_info, run_statu
+   public_api_unchanged | warn | 14 public items were added, including `CACHE_VERSION`, `model_fingerprint`, `fingerprint`. Addi || exp=None obs=CACHE_VERSION, model_fingerprint, fingerprint, cache_di
+   public_api_unchanged | warn | 6 public items were added, including `SymbolOccurrence`, `SymbolIndex`, `build`. Additions are  || exp=None obs=SymbolOccurrence, SymbolIndex, build, definitions, refe
+   public_api_unchanged | warn | `src/model_install.rs` declared public API and was deleted || exp=12 (DEFAULT_MODEL_ID, DEFAULT_TOKENIZER_FILENAME, DEFAU obs=None
+corpus: delegated gates excluded from /Users/origo/src/gliner2-candle (8 analyzed gates)
+=== /Users/origo/src/gliner2-candle @ 7bf0deee82b1e5e7060507855c1e50887fb0e1e2 ===
+replayed 5 of 5 merges   clean=4  with-findings=1  error=0  skipped=0
+findings by primitive:
+     9  suppressions_not_widened
+     4  public_api_unchanged
+   public_api_unchanged | warn | 1 public item was added, including `is_empty`. Additions are not a compatibility break; list a  || exp=None obs=is_empty
+   public_api_unchanged | warn | 31 public items were added, including `k_not`, `k_and`, `k_or`. Additions are not a compatibili || exp=None obs=k_not, k_and, k_or, k_implies, k_iff, Assignment, DictA
+   public_api_unchanged | warn | 49 public items were added, including `MASK_LOGIT`, `BoundaryEncoder`, `load`. Additions are no || exp=None obs=MASK_LOGIT, BoundaryEncoder, load, forward, bos_state, 
+   public_api_unchanged | warn | 7 public items were added, including `DEFAULT_CHUNK_SIZE`, `DEFAULT_CHUNK_OVERLAP`, `TextChunk` || exp=None obs=DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_OVERLAP, TextChunk, M
+   suppressions_not_widened | warn | a diagnostic suppression `#[allow(clippy::needless_range_loop)]` was added to `src/model/bounda || exp=None obs=#[allow(clippy::needless_range_loop)]
+   suppressions_not_widened | warn | a diagnostic suppression `#[allow(clippy::needless_range_loop)]` was added to `src/model/bounda || exp=None obs=#[allow(clippy::needless_range_loop)]
+   suppressions_not_widened | warn | a diagnostic suppression `#[allow(clippy::needless_range_loop)]` was added to `src/model/bounda || exp=None obs=#[allow(clippy::needless_range_loop)]
+   suppressions_not_widened | warn | a diagnostic suppression `#[allow(clippy::too_many_arguments)]` was added to `src/constraints.r || exp=None obs=#[allow(clippy::too_many_arguments)]
+   suppressions_not_widened | warn | a diagnostic suppression `#[allow(clippy::too_many_arguments)]` was added to `src/model/boundar || exp=None obs=#[allow(clippy::too_many_arguments)]
+   suppressions_not_widened | warn | a diagnostic suppression `#[allow(clippy::type_complexity)]` was added to `src/inference/bounda || exp=None obs=#[allow(clippy::type_complexity)]
+   suppressions_not_widened | warn | a diagnostic suppression `#[allow(clippy::type_complexity)]` was added to `src/inference/bounda || exp=None obs=#[allow(clippy::type_complexity)]
+   suppressions_not_widened | warn | a diagnostic suppression `#[allow(dead_code)]` was added to `tests/real_inference_test_25.rs` || exp=None obs=#[allow(dead_code)]
+   suppressions_not_widened | warn | a diagnostic suppression `#[allow(dead_code)]` was added to `src/constraints.rs` || exp=None obs=#[allow(dead_code)]

@@ -152,3 +152,60 @@ fn the_cache_is_keyed_on_content_not_path() {
     assert!(!Arc::ptr_eq(&a, &c), "different content must miss");
     assert_eq!(cache.len(), 2);
 }
+
+// ---- doc comments are not part of a signature -------------------------------
+//
+// Found by the M5 corpus on `pearls`: 7 of 8 "signature changed" findings
+// differed only in documentation prose, with a reader unable to tell which
+// change was real. A doc comment is not the API, and a gate that reports
+// prose edits as a signature change is a gate whose real findings get skimmed.
+
+#[test]
+fn a_doc_comment_change_is_not_a_signature_change() {
+    let a = parse("/// Creates a pearl.\n/// * `priority` - 0-4\npub fn f(priority: u8) {}")
+        .expect("parses");
+    let b = parse(
+        "/// Creates a pearl.\n/// * `priority` - optional priority\npub fn f(priority: u8) {}",
+    )
+    .expect("parses");
+    assert_eq!(a.items()[0].signature, b.items()[0].signature);
+}
+
+#[test]
+fn a_doc_comment_on_a_struct_is_not_a_signature_change() {
+    let a = parse("/// A pearl.\n/// With a title.\npub struct P { pub title: String }")
+        .expect("parses");
+    let b = parse("/// A pearl.\npub struct P { pub title: String }").expect("parses");
+    assert_eq!(a.items()[0].signature, b.items()[0].signature);
+}
+
+#[test]
+fn a_real_signature_change_still_shows_through_doc_comments() {
+    // The corpus check cuts both ways. A `where` clause added alongside a
+    // rewritten comment is still an API change.
+    let a = parse("/// Old.\npub fn f<T>(t: T) where T: Clone {}").expect("parses");
+    let b =
+        parse("/// New.\npub fn f<T, E>(t: T) -> Result<T, E> where T: Clone, E: From<Error> {}")
+            .expect("parses");
+    assert_ne!(a.items()[0].signature, b.items()[0].signature);
+}
+
+#[test]
+fn a_block_doc_comment_is_stripped() {
+    let a = parse("/** A pearl. */\npub struct P;").expect("parses");
+    let b = parse("pub struct P;").expect("parses");
+    assert_eq!(a.items()[0].signature, b.items()[0].signature);
+}
+
+#[test]
+fn an_inner_doc_comment_between_items_is_stripped() {
+    // `//!` between items attaches to the following one, and must not be read
+    // as part of the previous item's signature.
+    let src = "pub mod a {}\n//! inner\npub mod b {}\n";
+    let f = parse(src).expect("parses");
+    assert!(
+        f.items().iter().all(|i| !i.signature.contains("inner")),
+        "{:?}",
+        f.items()
+    );
+}
