@@ -21,6 +21,7 @@ palisade-orchestrate = { workspace = true }
 palisade-gates = { workspace = true }
 palisade-exec = { workspace = true }
 palisade-report = { workspace = true }
+toml = { workspace = true }
 palisade-contract = { workspace = true }
 camino = { workspace = true }
 clap = { workspace = true }

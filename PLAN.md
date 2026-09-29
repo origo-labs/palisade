@@ -629,6 +629,53 @@ repository. **Zero false positives across 36 gate fixtures.** The registry
 returns `Untrustworthy` for all nine unimplemented primitives, tested
 individually.
 
+### M5.2 — `palisade init`: the contract generator — **shipped**
+
+The product's main act, and the thing criterion 3 cannot be measured without: a
+hand-written contract would be me choosing gates I already know work, which is
+the circularity the PRD amendment just removed.
+
+`palisade init` reads a repository and writes a complete, opinionated
+`palisade.toml`. Seven tests, including a round-trip: the generated file is
+parsed back before it is written, because a generator emitting plausible TOML
+the parser rejects is worse than no generator, and the failure would land on
+whoever ran it.
+
+**Every gate at `warn`, and the file says why.** A generated contract proposes;
+it does not judge. A contract written today has been calibrated on nothing, and
+a fresh one at `error` would be a claim nobody has measured — which the M4
+promotion guard would correctly refuse.
+
+**The generator shipped the exact sin its own header warns about, and running
+it on a real repository is what caught that.** The first version declared
+`secret_absent` and `external_tool` "so the gap is visible". Both are
+unimplemented, both report `Untrustworthy`, and the result was that a fresh
+project **failed its own first run** with `verdict: error` before anybody had
+changed a line. Declaring a gap by declaring a broken gate is not honesty, it
+is the opposite. They are now listed as *commented examples* with a note
+explaining why they are off, so their absence is deliberate and visible rather
+than an oversight.
+
+**Decisions worth naming:**
+
+- **Refuses to overwrite an existing contract** without `--force`. A contract
+  is a dated claim about a project's bar; silently replacing it would lose the
+  review that made it true. `--dry-run` prints without writing.
+- **`reviewed` is today**, because a project that has just generated a contract
+  genuinely has just reviewed it. Anything else is a fabricated date, and
+  `contract_review_stale` would eventually fire on the fabrication rather than
+  on the staleness.
+- **Frozen paths are seeded** with `fixtures/`, `testdata/`, `benches/`,
+  `examples/`, so `paths_unchanged` enforces something from day one. A path that
+  is not present costs nothing.
+- **`not_covered` is pre-populated** with five real gaps, because PRD 9.4 treats
+  an empty list as a claim the tool does not make.
+- **A workspace is announced**, because the generated gates apply to the whole
+  tree and a workspace usually wants a stricter contract per member.
+
+**Exit:** 243 tests. `init` then `check` on a real repository passes, with the
+seven declared gates all reporting.
+
 ### M1.5 — `secret_absent`, and only after a corpus
 A milestone of one gate, deliberately. A pattern-matching secret gate is the
 classic crying-wolf liability: it fires on documentation, on test fixtures, on

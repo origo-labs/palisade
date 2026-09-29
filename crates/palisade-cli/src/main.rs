@@ -58,6 +58,24 @@ enum Cmd {
         #[arg(long, value_enum, default_value_t = Format::Human)]
         format: Format,
     },
+    /// Write a starting `palisade.toml`.
+    ///
+    /// The product's main act. Every gate is written at `warn`: this is a
+    /// proposal, not a verdict, and a contract written today has been
+    /// calibrated on nothing.
+    Init {
+        /// Repository to inspect. Defaults to the working directory.
+        #[arg(long)]
+        path: Option<PathBuf>,
+        /// Overwrite an existing contract. Off by default, because silently
+        /// replacing the thing somebody reviewed is the one thing this command
+        /// must never do.
+        #[arg(long)]
+        force: bool,
+        /// Print the contract to stdout instead of writing it.
+        #[arg(long)]
+        dry_run: bool,
+    },
     /// Print the bounded observation. Exists so the empty-diff failure mode
     /// is visible during development, not after it has been measured on.
     Observe {
@@ -107,10 +125,15 @@ fn run(cli: Cli) -> Result<Verdict, String> {
     // tree. `observe --expect-diff=false` is the escape hatch for inspecting
     // a repository with no pending work.
     let observing = matches!(cli.cmd, Cmd::Observe { .. });
+    let initialising = matches!(cli.cmd, Cmd::Init { .. });
     let format = match cli.cmd {
         Cmd::Check { format, .. } => format,
-        Cmd::Observe { .. } => Format::Human,
+        Cmd::Observe { .. } | Cmd::Init { .. } => Format::Human,
     };
+    if initialising {
+        return run_init(cli);
+    }
+
     let (path, cli_base, cli_budget, expect_diff) = match cli.cmd {
         Cmd::Check {
             path, base, budget, ..
@@ -121,6 +144,7 @@ fn run(cli: Cli) -> Result<Verdict, String> {
             budget,
             expect_diff,
         } => (path, Some(base), Some(budget), expect_diff),
+        Cmd::Init { path, .. } => (path, None, None, false),
     };
 
     let start: PathBuf = path.unwrap_or_else(|| PathBuf::from("."));
@@ -227,6 +251,119 @@ fn run(cli: Cli) -> Result<Verdict, String> {
         }
     );
     Ok(verdict)
+}
+
+/// Write a starting contract.
+///
+/// # Errors
+///
+/// Returns a message rather than overwriting when a contract already exists,
+/// unless `force` is given. Overwriting the artefact somebody reviewed is the
+/// one thing this command must never do by accident: a contract is a dated
+/// claim about a project's bar, and silently replacing it is a way of losing
+/// the review that made it true.
+fn run_init(cli: Cli) -> Result<Verdict, String> {
+    let (path, force, dry_run) = match cli.cmd {
+        Cmd::Init {
+            path,
+            force,
+            dry_run,
+        } => (path, force, dry_run),
+        _ => return Err("init was not the subcommand".to_string()),
+    };
+    let start: PathBuf = path.unwrap_or_else(|| PathBuf::from("."));
+    let start = start
+        .into_os_string()
+        .into_string()
+        .map_err(|p| format!("path is not UTF-8: {p:?}"))?;
+    let root = Utf8PathBuf::from(start);
+    let repo = Repo::open(&root).map_err(|e| format!("{root}: {e}"))?;
+
+    let target = repo
+        .root()
+        .join(palisade_contract::parse::CONTRACT_FILENAME);
+    if target.exists() && !force && !dry_run {
+        return Err(format!(
+            "{} already exists. A contract is a dated claim about this \
+             project's bar; replacing it silently would lose the review that \
+             made it true. Re-run with --force if you mean it, or --dry-run to \
+             see what would be written.",
+            target
+        ));
+    }
+
+    // A review date of today, because a project that has just generated a
+    // contract genuinely has just reviewed it. Anything else would be a
+    // fabricated date, and `contract_review_stale` would eventually fire on
+    // the fabrication rather than on the staleness.
+    let reviewed = utc_today();
+    let members = workspace_members(repo.root());
+    let contract = palisade_contract::generate::generate(&reviewed, members);
+
+    // Round-trip before writing. A generator that emits plausible TOML the
+    // parser rejects is worse than no generator, and the failure would land on
+    // whoever ran it.
+    palisade_contract::parse::parse_contract(&contract).map_err(|e| {
+        format!(
+            "refusing to write a contract this build cannot read back: {e}. \
+             That is a bug in `palisade init`."
+        )
+    })?;
+
+    if dry_run {
+        print!("{contract}");
+        return Ok(Verdict::Accept);
+    }
+    std::fs::write(&target, &contract).map_err(|e| format!("could not write {target}: {e}"))?;
+    eprintln!("wrote {target}");
+    eprintln!(
+        "Every gate is at `warn`: this proposes, it does not judge. Run \
+         `palisade check` to see what it reports, and promote a gate to \
+         `error` only once you have a reason and a measurement."
+    );
+    Ok(Verdict::Accept)
+}
+
+/// `YYYY-MM-DD` for today, UTC.
+fn utc_today() -> String {
+    let secs = unix_now();
+    // Days since the Unix epoch, to a civil date. Hinnant's algorithm, the
+    // same one `JudgementSection` uses, kept in step deliberately.
+    let days = secs.div_euclid(86_400);
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z.rem_euclid(146_097);
+    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+    let y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = if m <= 2 { y + 1 } else { y };
+    format!("{y:04}-{m:02}-{d:02}")
+}
+
+/// How many crates a workspace declares, so the generated contract can say so.
+///
+/// Read from `Cargo.toml` rather than by running cargo: `init` should not
+/// build anything, and a member count is a fact about a file.
+fn workspace_members(root: &Utf8PathBuf) -> usize {
+    let manifest = root.join("Cargo.toml");
+    let Ok(text) = std::fs::read_to_string(&manifest) else {
+        return 0;
+    };
+    // A tiny targeted read rather than a TOML dependency here: the only thing
+    // needed is the length of `[workspace] members`, and a malformed manifest
+    // should not fail `init` -- a project that cannot be introspected can still
+    // be given a contract.
+    let Ok(value) = text.parse::<toml::Table>() else {
+        return 0;
+    };
+    value
+        .get("workspace")
+        .and_then(|w| w.get("members"))
+        .and_then(|m| m.as_array())
+        .map_or(0, |m| m.len())
 }
 
 fn capture(

@@ -249,6 +249,7 @@ dependencies = [
  "palisade-observe",
  "palisade-orchestrate",
  "palisade-report",
+ "toml",
 ]
 
 [[package]]

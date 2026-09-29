@@ -5,6 +5,7 @@
 //! free of TOML regardless (PLAN.md 2, boundary 4) — the parser lives here and
 //! the orchestrator consumes a validated [`Contract`].
 
+pub mod generate;
 pub mod parse;
 
 use std::fmt;
