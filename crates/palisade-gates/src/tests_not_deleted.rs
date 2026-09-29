@@ -33,11 +33,25 @@
 //! is `Untrustworthy`, not `Clean` — the same refusal-to-guess rule as an
 //! unparseable file, and for the same reason.
 //!
-//! `cargo test -- --list` gives the real inventory — names as the compiler
-//! sees them, including macro-generated tests — and is the fix for the
-//! remaining blind spot. It arrives in M3 as a `consumes` edge from
-//! `checks_green`; until then this is a static reading of the source, and the
-//! report says so rather than implying full coverage.
+//! ## The inventory, when the contract provides one
+//!
+//! The static reading above can see a test that *exists*. It cannot see one
+//! that **runs**. A test behind a `#[cfg]`, one the harness skips, one whose
+//! name the compiler rewrote — all of them read as present in the source and
+//! none of them are in the suite.
+//!
+//! `cargo test -- --list` is the real inventory, and it arrives through a
+//! declared `consumes` edge from `checks_green`. When it is present this gate
+//! reports a test that is in the source and **not in the build**: a test
+//! nobody runs is a test that was deleted in everything but name, and it is
+//! the one class of finding a source reading cannot produce on its own.
+//!
+//! The two are combined rather than substituted. The inventory is a *head*
+//! snapshot, so it cannot answer "was a test removed between the base commit
+//! and now" — that needs the base tree built and listed too, a second full
+//! compile on every commit to re-answer a question the source reading already
+//! answers correctly. So the source reading keeps ownership of removal, and
+//! the inventory adds the thing it is uniquely able to say.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -144,6 +158,54 @@ pub fn run(ctx: &GateContext<'_>) -> GateResult {
     // removed test is one whose whole identity is gone; a moved test is
     // present under a new path, and the paths are not part of the identity.
     let mut findings = Vec::new();
+
+    // A test the source still has and the build does not run.
+    //
+    // Only when an inventory was provided. Without one this gate makes no
+    // claim about whether a test runs, and says so by omission rather than by
+    // reporting a coverage it does not have.
+    if let Some(inv) = ctx.test_inventory {
+        let mut all_tests: BTreeMap<String, Vec<Located>> = BTreeMap::new();
+        for (key, locations) in base_tests.iter().chain(head_tests.iter()) {
+            for l in locations {
+                all_tests.entry(key.clone()).or_default().push(l.clone());
+            }
+        }
+        let mut seen: BTreeSet<&str> = BTreeSet::new();
+        for (key, locations) in &all_tests {
+            if !seen.insert(key.as_str()) {
+                continue;
+            }
+            let Some(first) = locations.first() else {
+                continue;
+            };
+            if inv.contains(key) || inv.contains(&first.name) {
+                continue;
+            }
+            findings.push(Finding::new(
+                ctx.gate.id.clone(),
+                ctx.gate.primitive,
+                ctx.gate.severity,
+                Subject::new(SubjectKind::Test, key.clone()),
+                Some(first.path.clone().into()),
+                None,
+                // The pair is about the *inventory*, read the way the
+                // inventory itself reads: the test should be listed, and it
+                // is not. So the change kind is `Removed` — the test has been
+                // removed from what the suite runs — and the message says what
+                // that means in the source's terms.
+                Side::value("run by the test suite"),
+                Side::Absent,
+                format!(
+                    "`{key}` is in the source but not in `cargo test -- --list`. \
+                     It is not run: a test nobody runs is a test that was \
+                     deleted in everything but name."
+                ),
+                ctx.origin(),
+            ));
+        }
+    }
+
     for (key, locations) in &base_tests {
         if head_tests.contains_key(key) {
             continue;
@@ -274,6 +336,7 @@ fn test_key(t: &TestFn) -> String {
     }
 }
 
+#[derive(Debug, Clone)]
 struct Located {
     /// The file the test is in, for the finding's location.
     path: String,

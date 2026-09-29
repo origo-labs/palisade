@@ -19,10 +19,18 @@ fn gate(primitive: Primitive) -> Gate {
 /// A fixed instant, so a gate that reads the clock is still a pure function.
 const FIXED_NOW: i64 = 1_790_000_000;
 
+/// The test inventory a gate sees. `None` by default, so a fixture that is
+/// about something else is not also about inventory coverage; the inventory
+/// fixtures pass one explicitly.
+fn inventory() -> Option<&'static palisade_exec::test_inventory::TestInventory> {
+    None
+}
+
 fn ctx<'a>(gate: &'a Gate, obs: &'a palisade_observe::Observation) -> GateContext<'a> {
     GateContext {
         gate,
         observation: obs,
+        test_inventory: inventory(),
         now_unix: FIXED_NOW,
     }
 }
@@ -427,4 +435,119 @@ fn a_file_the_observation_cannot_read_both_sides_is_untrustworthy() {
     let mut obs = obs;
     obs.files[0].truncated = true;
     assert_untrustworthy(Primitive::TestsNotDeleted, &obs);
+}
+
+// ---- the inventory: a test the source has and the build does not run -------
+//
+// A static reading can see a test that *exists*. It cannot see one that runs.
+// These are the findings only the inventory can produce, which is why the
+// integration exists.
+
+fn with_inventory(gate: &Gate, obs: &palisade_observe::Observation, listing: &str) -> GateResult {
+    let inv = palisade_exec::test_inventory::TestInventory::parse(listing).0;
+    registry::dispatch(
+        gate.primitive,
+        &GateContext {
+            gate,
+            observation: obs,
+            test_inventory: Some(&inv),
+            now_unix: FIXED_NOW,
+        },
+    )
+}
+
+#[test]
+fn a_test_the_build_does_not_run_is_reported() {
+    // The blind spot a static reading cannot close: a test the source still
+    // declares, that the compiler will not run. A `#[cfg]`-gated test on the
+    // wrong platform, a harness that filters it out — all read as present in
+    // the source and none of them are in the suite.
+    let g = gate(Primitive::TestsNotDeleted);
+    let obs = two_tree(&[(
+        "src/lib.rs",
+        Some("#[test]\nfn runs() {}\n\n#[cfg(unix)]\n#[test]\nfn only_on_unix() {}\n"),
+        Some("#[test]\nfn runs() {}\n\n#[cfg(unix)]\n#[test]\nfn only_on_unix() {}\n"),
+    )]);
+    // The listing has `runs` but not `only_on_unix`, as if built on Windows.
+    let r = with_inventory(&g, &obs, "runs: test\nother::integration_style: test\n");
+    let f = findings(&r);
+    assert_eq!(f.len(), 1, "{f:?}");
+    assert!(f[0].message.contains("only_on_unix"), "{f:?}");
+    assert!(f[0].message.contains("not in"), "{f:?}");
+}
+
+#[test]
+fn a_test_the_build_runs_is_not_reported() {
+    let g = gate(Primitive::TestsNotDeleted);
+    let obs = two_tree(&[(
+        "src/lib.rs",
+        Some("#[test]\nfn runs() {}\n"),
+        Some("#[test]\nfn runs() {}\n"),
+    )]);
+    let r = with_inventory(&g, &obs, "runs: test\n");
+    assert_eq!(r, GateResult::Clean, "expected clean, got {r:?}");
+}
+
+#[test]
+fn without_an_inventory_the_gate_makes_no_claim_about_running() {
+    // Without the edge, `tests_not_deleted` says nothing about whether a test
+    // runs. It must not report a coverage it does not have, and it must not
+    // invent a finding either.
+    let g = gate(Primitive::TestsNotDeleted);
+    let obs = two_tree(&[(
+        "src/lib.rs",
+        Some("#[test]\nfn only_on_unix() {}\n"),
+        Some("#[test]\nfn only_on_unix() {}\n"),
+    )]);
+    let r = registry::dispatch(g.primitive, &ctx(&g, &obs));
+    assert_eq!(r, GateResult::Clean, "expected clean, got {r:?}");
+}
+
+#[test]
+fn an_integration_test_matches_a_source_test_that_knows_only_its_module() {
+    // `tests/foo.rs` declares `fn works()`; the source reading sees a file and
+    // a name, and cargo prints `works`. Without the bare-name fallback this
+    // would be reported on every integration test in every repository.
+    let g = gate(Primitive::TestsNotDeleted);
+    let obs = two_tree(&[(
+        "tests/foo.rs",
+        Some("#[test]\nfn works() {}\n"),
+        Some("#[test]\nfn works() {}\n"),
+    )]);
+    let r = with_inventory(&g, &obs, "works: test\n");
+    assert_eq!(r, GateResult::Clean, "expected clean, got {r:?}");
+}
+
+#[test]
+fn a_doc_test_never_masks_a_missing_unit_test() {
+    // `src/lib.rs - add (line 42)` is a snippet in a comment, not a function.
+    // If a doc test were allowed to stand in for a real test, deleting a unit
+    // test while a doc test of a similar name remained would go unreported.
+    let g = gate(Primitive::TestsNotDeleted);
+    let obs = two_tree(&[(
+        "src/lib.rs",
+        Some("#[test]\nfn add() {}\n"),
+        Some("#[test]\nfn add() {}\n"),
+    )]);
+    let r = with_inventory(&g, &obs, "src/lib.rs - add (line 42): test\n");
+    let f = findings(&r);
+    assert_eq!(f.len(), 1, "the real test is missing: {f:?}");
+    assert!(f[0].message.contains("add"), "{f:?}");
+}
+
+#[test]
+fn removal_still_works_with_an_inventory_present() {
+    // The fix that removed the M5 false positive must not have narrowed what
+    // the gate detects. A deletion alongside a live inventory is still a
+    // deletion.
+    let g = gate(Primitive::TestsNotDeleted);
+    let base = "#[test]\nfn keep() {}\n\n#[test]\nfn drop_me() {}\n";
+    let head = "#[test]\nfn keep() {}\n";
+    let obs = two_tree(&[("src/lib.rs", Some(base), Some(head))]);
+    let r = with_inventory(&g, &obs, "keep: test\n");
+    let f = findings(&r);
+    assert!(
+        f.iter().any(|x| x.message.contains("drop_me")),
+        "a removal must still be reported: {f:?}"
+    );
 }

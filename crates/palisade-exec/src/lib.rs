@@ -27,6 +27,7 @@
 
 pub mod checks_green;
 pub mod external_tool;
+pub mod test_inventory;
 
 use std::io::Read;
 use std::path::Path;
@@ -85,24 +86,85 @@ pub enum Outcome {
 }
 
 impl Outcome {
-    /// The table's verdict for this outcome.
-    ///
-    /// The one function in the crate that decides pass from fail, and the one
-    /// place a future contributor has to look to widen the rules.
+    /// The table's verdict for this outcome, under the *default* convention:
+    /// only 0 and 1 carry a verdict.
     pub const fn interpretation(self) -> Interpretation {
+        self.interpretation_with(ExitCodes::STRICT)
+    }
+
+    /// The table's verdict under a tool's declared exit codes.
+    ///
+    /// The default is deliberately strict — 0 passes, 1 fails, everything else
+    /// is "no trustworthy result" — because an exit code nobody has declared
+    /// is not a verdict we are entitled to read. `EVIDENCE.md` §5 is the reason:
+    /// a verifier that could not start and a verifier whose tests failed being
+    /// indistinguishable confounded an entire measurement programme.
+    ///
+    /// **The default is wrong for `cargo test`, and that was found by running
+    /// it.** Cargo exits **101** when a test fails, so under the default a
+    /// failing test suite reports as "no trustworthy result" — a tool problem —
+    /// rather than as the failure it is. That is the same conflation the
+    /// default exists to prevent, arriving through a different door.
+    ///
+    /// So a tool may *declare* its codes, and the declaration is recorded in
+    /// the report's provenance. A tool with no declared convention keeps the
+    /// strict default, which is the safe direction: it over-reports `error`
+    /// rather than reporting a failure as a pass.
+    pub const fn interpretation_with(self, codes: ExitCodes) -> Interpretation {
         match self {
-            // Only 0 and 1 carry a verdict, and only because the tools we
-            // invoke document that. Exit 2 is slop-gate's "I could not produce
-            // a trustworthy result"; cargo's convention is not documented, so
-            // anything else is treated the same way: unknown is not a verdict.
             Self::Exited(0) => Interpretation::Passed,
-            Self::Exited(1) => Interpretation::Failed,
-            Self::Exited(_) => Interpretation::NoTrustworthyResult,
+            Self::Exited(c) => {
+                if codes.is_failure(c) {
+                    Interpretation::Failed
+                } else {
+                    Interpretation::NoTrustworthyResult
+                }
+            }
             Self::Signalled(_) | Self::TimedOut | Self::SpawnFailed => {
                 Interpretation::NoTrustworthyResult
             }
         }
     }
+}
+
+/// A tool's declared exit codes: the record of what we have been *told*,
+/// as opposed to what we guessed.
+///
+/// Arrays rather than `Vec`, so the table can stay `const` and a convention
+/// can be written as a literal in the source where it is arguable.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ExitCodes {
+    /// Codes that mean "the tool ran and found problems".
+    pub failure: &'static [i32],
+}
+
+impl ExitCodes {
+    /// The strict default: only 1 is a failure. Everything else is
+    /// untrustworthy, which is the safe direction — it over-reports `error`
+    /// rather than reporting a failure as a pass.
+    pub const STRICT: Self = Self { failure: &[1] };
+
+    /// Whether `code` means the tool ran and found problems.
+    pub const fn is_failure(self, code: i32) -> bool {
+        let mut i = 0;
+        while i < self.failure.len() {
+            if self.failure[i] == code {
+                return true;
+            }
+            i += 1;
+        }
+        false
+    }
+}
+
+/// Cargo's convention, which is in wide use rather than in cargo's docs.
+///
+/// Declared here as a value the project can see and argue with, rather than a
+/// branch buried in the reducer. 101 is cargo's "a test failed", which is
+/// indistinguishable from a real failure *to cargo's users* and is the single
+/// most common code in a Rust CI log after 0 and 1.
+pub const fn cargo_exit_codes() -> ExitCodes {
+    ExitCodes { failure: &[1, 101] }
 }
 
 /// What a process outcome means, once the table has been applied.
@@ -511,5 +573,80 @@ mod tests {
         let args = vec!["--label".to_string(), "{literal}".to_string()];
         let out = template_args(&args, "abc", "def", "ghi").expect("left alone");
         assert_eq!(out[1], "{literal}");
+    }
+}
+
+#[cfg(test)]
+mod declared_exit_code_tests {
+    use super::*;
+
+    #[test]
+    fn the_strict_default_still_refuses_unknown_codes() {
+        // The safe direction, and the reason the default exists: an exit code
+        // nobody has declared is not a verdict we may read.
+        for c in [2, 3, 101, 127, 250] {
+            assert_eq!(
+                Outcome::Exited(c).interpretation(),
+                Interpretation::NoTrustworthyResult,
+                "exit {c} must be untrustworthy under the strict default"
+            );
+        }
+        assert_eq!(Outcome::Exited(1).interpretation(), Interpretation::Failed);
+    }
+
+    #[test]
+    fn a_declared_code_is_a_failure() {
+        // Found by running it: `cargo test` exits 101 when a test fails, and
+        // under the strict default a failing suite reported as a *tool
+        // problem*. That is the conflation the default exists to prevent,
+        // arriving through a different door.
+        let cargo = cargo_exit_codes();
+        assert_eq!(
+            Outcome::Exited(101).interpretation_with(cargo),
+            Interpretation::Failed
+        );
+        assert_eq!(
+            Outcome::Exited(1).interpretation_with(cargo),
+            Interpretation::Failed
+        );
+        assert_eq!(
+            Outcome::Exited(0).interpretation_with(cargo),
+            Interpretation::Passed
+        );
+    }
+
+    #[test]
+    fn declaring_a_code_does_not_declare_the_others() {
+        // A declared failure list is an allowlist. 2 is still untrustworthy
+        // even for cargo, because it is slop-gate's "no trustworthy result"
+        // and cargo happens to share the number.
+        let cargo = cargo_exit_codes();
+        assert_eq!(
+            Outcome::Exited(2).interpretation_with(cargo),
+            Interpretation::NoTrustworthyResult
+        );
+    }
+
+    #[test]
+    fn declaring_no_failures_does_not_make_every_code_a_pass() {
+        // A tool may declare no failure codes, and 0 still means "fine" — that
+        // is universal, not per-tool. But a *non-zero* code that nobody
+        // declared stays untrustworthy: declaring an empty list is a statement
+        // about failures, not a licence to read anything as a pass. Otherwise
+        // "we could not tell" would become "everything is fine", which is the
+        // one conflation this crate exists to prevent.
+        let quiet = ExitCodes { failure: &[] };
+        assert_eq!(
+            Outcome::Exited(0).interpretation_with(quiet),
+            Interpretation::Passed
+        );
+        assert_eq!(
+            Outcome::Exited(1).interpretation_with(quiet),
+            Interpretation::NoTrustworthyResult
+        );
+        assert_eq!(
+            Outcome::Exited(3).interpretation_with(quiet),
+            Interpretation::NoTrustworthyResult
+        );
     }
 }

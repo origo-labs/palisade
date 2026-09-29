@@ -56,11 +56,18 @@ impl Check {
     pub const ALL: [Check; 3] = [Check::Fmt, Check::Clippy, Check::Test];
 }
 
-/// Run the checks and build the gate's run.
+/// Run the checks and build the gate's run, plus the test inventory it
+/// provides to `tests_not_deleted`.
 ///
 /// `timeout` applies per command, not to the gate as a whole. A suite with a
 /// slow test suite should not have its `fmt` check time out because `test` did.
-pub fn run_checks(origin: Origin, timeout: Duration) -> palisade_orchestrate::GateRun {
+pub fn run_checks(
+    origin: Origin,
+    timeout: Duration,
+) -> (
+    palisade_orchestrate::GateRun,
+    crate::test_inventory::TestInventory,
+) {
     let mut builder = GateRunBuilder::new();
     for check in Check::ALL {
         apply(
@@ -70,16 +77,47 @@ pub fn run_checks(origin: Origin, timeout: Duration) -> palisade_orchestrate::Ga
             &origin,
         );
     }
-    builder.finish(
+    let run = builder.finish(
         palisade_contract::GateId::new("checks_green").expect("constant is valid"),
         palisade_contract::Primitive::ChecksGreen,
         origin,
-    )
+    );
+    (run, list_tests(timeout))
+}
+
+/// The test inventory: `cargo test -- --list`.
+///
+/// `--no-run` is deliberately absent. The inventory is a *list*, and running
+/// the suite as well would double the cost of every commit to obtain data the
+/// `--list` output already contains. A supervisor that runs a test suite it was
+/// not asked to run is a different product with a different failure mode — and
+/// `checks_green` runs the suite anyway, as its own job.
+fn list_tests(timeout: Duration) -> crate::test_inventory::TestInventory {
+    let completed = run(
+        "cargo",
+        &["test".to_string(), "--".to_string(), "--list".to_string()],
+        timeout,
+    );
+    // An inventory we could not read is an empty one, and the consuming gate
+    // has to be able to tell that from a build with no tests. `checks_green`
+    // already reported the failure against the `test` check; the gate that
+    // consumes this is told not to claim coverage it does not have.
+    if completed
+        .status
+        .interpretation_with(crate::cargo_exit_codes())
+        != Interpretation::Passed
+    {
+        return crate::test_inventory::TestInventory::empty();
+    }
+    crate::test_inventory::TestInventory::parse(&completed.stdout).0
 }
 
 /// Fold one command's result into the run.
 fn apply(builder: &mut GateRunBuilder, check: Check, completed: Completed, origin: &Origin) {
-    match completed.status.interpretation() {
+    match completed
+        .status
+        .interpretation_with(crate::cargo_exit_codes())
+    {
         Interpretation::Passed => {}
         Interpretation::NoTrustworthyResult => {
             // The row that matters. A tool that could not run has not passed,

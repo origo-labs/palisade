@@ -961,6 +961,51 @@ refusal as an unparseable file, for the same reason.
 false positives, and the real `#[allow(dead_code)]` finding still reported.**
 `tests_not_deleted` is silent on all 104 warmplane merges.
 
+### M5.1 — The test inventory, and a bug the corpus could not find
+
+The static reading above can see a test that *exists*. It cannot see one that
+**runs**. A test behind a `#[cfg]`, one a harness filters out, one the compiler
+renames — all read as present in the source and none are in the suite. That is
+the class of thing a test gate exists to catch, and it is invisible to reading
+source.
+
+`cargo test -- --list` is the real inventory, and it flows through the
+`provides`/`consumes` edge the contract already declared:
+`checks_green` provides it, `tests_not_deleted` consumes it.
+
+**Combined, not substituted.** The inventory is a *head* snapshot, so it cannot
+answer "was a test removed between base and now" — that needs the base tree
+built and listed too, a second full compile on every commit to re-answer a
+question the source reading already answers correctly. The source reading keeps
+ownership of *removal*; the inventory adds the one thing only it can say.
+
+Three shapes in cargo's output, and all three are kept because they are not
+interchangeable:
+
+```text
+approvals::tests::test_approval: test    <- unit, module path
+test_macos_keychain_crud: test           <- integration, bare name
+src/lib.rs - add (line 42): test         <- doc test, file + line
+```
+
+A **doc test is never matched against a source test** — it is a snippet in a
+comment, not a function, and letting one stand in for a real test would let a
+deleted unit test hide behind it.
+
+**A bug the 137-merge corpus could not find, and a live run could:**
+`cargo test` exits **101** when a test fails, and M3's exit-code table treats
+every undocumented code as `Untrustworthy`. So a failing test suite reported as
+*a tool problem* — the exact conflation the table exists to prevent, arriving
+through a different door. The strict default is right for a tool with no
+declared convention and wrong for cargo.
+
+Fixed by letting a tool **declare** its codes as a value the project can see and
+argue with, rather than burying a branch in the reducer. The strict default
+stays for everything undeclared, because it is the safe direction: it
+over-reports `error` rather than reading a failure as a pass. And declaring an
+empty list still leaves every non-zero code untrustworthy — otherwise "we could
+not tell" would become "everything is fine".
+
 **Two harness bugs, both mine, both instructive.** The first dry-run harness
 checked merges out in the working repository and left it dirty — the exact class
 of bug M0 exists to prevent, reintroduced by tooling written after it. And its

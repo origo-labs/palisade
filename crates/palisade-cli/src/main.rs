@@ -154,16 +154,55 @@ fn run(cli: Cli) -> Result<Verdict, String> {
 
     let obs = capture(&repo, &base, budget, true)?;
     let (cargo_version, tool_version) = tool_versions();
-    let mut runs: Vec<GateRun> = contract
-        .gates
-        .iter()
-        .map(|g| run_gate(g, &obs, &base, &cargo_version, &tool_version))
-        .collect();
+    // Delegated gates run first, because a gate that `consumes` from one needs
+    // what it provides. The contract declares the edge; this is where it is
+    // honoured. A gate with no such edge simply sees no inventory, and makes
+    // no claim about whether a test runs.
+    let mut inventory: Option<palisade_exec::test_inventory::TestInventory> = None;
+    let mut runs: Vec<GateRun> = Vec::new();
+    for g in &contract.gates {
+        if g.primitive == Primitive::ChecksGreen
+            && contract
+                .gates
+                .iter()
+                .any(|c| c.consumes.iter().any(|x| x == &g.id.to_string()))
+        {
+            let (run, inv) = palisade_exec::checks_green::run_checks(
+                palisade_exec::origin("cargo", &cargo_version),
+                timeout(g),
+            );
+            runs.push(run);
+            inventory = Some(inv);
+        }
+    }
+    for g in &contract.gates {
+        if g.primitive == Primitive::ChecksGreen && inventory.is_some() {
+            continue; // already run above, with the inventory it provides
+        }
+        runs.push(run_gate(
+            g,
+            &obs,
+            &base,
+            &cargo_version,
+            &tool_version,
+            inventory.as_ref(),
+        ));
+    }
     // The gates that audit the contract are not in the contract. A gate that
     // could be declared could also be deleted, and a gate that a worker can
     // switch off is not a gate — so these are appended here, unconditionally,
     // and `parse` refuses to accept a contract that tries to declare them.
     runs.extend(built_in_gates(&obs, &cargo_version));
+
+    // Declaration order, so the report matches the contract even though
+    // execution had to run the providing gates first.
+    let mut ordered: Vec<GateRun> = Vec::with_capacity(runs.len());
+    for g in &contract.gates {
+        if let Some(pos) = runs.iter().position(|r| r.gate_id == g.id) {
+            ordered.push(runs.remove(pos));
+        }
+    }
+    let runs = ordered;
     let outcomes: Vec<palisade_orchestrate::GateOutcome> =
         runs.iter().map(|r| r.outcome.clone()).collect();
     let verdict = reduce(&ReductionInput {
@@ -257,7 +296,7 @@ fn built_in_gates(obs: &Observation, cargo_version: &str) -> Vec<GateRun> {
         // downgrade here. An earlier version applied one if *any* finding
         // was justified, which meant one recorded reason silently unblocked
         // every other loosening in the same diff.
-        run_gate(&g, obs, "HEAD", cargo_version, "unused")
+        run_gate(&g, obs, "HEAD", cargo_version, "unused", None)
     })
     .collect()
 }
@@ -267,12 +306,14 @@ fn built_in_gates(obs: &Observation, cargo_version: &str) -> Vec<GateRun> {
 /// An `Analyzed` gate is a pure function of the observation and cannot fail to
 /// run. A `Delegated` gate is the only kind that can fail to run, and it is
 /// the only kind that spawns anything.
+#[allow(clippy::too_many_arguments)]
 fn run_gate(
     gate: &Gate,
     obs: &Observation,
     base: &str,
     cargo_version: &str,
     tool_version: &str,
+    inventory: Option<&palisade_exec::test_inventory::TestInventory>,
 ) -> GateRun {
     if gate.severity == Severity::Off {
         // Reported as `off`, never as a pass: a reader must be able to see what
@@ -283,7 +324,7 @@ fn run_gate(
     match gate.primitive {
         Primitive::ChecksGreen => {
             let origin = palisade_exec::origin("cargo", cargo_version);
-            palisade_exec::checks_green::run_checks(origin, timeout(gate))
+            palisade_exec::checks_green::run_checks(origin, timeout(gate)).0
         }
         Primitive::ExternalTool => {
             let origin = palisade_exec::origin("external", tool_version);
@@ -308,6 +349,7 @@ fn run_gate(
                 &GateContext {
                     gate,
                     observation: obs,
+                    test_inventory: inventory,
                     // The only clock read in a gate, and it is here rather
                     // than inside `contract_review_stale` so that gate stays a
                     // pure function of its inputs.

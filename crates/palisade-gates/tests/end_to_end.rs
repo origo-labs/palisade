@@ -17,6 +17,13 @@ use palisade_testkit::{FixtureRepo, TempDir};
 /// A fixed instant, so a gate that reads the clock is still a pure function.
 const FIXED_NOW: i64 = 1_790_000_000;
 
+/// The test inventory a gate sees. `None` by default, so a fixture that is
+/// about something else is not also about inventory coverage; the inventory
+/// fixtures pass one explicitly.
+fn inventory() -> Option<&'static palisade_exec::test_inventory::TestInventory> {
+    None
+}
+
 fn gate(primitive: Primitive) -> Gate {
     let mut g = Gate::new(GateId::new("g").unwrap(), primitive);
     g.severity = Severity::Error;
@@ -74,6 +81,7 @@ fn a_real_manifest_edit_is_seen_by_the_dependency_gate() {
         &GateContext {
             gate: &g,
             observation: &obs,
+            test_inventory: inventory(),
             now_unix: FIXED_NOW,
         },
     ));
@@ -150,6 +158,7 @@ fn a_test_removed_after_being_committed_is_still_caught() {
         &GateContext {
             gate: &g,
             observation: &obs,
+            test_inventory: inventory(),
             now_unix: FIXED_NOW,
         },
     ));
@@ -188,6 +197,7 @@ fn a_deleted_test_file_is_caught_on_a_real_tree() {
         &GateContext {
             gate: &g,
             observation: &obs,
+            test_inventory: inventory(),
             now_unix: FIXED_NOW,
         },
     ));
@@ -234,6 +244,7 @@ fn an_unchanged_repository_produces_no_findings_from_any_m1_gate() {
             &GateContext {
                 gate: &g,
                 observation: &obs,
+                test_inventory: inventory(),
                 now_unix: FIXED_NOW,
             },
         );
@@ -260,6 +271,7 @@ fn a_real_removed_public_function_is_caught() {
         &GateContext {
             gate: &g,
             observation: &obs,
+            test_inventory: inventory(),
             now_unix: FIXED_NOW,
         },
     ));
@@ -285,6 +297,7 @@ fn a_real_wildcard_suppression_is_caught() {
         &GateContext {
             gate: &g,
             observation: &obs,
+            test_inventory: inventory(),
             now_unix: FIXED_NOW,
         },
     ));
@@ -308,6 +321,7 @@ fn a_real_unsafe_block_is_caught() {
         &GateContext {
             gate: &g,
             observation: &obs,
+            test_inventory: inventory(),
             now_unix: FIXED_NOW,
         },
     ));
@@ -338,6 +352,7 @@ fn an_unrelated_edit_produces_no_ast_findings() {
             &GateContext {
                 gate: &g,
                 observation: &obs,
+                test_inventory: inventory(),
                 now_unix: FIXED_NOW,
             },
         );

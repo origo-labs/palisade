@@ -16,7 +16,9 @@ palisade-orchestrate = { workspace = true }
 palisade-contract = { workspace = true }
 toml = { workspace = true }
 palisade-ast = { workspace = true }
+palisade-exec = { workspace = true }
 
 [dev-dependencies]
 palisade-git = { workspace = true }
 palisade-testkit = { workspace = true }
+palisade-exec = { workspace = true }

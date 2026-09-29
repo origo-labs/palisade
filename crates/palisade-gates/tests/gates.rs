@@ -28,12 +28,20 @@ fn ctx<'a>(gate: &'a Gate, observation: &'a Observation) -> GateContext<'a> {
     GateContext {
         gate,
         observation,
+        test_inventory: inventory(),
         now_unix: FIXED_NOW,
     }
 }
 
 /// A fixed instant, so a gate that reads the clock is still a pure function.
 const FIXED_NOW: i64 = 1_790_000_000;
+
+/// The test inventory a gate sees. `None` by default, so a fixture that is
+/// about something else is not also about inventory coverage; the inventory
+/// fixtures pass one explicitly.
+fn inventory() -> Option<&'static palisade_exec::test_inventory::TestInventory> {
+    None
+}
 
 fn gate(primitive: Primitive) -> Gate {
     let mut g = Gate::new(GateId::new("g").unwrap(), primitive);

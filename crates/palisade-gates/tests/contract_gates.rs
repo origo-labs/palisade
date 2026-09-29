@@ -15,6 +15,12 @@ use palisade_gates::{GateContext, GateResult, registry};
 
 const NOW: i64 = 1_790_000_000; // 2026-09-28
 
+/// The test inventory a gate sees. `None` here: these fixtures are about the
+/// contract, not about whether a test runs.
+fn inventory() -> Option<&'static palisade_exec::test_inventory::TestInventory> {
+    None
+}
+
 /// A contract with one gate, as the head or the base of a comparison.
 fn contract(gate_severity: &str, extra: &str, judgement: &str) -> String {
     format!(
@@ -63,6 +69,7 @@ fn run_not_loosened(base: &str, head: &str) -> GateResult {
         &GateContext {
             gate: &g,
             observation: &obs,
+            test_inventory: inventory(),
             now_unix: NOW,
         },
     )
@@ -335,6 +342,7 @@ fn a_contract_absent_from_the_observation_is_clean() {
         &GateContext {
             gate: &g,
             observation: &obs,
+            test_inventory: inventory(),
             now_unix: NOW,
         },
     ));
@@ -380,6 +388,7 @@ fn deleting_the_contract_entirely_is_the_largest_loosening() {
         &GateContext {
             gate: &g,
             observation: &obs,
+            test_inventory: inventory(),
             now_unix: NOW,
         },
     );
@@ -403,6 +412,7 @@ fn with_reviewed(reviewed: &str) -> GateResult {
         &GateContext {
             gate: &g,
             observation: &obs,
+            test_inventory: inventory(),
             now_unix: NOW,
         },
     )

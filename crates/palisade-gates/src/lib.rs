@@ -67,6 +67,12 @@ pub struct GateContext<'a> {
     pub gate: &'a Gate,
     /// The bounded, two-tree observation.
     pub observation: &'a Observation,
+    /// The test inventory `checks_green` provided, when the contract declares
+    /// a `consumes` edge for it.
+    ///
+    /// `None` means the gate has no inventory and must not claim that a test
+    /// it read in the source is actually run — only that it is still there.
+    pub test_inventory: Option<&'a palisade_exec::test_inventory::TestInventory>,
     /// Unix seconds, supplied by the caller.
     ///
     /// Not read from the clock inside a gate: a gate whose output depends on
