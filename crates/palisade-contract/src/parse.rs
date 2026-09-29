@@ -184,6 +184,9 @@ struct RawGate {
     /// Gates this one reads delegated output from.
     #[serde(default)]
     consumes: Vec<String>,
+    /// Ceiling on a Delegated gate's runtime, in seconds.
+    #[serde(default)]
+    timeout_seconds: Option<u64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -339,6 +342,7 @@ impl RawGate {
             consumes: self.consumes.clone(),
             paths: self.paths.clone(),
             allow: self.allow.clone(),
+            timeout_seconds: self.timeout_seconds,
         })
     }
 }

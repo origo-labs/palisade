@@ -758,32 +758,79 @@ pinned by a test per gate, because a gate that skips what it cannot read and
 returns "nothing found" has silently downgraded a check while still reporting
 a number.
 
-### M3 — `palisade-exec`, the delegated gates, and the report
-- `palisade-exec`: process spawn, per-tool argv from the contract, timeout,
-  capture, and the §3.1 exit-code table. `Delegated` is constructible nowhere
-  else in the workspace; a test asserts this by building `Delegated` from a
-  recording fake and by having CI run a check that no other crate references
-  `std::process::Command`.
-- `checks_green`: `cargo fmt --check`, `cargo clippy -- -D warnings`,
-  `cargo test`, each producing its own finding so a fmt failure is not
-  indistinguishable from a test failure. Feeds `tests_not_deleted` its
-  `cargo test -- --list` inventory over a declared `provides` edge.
-- `external_tool`: argv templating from `{base}`/`{head}`/`{index}`, SARIF
-  ingestion. A template variable that does not resolve is `Untrustworthy`, never
-  a literal `{base}` in an argv — a silently untemplated path is a gate that
-  reports on the wrong tree and looks green.
-- `palisade-report`: human, json (three separate top-level target keys), sarif
-  2.1.0.
-- `palisade init`: generate a starter `palisade.toml` seeded from the project's
-  detected ecosystem, with every gate at `warn`. It is an adoption tool and
-  must be impossible to run destructively.
+### M3 — `palisade-exec`, the delegated gates, and the report — **shipped**
+- `palisade-exec`: process execution, argv templating, timeouts, and the
+  §3.1 exit-code table. **One test per row**, plus the rows that were not in
+  the table and should have been.
+- `checks_green` and `external_tool`, both `Delegated`.
+- `palisade-report`: `human`, `json` and SARIF 2.1.0, with determinism as a
+  tested property rather than an aspiration.
+- `GateRun` in `palisade-orchestrate`: one declared gate's whole run, every
+  outcome and every finding. It lives there because both the CLI and
+  `palisade-exec` build one, and a shape duplicated across two crates is a
+  shape that drifts.
 
-**Exit:** end-to-end `palisade check` on both fixture repos produces
-byte-stable SARIF across two runs on an unchanged tree (determinism check —
-a supervisor whose own output is nondeterministic is uncalibratable), and exit
-codes 0/1/2/3 are each reachable in a test. Every row of the §3.1 exit-code
-table has a test, and the JSON output for a delegated failure names the tool and
-its version.
+**The exit-code table, in code rather than in prose.** Only 0 and 1 carry a
+verdict, and only because the invoked tools document that. Exit 2, a signal, a
+timeout, a missing binary, a spawn failure and **every other non-zero code** are
+`Untrustworthy`. The last row is the interesting one: cargo does not document an
+exit-code convention, so `101` — which `cargo test` really does return when a
+test fails — is as undocumented to us as `250`, and treating it as a verdict
+would be us inventing one. `tests::an_undocumented_exit_code_is_not_a_failure`
+covers 2, 3, 101, 127 and 250.
+
+**Four findings from building it, three of them mine:**
+
+1. **A tool that writes more than a pipe buffer deadlocks into a false
+   timeout.** The child blocks on a full pipe, never exits, and we report
+   `Untrustworthy` — for a tool that actually succeeded. That is the exit-code
+   bug again in a new costume: a plausible wrong answer produced by our own
+   reading. The pipes are drained on separate threads and the parent polls
+   `try_wait`, with a test that pushes 660 KB through.
+2. **`replace("{base}", base)` turns `{base_sha}` into `abc_sha`.** A blanket
+   substitution passes a path nobody asked for to a tool that will treat it as
+   a real ref, quietly analyse the wrong tree, and report green. Each
+   brace-delimited run is now classified: exact variable substituted, near-miss
+   (`{bases}`, `{Base}`, `{base_sha}`) is an error, anything else is the
+   caller's own literal.
+3. **The boundary check caught the CLI shelling out.** `cargo --version` in the
+   CLI is process execution. It moved into `palisade-exec` as
+   `tool_version`, which is where a "who produced this verdict" question belongs.
+   The check has now caught a real violation twice.
+4. **Build output was entering the observation.** `checks_green` runs cargo;
+   cargo writes `target/`; the *next* run observed 61 files, none of them Rust,
+   and `public_api_unchanged` failed with "no `.rs` file in the observation" —
+   a confident, wrong error. Two fixes: `target/` is excluded from the two-tree
+   view (a build artefact is not a change to the codebase, and redirecting
+   `CARGO_TARGET_DIR` would throw away the incremental cache criterion 2 is
+   measured against), and the "saw files but no Rust" `Untrustworthy` branch
+   is gone from all four gates, because absence from the diff means
+   *unchanged*, not *unexamined* — the same argument
+   `dependency_surface_unchanged` already carried. The reasoning is now written
+   out at each site.
+
+**Output defects found by looking at real output rather than at tests.** The
+first `checks_green` finding came back with ANSI escape codes and embedded
+newlines inside `observed`, because a child process inherits the terminal's
+opinions about colour and a diagnostic is three lines long. The report is not a
+terminal, so children get `CARGO_TERM_COLOR=never` and diagnostics are
+collapsed to one line. A finding whose `observed` is a megabyte of test output
+is not evidence anybody can read, so it is bounded inside the value with an
+explicit `(+N more lines)` marker rather than truncated after the fact.
+
+**Determinism is tested, not asserted.** Two runs over the same findings are
+byte-identical in all three formats, and two gates that each find several
+things produce the same output whichever order they finished in. No timestamps,
+no wall-clock, no hash-map iteration order; every collection that reaches the
+output is sorted. A supervisor whose own output moves cannot be calibrated.
+
+**Exit — met.** 189 tests. All four exit-code rows plus the four that were not
+in the table, SARIF absorption including index-based `ruleId`, end-exclusive
+regions, unparseable output, and byte-determinism. The three targets are
+separate top-level JSON keys, `provenance` reaches the output for every gate
+including passes, and `not_covered` appears in the human report, the JSON and
+the SARIF — so a consumer reading only the code-scanning artefact still learns
+what was not checked.
 
 ### M4 — The gates about gates
 - `contract_not_loosened`, `contract_review_stale` (§1.3).

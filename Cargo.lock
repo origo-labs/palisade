@@ -243,10 +243,12 @@ dependencies = [
  "camino",
  "clap",
  "palisade-contract",
+ "palisade-exec",
  "palisade-gates",
  "palisade-git",
  "palisade-observe",
  "palisade-orchestrate",
+ "palisade-report",
 ]
 
 [[package]]
@@ -261,7 +263,10 @@ dependencies = [
 name = "palisade-exec"
 version = "0.1.0"
 dependencies = [
+ "camino",
+ "palisade-contract",
  "palisade-orchestrate",
+ "serde_json",
 ]
 
 [[package]]
@@ -299,11 +304,18 @@ dependencies = [
  "blake3",
  "camino",
  "palisade-contract",
+ "serde",
 ]
 
 [[package]]
 name = "palisade-report"
 version = "0.1.0"
+dependencies = [
+ "palisade-contract",
+ "palisade-orchestrate",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "palisade-testkit"

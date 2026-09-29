@@ -19,6 +19,8 @@ palisade-git = { workspace = true }
 palisade-observe = { workspace = true }
 palisade-orchestrate = { workspace = true }
 palisade-gates = { workspace = true }
+palisade-exec = { workspace = true }
+palisade-report = { workspace = true }
 palisade-contract = { workspace = true }
 camino = { workspace = true }
 clap = { workspace = true }

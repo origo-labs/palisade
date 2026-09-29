@@ -270,6 +270,9 @@ pub struct Gate {
     /// Documented, reviewed additions. Not blanket permission: every entry is
     /// a specific, reviewable exception.
     pub allow: Vec<String>,
+    /// Ceiling on a `Delegated` gate's runtime, in seconds. A ceiling on a
+    /// runaway, not a target: `cargo test` on a large repository is minutes.
+    pub timeout_seconds: Option<u64>,
 }
 
 impl Gate {
@@ -285,6 +288,7 @@ impl Gate {
             consumes: Vec::new(),
             paths: Vec::new(),
             allow: Vec::new(),
+            timeout_seconds: None,
         }
     }
 }

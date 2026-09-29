@@ -333,7 +333,7 @@ impl Repo {
         for (path, orig_path) in entries {
             let entry_path = path.clone();
             let entry_orig = orig_path.clone();
-            if self.root.join(&entry_path).is_dir() {
+            if self.root.join(&entry_path).is_dir() || is_build_output(&entry_path) {
                 continue;
             }
             let mut base_content = match base {
@@ -485,6 +485,23 @@ impl StatusEntry {
     }
 }
 
+/// Build output, which is never source and never a reviewable change.
+///
+/// `cargo` writes here every time it runs, and a `Delegated` gate runs cargo.
+/// Without this, the first `palisade check` leaves a `target/` directory
+/// behind and every subsequent run observes sixty-odd files that no reviewer
+/// wants and no gate should read.
+///
+/// This is not a workaround for the gate writing to the tree — every Rust
+/// project expects that, and pointing `CARGO_TARGET_DIR` elsewhere would
+/// throw away the incremental cache that PRD 9's criterion 2 is measured
+/// against. It is a statement that a build artefact is not a change to the
+/// codebase.
+fn is_build_output(path: &str) -> bool {
+    let p = path.replace('\\', "/");
+    p == "target" || p.starts_with("target/") || p.starts_with(".cargo-target/")
+}
+
 fn parse_status_z(bytes: &[u8]) -> Result<Vec<StatusEntry>> {
     // `porcelain -z` is NUL-separated with no quoting at all: every field is
     // literal bytes. That is why this parser can be a split rather than a
@@ -631,5 +648,41 @@ mod tests {
     #[test]
     fn status_z_ignores_trailing_empty_field() {
         assert_eq!(parse_status_z(b"?? a.rs\0\0").unwrap().len(), 1);
+    }
+}
+
+#[cfg(test)]
+mod build_output_tests {
+    use super::is_build_output;
+
+    #[test]
+    fn build_output_is_not_a_reviewable_change() {
+        // A `Delegated` gate runs cargo, which writes here. If these entered
+        // the observation, the first `palisade check` would leave the next one
+        // looking at sixty build artefacts.
+        for p in [
+            "target",
+            "target/debug/demo",
+            "target/CACHEDIR.TAG",
+            ".cargo-target/x",
+        ] {
+            assert!(is_build_output(p), "{p} should be excluded");
+        }
+    }
+
+    #[test]
+    fn source_that_merely_looks_like_build_output_is_kept() {
+        // `targets/` is a real directory somebody might mean. So is a module
+        // called `target.rs`.
+        for p in [
+            "src/target.rs",
+            "src/target/mod.rs",
+            "targets/a.rs",
+            "src/targeting.rs",
+            "Cargo.lock",
+            "src/lib.rs",
+        ] {
+            assert!(!is_build_output(p), "{p} should be observed");
+        }
     }
 }

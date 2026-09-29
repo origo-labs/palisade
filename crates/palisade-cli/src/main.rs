@@ -21,11 +21,14 @@ use std::process::ExitCode;
 use camino::Utf8PathBuf;
 use clap::{Parser, Subcommand};
 
-use palisade_contract::{Contract, Severity};
+use std::time::Duration;
+
+use palisade_contract::{Contract, Gate, Primitive, Severity};
 use palisade_gates::{GateContext, GateResult, registry};
 use palisade_git::Repo;
 use palisade_observe::{Budget, Observation};
-use palisade_orchestrate::{GateOutcome, ReductionInput, Verdict, reduce};
+use palisade_orchestrate::{GateRun, ReductionInput, Verdict, reduce};
+use palisade_report::Report;
 
 #[derive(Debug, Parser)]
 #[command(
@@ -51,6 +54,9 @@ enum Cmd {
         /// Observation budget in bytes. Overrides `[budget]`.
         #[arg(long)]
         budget: Option<usize>,
+        /// Report format.
+        #[arg(long, value_enum, default_value_t = Format::Human)]
+        format: Format,
     },
     /// Print the bounded observation. Exists so the empty-diff failure mode
     /// is visible during development, not after it has been measured on.
@@ -66,6 +72,18 @@ enum Cmd {
         #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
         expect_diff: bool,
     },
+}
+
+/// The report format. `human` is the default because a supervisor's first
+/// audience is a person deciding whether to read the rest.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+enum Format {
+    /// A PR comment.
+    Human,
+    /// The machine contract, with the three targets as separate top-level keys.
+    Json,
+    /// SARIF 2.1.0, for code scanning.
+    Sarif,
 }
 
 fn main() -> ExitCode {
@@ -89,8 +107,14 @@ fn run(cli: Cli) -> Result<Verdict, String> {
     // tree. `observe --expect-diff=false` is the escape hatch for inspecting
     // a repository with no pending work.
     let observing = matches!(cli.cmd, Cmd::Observe { .. });
+    let format = match cli.cmd {
+        Cmd::Check { format, .. } => format,
+        Cmd::Observe { .. } => Format::Human,
+    };
     let (path, cli_base, cli_budget, expect_diff) = match cli.cmd {
-        Cmd::Check { path, base, budget } => (path, base, budget, true),
+        Cmd::Check {
+            path, base, budget, ..
+        } => (path, base, budget, true),
         Cmd::Observe {
             path,
             base,
@@ -129,14 +153,35 @@ fn run(cli: Cli) -> Result<Verdict, String> {
     let budget = resolve_budget(cli_budget, Some(&contract))?;
 
     let obs = capture(&repo, &base, budget, true)?;
-    let reports: Vec<GateReport> = contract.gates.iter().map(|g| run_gate(g, &obs)).collect();
-    let outcomes: Vec<GateOutcome> = reports.iter().map(|r| r.outcome.clone()).collect();
+    let (cargo_version, tool_version) = tool_versions();
+    let runs: Vec<GateRun> = contract
+        .gates
+        .iter()
+        .map(|g| run_gate(g, &obs, &base, &cargo_version, &tool_version))
+        .collect();
+    let outcomes: Vec<palisade_orchestrate::GateOutcome> =
+        runs.iter().map(|r| r.outcome.clone()).collect();
     let verdict = reduce(&ReductionInput {
         outcomes: &outcomes,
         ..Default::default()
     });
 
-    print_report(&contract, &reports, verdict);
+    let report = Report {
+        contract: &contract,
+        runs: &runs,
+        verdict,
+        tool_version: env!("CARGO_PKG_VERSION"),
+    };
+    // The report goes to stdout so it can be piped; anything a human needs
+    // that is *not* the report goes to stderr.
+    print!(
+        "{}",
+        match format {
+            Format::Human => report.human(),
+            Format::Json => report.json(),
+            Format::Sarif => report.sarif(),
+        }
+    );
     Ok(verdict)
 }
 
@@ -180,143 +225,94 @@ fn load_contract(root: &Utf8PathBuf) -> Result<Contract, String> {
     palisade_contract::parse::parse(&source).map_err(|e| format!("{path}: {e}"))
 }
 
-/// One gate's outcome *and* every finding it produced.
+/// Run one declared gate and collect everything it produced.
 ///
-/// The two are separate because one `GateOutcome` carries one finding, and
-/// reducing several to the most severe is fine for a verdict and fatal for a
-/// report. PRD 7 is explicit: "a block without the diff hunk, the gate id, the
-/// expected and observed value, and a stable fingerprint is a bug" — and a
-/// report that shows one of three findings is a block with the other two
-/// missing. An earlier version of this file collapsed and dropped, with a
-/// comment claiming the rest were printed. They were not.
-struct GateReport {
-    gate_id: String,
-    primitive: &'static str,
-    outcome: GateOutcome,
-    findings: Vec<palisade_orchestrate::Finding>,
-}
-
-fn run_gate(gate: &palisade_contract::Gate, obs: &Observation) -> GateReport {
+/// An `Analyzed` gate is a pure function of the observation and cannot fail to
+/// run. A `Delegated` gate is the only kind that can fail to run, and it is
+/// the only kind that spawns anything.
+fn run_gate(
+    gate: &Gate,
+    obs: &Observation,
+    base: &str,
+    cargo_version: &str,
+    tool_version: &str,
+) -> GateRun {
     if gate.severity == Severity::Off {
         // Reported as `off`, never as a pass: a reader must be able to see what
         // was not checked.
-        return GateReport {
-            gate_id: gate.id.to_string(),
-            primitive: gate.primitive.as_str(),
-            outcome: GateOutcome::Skipped {
-                reason: palisade_orchestrate::SkipReason::DeclaredOff,
-            },
-            findings: Vec::new(),
-        };
+        return GateRun::skipped(gate.id.clone(), gate.primitive);
     }
-    let result = registry::dispatch(
-        gate.primitive,
-        &GateContext {
-            gate,
-            observation: obs,
-        },
-    );
-    let origin = palisade_orchestrate::Origin::Analyzed {
-        primitive: gate.primitive,
-    };
-    let (outcome, findings) = match result {
-        GateResult::Clean => (GateOutcome::Pass { origin }, Vec::new()),
-        GateResult::Findings(f) => {
-            let worst = worst_of(&f);
-            (GateOutcome::Fail(worst), f)
-        }
-        GateResult::Untrustworthy(reason) => {
-            (GateOutcome::Untrustworthy { reason, origin }, Vec::new())
-        }
-    };
-    GateReport {
-        gate_id: gate.id.to_string(),
-        primitive: gate.primitive.as_str(),
-        outcome,
-        findings,
-    }
-}
 
-/// The finding that decides the verdict for a gate: the most severe one.
-///
-/// Every finding is still reported by [`print_report`]; this only picks which
-/// single one the verdict algebra sees.
-fn worst_of(findings: &[palisade_orchestrate::Finding]) -> palisade_orchestrate::Finding {
-    let mut worst = findings[0].clone();
-    for f in findings {
-        if severity_rank(f.severity) > severity_rank(worst.severity) {
-            worst = f.clone();
+    match gate.primitive {
+        Primitive::ChecksGreen => {
+            let origin = palisade_exec::origin("cargo", cargo_version);
+            palisade_exec::checks_green::run_checks(origin, timeout(gate))
         }
-    }
-    worst
-}
-
-fn severity_rank(s: Severity) -> u8 {
-    match s {
-        Severity::Warn => 0,
-        Severity::Escalate => 1,
-        Severity::Error => 2,
-        Severity::Off => 0,
-    }
-}
-
-fn print_report(contract: &Contract, reports: &[GateReport], verdict: Verdict) {
-    println!(
-        "contract:  {} gate(s), version {}",
-        contract.gates.len(),
-        contract.version
-    );
-    println!();
-    for report in reports {
-        match &report.outcome {
-            GateOutcome::Pass { .. } => {
-                println!("  pass           {}", report.primitive);
-            }
-            GateOutcome::Skipped { .. } => {
-                println!("  off            (declared off, not checked)");
-            }
-            GateOutcome::Untrustworthy { reason, .. } => {
-                println!("  ERROR          {}: {}", report.primitive, reason.detail());
-            }
-            GateOutcome::Fail(_) => {
-                // Every finding, not just the one that decided the verdict.
-                for f in &report.findings {
-                    // The derived change, not the message's word for it, so
-                    // the report cannot label a removal as a widening.
-                    println!(
-                        "  {:<8} [{}] {} {}: {}",
-                        f.severity,
-                        report.gate_id,
-                        f.subject.kind.noun(),
-                        f.change().verb(),
-                        f.subject.name
-                    );
-                    println!(
-                        "            {} -> {}   [{}]",
-                        f.expected.render(),
-                        f.observed.render(),
-                        f.fingerprint
-                    );
+        Primitive::ExternalTool => {
+            let origin = palisade_exec::origin("external", tool_version);
+            let values = palisade_exec::external_tool::TemplateValues {
+                base: base.to_string(),
+                head: "HEAD".to_string(),
+                index: String::new(),
+            };
+            let format = palisade_exec::external_tool::OutputFormat::Sarif;
+            palisade_exec::external_tool::run_tool(
+                "slop-gate",
+                &Vec::new(),
+                format,
+                &values,
+                timeout(gate),
+                origin,
+            )
+        }
+        other => {
+            let result = registry::dispatch(
+                other,
+                &GateContext {
+                    gate,
+                    observation: obs,
+                },
+            );
+            let origin = palisade_orchestrate::Origin::Analyzed { primitive: other };
+            match result {
+                GateResult::Clean => GateRun::passed(gate.id.clone(), other, origin),
+                GateResult::Findings(f) => {
+                    GateRun::with_findings(gate.id.clone(), other, f, origin)
+                }
+                GateResult::Untrustworthy(reason) => {
+                    GateRun::untrustworthy(gate.id.clone(), other, reason, origin)
                 }
             }
         }
     }
-    println!();
-    println!("verdict: {verdict}");
-    // PRD 8: the gap is the artefact somebody owns. It is printed on every run
-    // so it cannot quietly stop being true.
-    if contract.judgement.not_covered.is_empty() {
-        println!("not_covered: (empty — the contract claims more than it delivers)");
-    } else {
-        println!("not_covered:");
-        for item in &contract.judgement.not_covered {
-            println!("  - {item}");
-        }
-    }
-    println!(
-        "reviewed: {}",
-        contract.judgement.reviewed.as_deref().unwrap_or("<none>")
-    );
+}
+
+/// A gate's timeout, defaulting generously.
+///
+/// `cargo test` on a large repository is minutes, and a supervisor that
+/// declares a test suite is opting into that cost. The default is a ceiling on
+/// a runaway, not a target.
+fn timeout(gate: &Gate) -> Duration {
+    Duration::from_secs(gate.timeout_seconds.unwrap_or(900))
+}
+
+/// The versions of the tools we delegate to, resolved once per invocation.
+///
+/// Asking a tool its version is running a process, so it goes through
+/// `palisade-exec`. The CLI used to shell out inline and
+/// `scripts/check-boundary.sh` caught it, which is the check earning its
+/// place.
+fn tool_versions() -> (String, String) {
+    use std::sync::OnceLock;
+    static CACHE: OnceLock<(String, String)> = OnceLock::new();
+    CACHE
+        .get_or_init(|| {
+            (
+                palisade_exec::tool_version("cargo"),
+                palisade_exec::tool_version("slop-gate"),
+            )
+        })
+        .clone()
 }
 
 fn print_observation(obs: &Observation) {

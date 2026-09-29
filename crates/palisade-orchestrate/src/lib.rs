@@ -305,6 +305,9 @@ pub enum SubjectKind {
     File,
     /// A path, for a frozen-path policy check.
     Path,
+    /// A delegated check, e.g. `cargo fmt`. Distinct from `Contract`: a check
+    /// is something Palisade ran, not something the project declared.
+    Check,
     /// The contract itself.
     Contract,
 }
@@ -321,6 +324,7 @@ impl SubjectKind {
             Self::Suppression => "suppression",
             Self::File => "file",
             Self::Path => "path",
+            Self::Check => "check",
             Self::Contract => "contract",
         }
     }
@@ -395,13 +399,28 @@ pub enum ChangeKind {
 }
 
 impl ChangeKind {
-    /// The word a message uses.
+    /// The word a message and a report use.
     pub const fn verb(self) -> &'static str {
         match self {
             Self::Added => "added",
             Self::Removed => "removed",
             Self::Changed => "changed",
         }
+    }
+}
+
+impl fmt::Display for ChangeKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.verb())
+    }
+}
+
+/// Serialised as the same word the human report and SARIF use, rather than the
+/// variant name. A consumer that reads `"Added"` here and `"added"` in the
+/// prose has to normalise before it can join the two, and it will not.
+impl serde::Serialize for ChangeKind {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(self.verb())
     }
 }
 
@@ -674,5 +693,163 @@ mod tests {
             ..Default::default()
         });
         assert_eq!(v, Verdict::Accept);
+    }
+}
+
+/// One declared gate's run: every outcome it produced, and every finding.
+///
+/// A gate is not one outcome. `checks_green` runs three commands and can fail
+/// two of them; a `Delegated` gate can be asked to run a tool that reports
+/// forty findings. Collapsing those to one — which the CLI did, and which the
+/// M2 follow-up had to undo — throws away the evidence PRD 7 requires. So the
+/// run holds all of it, and the *reduction* is a separate, explicit step.
+///
+/// This lives here rather than in the CLI because `palisade-exec` needs to
+/// build one too, and a shape duplicated across two crates is a shape that
+/// drifts.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GateRun {
+    /// The declared gate.
+    pub gate_id: GateId,
+    /// The check that ran.
+    pub primitive: Primitive,
+    /// Every finding, uncollapsed and in the order the gate produced them.
+    pub findings: Vec<Finding>,
+    /// The single outcome the verdict algebra sees.
+    pub outcome: GateOutcome,
+}
+
+impl GateRun {
+    /// A gate that passed.
+    pub fn passed(gate_id: GateId, primitive: Primitive, origin: Origin) -> Self {
+        Self {
+            gate_id,
+            primitive,
+            findings: Vec::new(),
+            outcome: GateOutcome::Pass { origin },
+        }
+    }
+
+    /// A gate that was declared `off` and so did not run. Reported, never a
+    /// pass.
+    pub fn skipped(gate_id: GateId, primitive: Primitive) -> Self {
+        Self {
+            gate_id,
+            primitive,
+            findings: Vec::new(),
+            outcome: GateOutcome::Skipped {
+                reason: SkipReason::DeclaredOff,
+            },
+        }
+    }
+
+    /// A gate that could not produce a trustworthy verdict.
+    pub fn untrustworthy(
+        gate_id: GateId,
+        primitive: Primitive,
+        reason: UntrustworthyReason,
+        origin: Origin,
+    ) -> Self {
+        Self {
+            gate_id,
+            primitive,
+            findings: Vec::new(),
+            outcome: GateOutcome::Untrustworthy { reason, origin },
+        }
+    }
+
+    /// A gate that found things. The outcome is the most severe finding; the
+    /// rest stay in `findings` and are reported.
+    pub fn with_findings(
+        gate_id: GateId,
+        primitive: Primitive,
+        findings: Vec<Finding>,
+        origin: Origin,
+    ) -> Self {
+        let outcome = match findings.iter().max_by_key(|f| severity_rank(f.severity)) {
+            Some(worst) => GateOutcome::Fail(worst.clone()),
+            None => GateOutcome::Pass { origin },
+        };
+        Self {
+            gate_id,
+            primitive,
+            findings,
+            outcome,
+        }
+    }
+
+    /// Whether this run carries evidence a reader can act on.
+    pub fn has_findings(&self) -> bool {
+        !self.findings.is_empty()
+    }
+}
+
+/// Severity ordering, for picking the finding that decides a verdict.
+fn severity_rank(s: Severity) -> u8 {
+    match s {
+        Severity::Warn => 0,
+        Severity::Escalate => 1,
+        Severity::Error => 2,
+        Severity::Off => 0,
+    }
+}
+
+/// Accumulates a run, so a fan-out gate does not have to re-derive the
+/// precedence rule at every `push`.
+///
+/// The precedence is the interesting part: an untrustworthy sub-result beats
+/// any number of failures, because "we could not tell" is more dangerous to
+/// report as a pass and more confusing to report as a block than "we know".
+#[derive(Debug, Default)]
+pub struct GateRunBuilder {
+    findings: Vec<Finding>,
+    untrustworthy: Option<UntrustworthyReason>,
+}
+
+impl GateRunBuilder {
+    /// A builder with nothing in it.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Record a finding. Does not clear an untrustworthy already recorded.
+    pub fn finding(&mut self, f: Finding) {
+        self.findings.push(f);
+    }
+
+    /// Record that part of the gate could not be determined. The first one
+    /// wins, because it is the earliest thing that went wrong.
+    pub fn untrustworthy(&mut self, reason: UntrustworthyReason) {
+        if self.untrustworthy.is_none() {
+            self.untrustworthy = Some(reason);
+        }
+    }
+
+    /// Collapse to a run.
+    pub fn finish(self, gate_id: GateId, primitive: Primitive, origin: Origin) -> GateRun {
+        if let Some(reason) = self.untrustworthy {
+            return GateRun {
+                gate_id,
+                primitive,
+                findings: self.findings,
+                outcome: GateOutcome::Untrustworthy { reason, origin },
+            };
+        }
+        GateRun::with_findings(gate_id, primitive, self.findings, origin)
+    }
+}
+
+impl GateOutcome {
+    /// The origin behind this outcome, when it has one.
+    ///
+    /// A skip has none: it is the absence of a verdict, not a verdict, and
+    /// giving it a producer would make "we did not check" indistinguishable
+    /// from "we checked and found nothing" in the report.
+    pub fn origin(&self) -> Option<&Origin> {
+        match self {
+            Self::Pass { origin } | Self::Untrustworthy { origin, .. } => Some(origin),
+            Self::Fail(f) => Some(&f.origin),
+            Self::Skipped { .. } => None,
+        }
     }
 }

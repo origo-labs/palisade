@@ -35,13 +35,11 @@ use crate::{GateContext, GateResult, truncated};
 pub fn run(ctx: &GateContext<'_>) -> GateResult {
     let cache = ParseCache::new();
     let mut findings = Vec::new();
-    let mut saw_rust = false;
 
     for view in &ctx.observation.files {
         if !view.path.ends_with(".rs") {
             continue;
         }
-        saw_rust = true;
         if view.truncated {
             return GateResult::Untrustworthy(truncated(&view.path));
         }
@@ -146,14 +144,15 @@ pub fn run(ctx: &GateContext<'_>) -> GateResult {
         }
     }
 
-    // No `.rs` file in the observation means no `.rs` file changed, which
-    // means no test changed. Sound for the same reason as the equivalent
-    // branch in `dependency_surface_unchanged`: the view is built from the diff
-    // of the same two trees this gate compares, so absence means "unchanged"
-    // rather than "unexamined". It would be unsound under a status-derived
-    // view, which is why the reasoning is written down rather than assumed.
-    let _ = saw_rust;
-
+    // A file with no `.rs` counterpart in the observation means no `.rs` file
+    // changed between the two trees, so there is nothing to compare. Sound for
+    // the same reason as the equivalent branch in
+    // `dependency_surface_unchanged`: the view is built from the diff of the
+    // *same two trees* this gate compares, so absence means "unchanged" rather
+    // than "unexamined". An earlier version reported `Untrustworthy` here, and
+    // a repository with a `target/` directory full of build output then failed
+    // every run with "no .rs file in the observation" — a confident, wrong
+    // error built on an absence that meant nothing.
     GateResult::findings(findings)
 }
 
