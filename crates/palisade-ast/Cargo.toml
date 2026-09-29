@@ -11,4 +11,9 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+tree-sitter = { workspace = true }
+tree-sitter-rust-orchard = { workspace = true }
+blake3 = { workspace = true }
 
+
+[dev-dependencies]

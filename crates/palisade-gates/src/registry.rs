@@ -19,12 +19,12 @@ pub fn analyzed(p: Primitive) -> Option<AnalyzedGate> {
         Primitive::DependencySurfaceUnchanged => Some(crate::dependency_surface::run),
         Primitive::TestsNotDeleted => Some(crate::tests_not_deleted::run),
         Primitive::PathsUnchanged => Some(crate::paths_unchanged::run),
-        Primitive::PublicApiUnchanged
-        | Primitive::UnsafeSurfaceUnchanged
-        | Primitive::SuppressionsNotWidened
-        | Primitive::SecretAbsent => None, // M2, and M1.5 for the secret gate
+        Primitive::PublicApiUnchanged => Some(crate::public_api::run),
+        Primitive::UnsafeSurfaceUnchanged => Some(crate::unsafe_surface::run),
+        Primitive::SuppressionsNotWidened => Some(crate::suppressions::run),
+        Primitive::SecretAbsent => None, // M1.5
         Primitive::ChecksGreen | Primitive::ExternalTool => None, // M3, Delegated
-        Primitive::Judged => None,                                // M6, escalate-only
+        Primitive::Judged => None,       // M6, escalate-only
         Primitive::ContractNotLoosened | Primitive::ContractReviewStale => None, // M4
     }
 }
@@ -43,6 +43,10 @@ pub fn dispatch(primitive: Primitive, ctx: &GateContext<'_>) -> GateResult {
 }
 
 /// Primitives this build can actually run.
+///
+/// Excludes `SecretAbsent` on purpose: it is declared, parseable, and refused,
+/// so a project that wants it gets a loud `Untrustworthy` rather than a
+/// pattern scan nobody calibrated.
 pub fn implemented() -> Vec<Primitive> {
     ALL_PRIMITIVES
         .iter()

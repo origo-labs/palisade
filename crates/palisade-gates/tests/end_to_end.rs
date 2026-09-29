@@ -216,3 +216,110 @@ fn an_unchanged_repository_produces_no_findings_from_any_m1_gate() {
         assert_eq!(r, GateResult::Clean, "{p} fired on an unchanged repository");
     }
 }
+
+// ---- the AST-backed gates, on a real tree ---------------------------------
+
+#[test]
+fn a_real_removed_public_function_is_caught() {
+    let (_d, repo, _initial) = seeded("e2e-api");
+    repo.write("src/lib.rs", "pub fn keep() {}\npub fn gone() {}\n")
+        .expect("write");
+    let base = repo.commit("two functions").expect("commit");
+    repo.write("src/lib.rs", "pub fn keep() {}\n")
+        .expect("remove one");
+    repo.commit("remove one").expect("commit");
+
+    let obs = observe(&repo, &base);
+    let g = gate(Primitive::PublicApiUnchanged);
+    let f = findings(registry::dispatch(
+        g.primitive,
+        &GateContext {
+            gate: &g,
+            observation: &obs,
+        },
+    ));
+    assert!(
+        f.iter().any(|x| x.message.contains("gone")),
+        "expected the removal, got {f:?}"
+    );
+}
+
+#[test]
+fn a_real_wildcard_suppression_is_caught() {
+    // `seeded` already committed a plain `pub fn f`, so that commit is the
+    // baseline. Re-committing identical content would be an empty commit.
+    let (_d, repo, base) = seeded("e2e-suppress");
+    repo.write("src/lib.rs", "#[allow(clippy::all)]\npub fn f() {}\n")
+        .expect("widen");
+    repo.commit("widen").expect("commit");
+
+    let obs = observe(&repo, &base);
+    let g = gate(Primitive::SuppressionsNotWidened);
+    let f = findings(registry::dispatch(
+        g.primitive,
+        &GateContext {
+            gate: &g,
+            observation: &obs,
+        },
+    ));
+    assert!(f.iter().any(|x| x.message.contains("wildcard")), "{f:?}");
+}
+
+#[test]
+fn a_real_unsafe_block_is_caught() {
+    let (_d, repo, _initial) = seeded("e2e-unsafe");
+    repo.write("src/lib.rs", "pub fn f() { let _x = 1; }\n")
+        .expect("write");
+    let base = repo.commit("safe").expect("commit");
+    repo.write("src/lib.rs", "pub fn f() { unsafe { let _x = 1; } }\n")
+        .expect("add unsafe");
+    repo.commit("add unsafe").expect("commit");
+
+    let obs = observe(&repo, &base);
+    let g = gate(Primitive::UnsafeSurfaceUnchanged);
+    let f = findings(registry::dispatch(
+        g.primitive,
+        &GateContext {
+            gate: &g,
+            observation: &obs,
+        },
+    ));
+    assert!(f.iter().any(|x| x.observed.contains('1')), "{f:?}");
+}
+
+#[test]
+fn an_unrelated_edit_produces_no_ast_findings() {
+    // The false-positive floor for the AST gates, on a real repository. A new
+    // public function is a `warn`, never a block, and everything else is
+    // silent.
+    let (_d, repo, base) = seeded("e2e-ast-noop");
+    repo.write(
+        "src/lib.rs",
+        "pub fn f() { let _x = 1; }\n\npub fn helper() -> u8 { 7 }\n",
+    )
+    .expect("edit");
+
+    let obs = observe(&repo, &base);
+    for p in [
+        Primitive::PublicApiUnchanged,
+        Primitive::UnsafeSurfaceUnchanged,
+        Primitive::SuppressionsNotWidened,
+    ] {
+        let g = gate(p);
+        let r = registry::dispatch(
+            p,
+            &GateContext {
+                gate: &g,
+                observation: &obs,
+            },
+        );
+        match r {
+            GateResult::Clean => {}
+            GateResult::Findings(f) => assert!(
+                f.iter().all(|x| x.severity == Severity::Warn),
+                "{p} blocked on an unrelated edit: {f:?}"
+            ),
+            GateResult::Untrustworthy(e) => panic!("{p} could not tell: {e:?}"),
+        }
+    }
+}

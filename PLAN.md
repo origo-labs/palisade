@@ -597,24 +597,74 @@ limitation belongs in `judgement.not_covered` rather than in a README.
 **Exit:** a false-positive rate measured on a corpus, published, with every
 pattern's worst known false positive named.
 
-### M2 — AST and API surface
-- `palisade-ast` wrapper, content-hash parse cache, refusal to guess on parser
-  error nodes (`slop-gate`'s explicit choice; copy it).
-- `public_api_unchanged` — public item signatures via AST signature extraction
-  (not rustdoc; rustdoc is a build-graph dependency and we want this
-  sub-second). Baseline comparison against the base tree, never a pattern match
-  against current code. `EVIDENCE.md` §6 names this as the exact reason a
-  pattern match produced a false positive.
-- `unsafe_surface_unchanged` and `suppressions_not_widened`, which M1 deferred
-  because counting them by text is exactly the silently-wrong counting M1
-  finding 2 documents. They need the AST and land here.
-- `secret_absent` lands in M1.5 with a measured corpus, not here.
+### M2 — AST and API surface — **shipped**
+- `palisade-ast`: the `tree-sitter-rust-orchard` wrapper, the content-hash
+  parse cache, and the refusal to guess on parser error nodes. 14 tests, and
+  they pin the properties the gates rest on.
+- `public_api_unchanged`, `unsafe_surface_unchanged`,
+  `suppressions_not_widened` — the two M1 deferred, plus the API gate. 27
+  fixtures, four of them end-to-end on a real repository.
 
-**Exit:** all M1 gates plus the AST set pass; public-API gate demonstrated
-against a real signature change (renamed param, changed return type, widened
-bound, new trait impl) and against four benign ones. The `-> list[Note]`
-false positive from `EVIDENCE.md` §6 is a must-not-fire fixture here, since
-that is the gate whose first implementation produced it.
+**The false positive this milestone was built around.** `EVIDENCE.md` §6
+records a new function returning `-> list[Note]` tripping a return-type check,
+"which must compare against a baseline rather than look for a pattern". The
+gate does compare against a baseline, and the fixture is
+`a_new_function_returning_a_generic_type_is_not_an_api_break`. It also
+resolves a question the PRD left open: **a new public item is reported at
+`warn`, pinned in code, and cannot be promoted to blocking by the contract.**
+A gate that blocks on every new public function gets switched off within a
+week, and switching it off takes the removals with it. Removals and signature
+changes stay at the contract's severity.
+
+Other decisions taken here, each of which would otherwise have been a false
+positive:
+- **A function signature excludes its body.** Otherwise every implementation
+  edit is an API-change finding.
+- **Signatures are whitespace-normalised and trailing-comma-stripped.**
+  Otherwise every `rustfmt` run is an API change. Pinned by
+  `running_rustfmt_is_not_an_api_change`.
+- **`pub(crate)` is not public API.** Half a real codebase's internals are
+  crate-visible.
+- **Items are identified by module path**, so moving a function between
+  modules reads as a removal and an addition rather than a silent relocation.
+- **Unsafe surface is four counts, not one.** Blocks, `fn`, `impl` and `extern`
+  blocks are reported separately, and the trigger is *growth* — a file that
+  already had two unsafe blocks and still has two is not a finding.
+- **Suppression is about widening, not presence.** Narrowing and removing are
+  improvements and never fire. Broadening *to a wildcard* (`clippy::all`) is
+  reported separately from adding one lint, because it is a different
+  magnitude of event.
+
+**Two findings from building it:**
+
+1. **A parser is not a given; the grammar has three shapes for the same
+   fact.** `unsafe fn f()` parses as a direct `unsafe` token, but
+   `pub unsafe fn f()` wraps it in a `function_modifiers` node. A modifier
+   check that only looked for the direct form would have missed *every
+   `pub unsafe fn`* — the most interesting case — and reported a confidently
+   wrong number. Found by the AST fixture, not by review. The same thing
+   happened with `extern` (which is `foreign_mod_item`, not
+   `extern_modifier`) and with attributes (which hang off an `attributes`
+   wrapper that a "do not descend into declarations" rule skips entirely).
+
+2. **One-pass normalisation is not enough.** Collapsing whitespace turns
+   `fn f(\n a: i32,\n)` into `fn f( a: i32, )`, which is a different string
+   from `fn f(a: i32)` and therefore a false API change on every reformatted
+   function. It takes two passes, because "is this comma trailing?" needs a
+   character the first pass has not reached. Writing the obvious one-pass
+   version and having a fixture catch it is the argument for
+   must-not-fire fixtures all over again.
+
+**Exit — met.** The public-API gate is demonstrated against all four real
+signature changes the plan named (renamed parameter, changed return type,
+widened bound, new trait impl) and against seven benign ones (body change,
+reformat, private items, crate-visible items, a new function returning
+`Vec<String>`, a deleted file with no public items, and a whole unrelated
+edit). **Zero false positives across 27 fixtures plus 4 end-to-end tests.**
+Every AST gate returns `Untrustworthy` on a file with parser error nodes —
+pinned by a test per gate, because a gate that skips what it cannot read and
+returns "nothing found" has silently downgraded a check while still reporting
+a number.
 
 ### M3 — `palisade-exec`, the delegated gates, and the report
 - `palisade-exec`: process spawn, per-tool argv from the contract, timeout,

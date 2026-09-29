@@ -21,8 +21,11 @@
 
 pub mod dependency_surface;
 pub mod paths_unchanged;
+pub mod public_api;
 pub mod registry;
+pub mod suppressions;
 pub mod tests_not_deleted;
+pub mod unsafe_surface;
 
 use palisade_contract::Gate;
 use palisade_observe::Observation;
