@@ -130,6 +130,46 @@ impl std::fmt::Display for EmptyReason {
     }
 }
 
+/// The two sides of one file's change: its content at the base commit, and
+/// its content in the worktree.
+///
+/// This is what makes a two-tree gate possible without a gate performing I/O.
+/// `git show <base>:<path>` is a subprocess, and a gate is a pure function of
+/// the observation — so the fetch happens here, once, and the *result* is part
+/// of the observation. A gate that needs the base content of a manifest reads
+/// it from here and never spawns anything.
+///
+/// Both sides are optional because all four combinations are real: an added
+/// file has no base side, a deleted file has no worktree side, and both are
+/// legitimate states rather than errors.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FileView {
+    /// Repository-relative path.
+    pub path: String,
+    /// Original path when this is a rename; `path` is the destination.
+    pub orig_path: Option<String>,
+    /// Content at the base commit, or `None` if the file did not exist there.
+    pub base: Option<String>,
+    /// Content in the worktree, or `None` if the file does not exist there.
+    pub head: Option<String>,
+    /// `true` if either side was clipped to the per-file cap. A gate that
+    /// needs the clipped region must return `Untrustworthy` rather than
+    /// reasoning about half a file.
+    pub truncated: bool,
+}
+
+impl FileView {
+    /// Whether the file exists at the base commit.
+    pub fn existed_at_base(&self) -> bool {
+        self.base.is_some()
+    }
+
+    /// Whether the file exists in the worktree.
+    pub fn exists_in_worktree(&self) -> bool {
+        self.head.is_some()
+    }
+}
+
 /// What the gates receive. Sized and clipped, so a gate can be a pure
 /// function of this value with no repository and no subprocess.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -142,6 +182,10 @@ pub struct Observation {
     pub diff: Clipped,
     /// `git status` entries, for path-level gates.
     pub status: Vec<StatusLine>,
+    /// Both sides of every file the observation covers. This is the two-tree
+    /// view: enough for a gate to compare base against worktree without
+    /// touching git.
+    pub files: Vec<FileView>,
     /// `Some` iff the diff is empty. Never `None` when it is — the point of
     /// the field is that "observed nothing" is always attributable.
     pub empty: Option<EmptyReason>,
@@ -212,6 +256,17 @@ impl Observation {
             budget,
             diff,
             status,
+            files: inputs
+                .files
+                .iter()
+                .map(|f| FileView {
+                    path: f.path.clone(),
+                    orig_path: f.orig_path.clone(),
+                    base: f.base.clone(),
+                    head: f.head.clone(),
+                    truncated: f.truncated,
+                })
+                .collect(),
             empty,
         }
     }
@@ -223,13 +278,23 @@ impl Observation {
         self.empty.is_some()
     }
 
-    /// Paths the observation knows about, from status. A gate that needs file
-    /// contents reads them through `palisade-git`; a gate that needs to know
-    /// *which* files moved reads this.
     /// Every path the status reports, for gates that need to know which files
     /// moved.
     pub fn paths(&self) -> impl Iterator<Item = &str> {
         self.status.iter().map(|s| s.path.as_str())
+    }
+
+    /// The two-tree view of one file, if the observation covers it.
+    pub fn file(&self, path: &str) -> Option<&FileView> {
+        self.files.iter().find(|f| f.path == path)
+    }
+
+    /// Every two-tree view whose destination path satisfies `pred`.
+    pub fn files_matching<'a>(
+        &'a self,
+        mut pred: impl FnMut(&'a FileView) -> bool,
+    ) -> impl Iterator<Item = &'a FileView> {
+        self.files.iter().filter(move |f| pred(f))
     }
 }
 
@@ -250,6 +315,7 @@ mod tests {
             dirty,
             unstaged: unstaged.to_string(),
             staged: staged.to_string(),
+            files: Vec::new(),
         }
     }
 

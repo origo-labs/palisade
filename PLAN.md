@@ -480,41 +480,122 @@ nine-element alphabet (585 vectors), plus a characterisation test that
    hazard (an index-anchored run) is reported as `diff_expected_but_absent`
    rather than as a clean bill of health.
 
-### M1 — Two-tree diff gates
-First gates, chosen because they need no AST and no subprocess, so they
-validate the whole pipeline cheaply:
-- `dependency_surface_unchanged` — parse `Cargo.toml` directly as TOML and diff
-  the declared production surface: direct `[dependencies]`, `[dev-dependencies]`
-  kept separate, `[features]`, and `default-features` flags. Base tree vs worktree.
-  **Not** a regex over diff text; `EVIDENCE.md` §6 records exactly where a regex
-  version went wrong, and it missed the dependency addition outright.
-  A direct TOML parse is also what keeps this gate an `Analyzed` gate with no
-  subprocess in its path. `cargo metadata` is the *escalation* for workspace-wide
-  and target-specific resolution, and it is not wired in v1: it is a build-graph
-  dependency, and the declared direct surface is the thing a reviewer can
-  actually see in a diff. If M5's corpus shows the direct parse misses real
-  production dependency changes, that is a delegated addition via
-  `palisade-exec` with a recorded calibration.
-- `tests_not_deleted` — deleted/renamed test paths, plus an `#[test]`/`#[ignore]`
-  count delta from an AST parse. Both halves are `Analyzed`. The `cargo test
-  -- --list` inventory delta named in PRD §6 is a *stronger* signal and is
-  available as a delegated `provides` edge from `checks_green` in M3; until
-  then the AST count is the whole check, and the report says so rather than
-  implying full coverage. **The `EVIDENCE.md` regression:** the diff matcher
-  must anchor on `+`/`-` markers *before* stripping them, and the fixture suite
-  includes the exact `-> list[Note]` false positive that cost the predecessor
-  38%, as a must-not-fire case.
-- `paths_unchanged` — frozen paths from `[gates].paths`.
-- `secret_absent` — pattern scan over the bounded diff. Allowlist-documented
-  patterns; every pattern ships with a documented false-positive example, or
-  it does not ship (the secret gate is the classic source of crying wolf).
-- `suppressions_not_widened`, `unsafe_surface_unchanged` — these need the AST
-  crate but are pure diff comparisons, so they land here too.
+### M1 — Two-tree diff gates — **shipped**
+Three gates, chosen because they need no AST and no subprocess, so they
+validate the whole pipeline cheaply. 95 tests, 36 of them the M1 exit
+criteria.
 
-**Exit:** every gate has (a) a fixture that fires it, (b) a fixture that must
-*not* fire it, (c) a base-vs-head test proving it is not a single-tree check.
-Aggregate zero false positives across the negative fixtures — and that number
-is published with the fixture count, per §7.
+**The blocker M0 left open, and how it was resolved.** A two-tree gate needs
+the base side of a file, and `git show <base>:<path>` is a subprocess — which
+gates may not spawn. M0's `Observation` carried only diff *text*, so no
+two-tree gate could run at all. The fix: **the two-tree view is materialised
+into the observation** during capture. `FileView` carries `path`, `orig_path`,
+`base`, `head` and a `truncated` flag, capped per file. The fetch happens once,
+in `palisade-git`; the *result* is what a gate receives. This is why the
+boundary holds and why gates stay testable against a hand-built view.
+
+The second consequence: a gate that needs an uncapped file must return
+`Untrustworthy` rather than reason about half a manifest, because half a
+`Cargo.toml` is a wrong answer rather than a partial one.
+
+Gates:
+- `dependency_surface_unchanged` — parses `Cargo.toml` as TOML and diffs the
+  declared production surface: `[dependencies]`, `[target.*.dependencies]`,
+  `[features]`, `default-features` flags and per-dependency version
+  requirements. Deliberately **not** `[dev-dependencies]` (not production
+  surface) and **not** the resolved graph in `Cargo.lock`. The `default-features`
+  and version checks are the part a manifest *diff* misses, which is why
+  `slop-gate` generalises the rule to surface rather than to "did the manifest
+  change". `cargo metadata` remains the escalation if M5's corpus shows the
+  direct parse misses real changes; it is a build-graph dependency and would
+  make this a `Delegated` gate.
+- `tests_not_deleted` — three signals, all over whole files on both sides,
+  never over diff text: a test-looking path disappeared; a `#[test]` count went
+  down in a surviving file; a skip marker was added. `cargo test -- --list`
+  gives a stronger inventory and arrives in M3 as a `consumes` edge from
+  `checks_green`.
+- `paths_unchanged` — component-wise prefix matching, so `fixtures_extra/` is
+  not inside `fixtures/`. Declaring no paths is `Untrustworthy`, not a pass.
+
+**Three findings from building it:**
+
+1. **`git status` is the wrong command for the file set.** The two-tree view
+   was first built from `git status --porcelain`, which is worktree-versus-index
+   and therefore *blind to committed work* — exactly the case the two-tree
+   model exists to cover. The end-to-end tests caught it: after a commit, the
+   view was empty and every gate saw nothing. It is now built from
+   `git diff --name-status -z <base>` (which also carries rename pairs) with
+   untracked paths unioned in from status. This is the same *class* as M0's
+   untracked-file finding: asking git the wrong question and reading the empty
+   answer as "there is nothing here".
+
+2. **Attribute matching that fails silently makes a gate look calibrated.**
+   `is_attr` compared the text after `#[` against the bare name, so for
+   `#[test]` it compared `"test]"` to `"test"` and matched *nothing*. Every
+   count was 0→0, and the "a test was added" test passed **vacuously**. The
+   attribute path is now parsed properly, so `#[test]`, `#[test = "x"]` and
+   `#[tokio::test]` match and `#[testify]` does not. A gate that counts zero of
+   everything is indistinguishable from a gate that works, which is exactly why
+   the must-not-fire fixtures exist.
+
+3. **"Not in the view" means "unchanged" — and only because of (1).** The
+   dependency gate returns `Clean` for an absent `Cargo.toml` rather than
+   `Untrustworthy`, which is sound precisely because the view is derived from
+   the diff of the same two trees the gate compares. Under the old,
+   status-derived view that same branch made the gate report `Untrustworthy` on
+   every repository whose manifest the current edit had not touched. The
+   argument is written out at the branch, and
+   `an_unchanged_repository_produces_no_findings_from_any_m1_gate` pins it.
+
+**Scope changes, both forced and both recorded:**
+
+- **The contract TOML parser moved up from M3.** No configurable gate can
+  exist without it — `paths_unchanged` needs frozen paths and
+  `dependency_surface_unchanged` needs an allow-list. M1 would otherwise have
+  been a library nothing could run.
+- **`secret_absent` moved out to its own milestone (M1.5).** A pattern-matching
+  secret gate is the classic crying-wolf liability, and calibrating it honestly
+  means measuring its false positives on a corpus rather than averaging it into
+  a milestone that has measured nothing. It stays a declared primitive, so a
+  project that wants it gets `Untrustworthy` — never a silent pass.
+- **`unsafe_surface_unchanged` and `suppressions_not_widened` moved to M2.** The
+  plan claimed they are "pure diff comparisons"; they are not. Counting `unsafe`
+  blocks or `#[allow]` sets correctly needs the AST, and doing it by text would
+  have put the same silently-wrong counting as finding (2) into a
+  blocking gate.
+
+**Exit — met.** Every gate has a firing fixture, a must-not-fire fixture, and a
+two-tree test proving it is not a single-tree check; the must-not-fire set
+includes the doc-comment `#[test]`, the `fixtures_extra/` sibling, the
+`contest/` sibling, the dev-dependency, the manifest reformat, and an unchanged
+repository. **Zero false positives across 36 gate fixtures.** The registry
+returns `Untrustworthy` for all nine unimplemented primitives, tested
+individually.
+
+### M1.5 — `secret_absent`, and only after a corpus
+A milestone of one gate, deliberately. A pattern-matching secret gate is the
+classic crying-wolf liability: it fires on documentation, on test fixtures, on
+lockfiles, and on base64 that merely looks like a key. A gate like that gets
+switched off, and a project that switches off one gate has learned that
+gates are advisory, which costs every other gate its authority too.
+
+So this gate is not shipped until it has been measured:
+- A pattern list where **every pattern ships with a documented
+  false-positive example drawn from a real repository.** A pattern with no
+  known false positive is a pattern nobody has tried to break.
+- A measured false-positive rate over the M5 corpus, published with the
+  pattern that produced each one.
+- `warn` by default regardless of the result. Promotion to `error` is the
+  project's decision, and per PRD 5 it needs a recorded calibration.
+
+Scope, stated so the gate cannot be read as more than it is: it scans the
+bounded observation for credential-shaped strings. It is not an entropy scan,
+not a git-history scan, and not a replacement for a secret-scanning service. A
+secret committed in an earlier commit is outside what it can see, and that
+limitation belongs in `judgement.not_covered` rather than in a README.
+
+**Exit:** a false-positive rate measured on a corpus, published, with every
+pattern's worst known false positive named.
 
 ### M2 — AST and API surface
 - `palisade-ast` wrapper, content-hash parse cache, refusal to guess on parser
@@ -524,14 +605,16 @@ is published with the fixture count, per §7.
   sub-second). Baseline comparison against the base tree, never a pattern match
   against current code. `EVIDENCE.md` §6 names this as the exact reason a
   pattern match produced a false positive.
-- Full `Analyzed` primitive set from PRD §6. `checks_green` and `external_tool`
-  are `Delegated` and land in M3; until then they are `NotImplemented`, which by
-  the precedence rule is `Error`, not `Pass`. A project that declares them in
-  M0–M2 gets a loud failure rather than a silently absent check.
+- `unsafe_surface_unchanged` and `suppressions_not_widened`, which M1 deferred
+  because counting them by text is exactly the silently-wrong counting M1
+  finding 2 documents. They need the AST and land here.
+- `secret_absent` lands in M1.5 with a measured corpus, not here.
 
 **Exit:** all M1 gates plus the AST set pass; public-API gate demonstrated
 against a real signature change (renamed param, changed return type, widened
-bound, new trait impl) and against four benign ones.
+bound, new trait impl) and against four benign ones. The `-> list[Note]`
+false positive from `EVIDENCE.md` §6 is a must-not-fire fixture here, since
+that is the gate whose first implementation produced it.
 
 ### M3 — `palisade-exec`, the delegated gates, and the report
 - `palisade-exec`: process spawn, per-tool argv from the contract, timeout,

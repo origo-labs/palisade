@@ -261,6 +261,13 @@ impl Repo {
         Ok(self.status_porcelain_z()?.is_empty())
     }
 
+    /// Per-file content cap for the two-tree view. Separate from the
+    /// observation's diff budget because they bound different things: the
+    /// diff budget bounds *reviewable evidence*, and this bounds the working
+    /// set a gate may load into memory. One giant generated file should not
+    /// be able to exhaust the second while saying nothing about the first.
+    pub const FILE_VIEW_CAP: usize = 256 * 1024;
+
     /// Everything a two-tree observation needs, fetched once.
     ///
     /// Note what is *absent*: no commit, no add, no write. The whole class of
@@ -276,13 +283,142 @@ impl Repo {
         let dirty = !status.is_empty();
         let unstaged = self.diff_unstaged(base.as_deref())?;
         let staged = self.diff_staged()?;
+        let files = self.file_views(base.as_deref(), &status)?;
         Ok(ObservationInputs {
             base,
             status,
             dirty,
             unstaged,
             staged,
+            files,
         })
+    }
+
+    /// Both sides of every file that differs between `base` and the worktree.
+    ///
+    /// The set comes from `git diff --name-status <base>`, **not** from
+    /// `git status`. Status is worktree-versus-index, so it is blind to work
+    /// that has already been committed — and committed work is precisely the
+    /// case the two-tree model exists to cover (PLAN.md 1.2). An earlier
+    /// version of this function built the list from status and the
+    /// end-to-end tests caught it: after a commit, the view was empty and
+    /// every gate saw nothing. Untracked files are unioned in from status,
+    /// since `diff` does not report them either.
+    ///
+    /// One `git show` per file rather than a batch: the set is bounded by the
+    /// size of the change under review, and a batch reader would mean parsing
+    /// a length-prefixed protocol to save a handful of process spawns on a run
+    /// whose budget is dominated by `cargo test` anyway. Revisit if M5's
+    /// per-commit budget measurement says otherwise.
+    fn file_views(&self, base: Option<&str>, status: &[StatusEntry]) -> Result<Vec<RawFile>> {
+        let mut entries: Vec<(String, Option<String>)> = match base {
+            Some(rev) => self
+                .changed_paths(rev)?
+                .into_iter()
+                .map(|(path, orig_path, _kind)| (path, orig_path))
+                .collect(),
+            None => status
+                .iter()
+                .map(|e| (e.path.clone(), e.orig_path.clone()))
+                .collect(),
+        };
+        // Untracked files are in status but never in `diff`.
+        for e in status.iter().filter(|e| e.is_untracked()) {
+            if !entries.iter().any(|(p, _)| *p == e.path) {
+                entries.push((e.path.clone(), e.orig_path.clone()));
+            }
+        }
+
+        let mut out = Vec::with_capacity(entries.len());
+        for (path, orig_path) in entries {
+            let entry_path = path.clone();
+            let entry_orig = orig_path.clone();
+            if self.root.join(&entry_path).is_dir() {
+                continue;
+            }
+            let mut base_content = match base {
+                Some(rev) => self.show(rev, &entry_path)?,
+                None => None,
+            };
+            // A rename's base side lives at the *original* path, so asking
+            // for the destination finds nothing. A copy, by contrast, is
+            // already present at the destination.
+            if base_content.is_none() {
+                if let (Some(rev), Some(orig)) = (base, &entry_orig) {
+                    base_content = self.show(rev, orig)?;
+                }
+            }
+            let head_content = self.worktree_file(&entry_path);
+            let truncated = base_content
+                .as_ref()
+                .is_some_and(|c| c.len() > Self::FILE_VIEW_CAP)
+                || head_content
+                    .as_ref()
+                    .is_some_and(|c| c.len() > Self::FILE_VIEW_CAP);
+            out.push(RawFile {
+                path: entry_path,
+                orig_path: entry_orig,
+                base: base_content.map(|c| Self::cap(&c)),
+                head: head_content.map(|c| Self::cap(&c)),
+                truncated,
+            });
+        }
+        Ok(out)
+    }
+
+    /// Paths that differ between `rev` and the worktree, with the status
+    /// letter that says how and, for a rename, the original path.
+    ///
+    /// `git diff --name-status -z` is NUL-separated, so a path containing a
+    /// space, a quote or a newline survives without unescaping. A rename or
+    /// copy emits a status, then the original path, then the destination.
+    fn changed_paths(&self, rev: &str) -> Result<Vec<(String, Option<String>, char)>> {
+        let out = run_bytes(
+            &self.root,
+            &["diff", "--name-status", "-z", "--find-renames", rev],
+        )?;
+        let mut fields = out.split(|b| *b == 0).filter(|f| !f.is_empty());
+        let mut result = Vec::new();
+        while let Some(status) = fields.next() {
+            if status.is_empty() {
+                continue;
+            }
+            // The status is a letter, optionally followed by a similarity
+            // score: `R100`.
+            let kind = status[0] as char;
+            let (orig, dest) = match kind {
+                'R' | 'C' => {
+                    let Some(orig) = fields.next() else { break };
+                    let Some(dest) = fields.next() else { break };
+                    (
+                        String::from_utf8_lossy(orig).into_owned(),
+                        String::from_utf8_lossy(dest).into_owned(),
+                    )
+                }
+                _ => {
+                    let Some(path) = fields.next() else { break };
+                    (
+                        String::from_utf8_lossy(path).into_owned(),
+                        String::from_utf8_lossy(path).into_owned(),
+                    )
+                }
+            };
+            let orig_path = (orig != dest).then_some(orig);
+            result.push((dest, orig_path, kind));
+        }
+        Ok(result)
+    }
+
+    /// Truncate on a char boundary, so a gate never receives a broken string.
+    fn cap(s: &str) -> String {
+        if s.len() <= Self::FILE_VIEW_CAP {
+            return s.to_string();
+        }
+        let mut end = Self::FILE_VIEW_CAP;
+        while end > 0 && !s.is_char_boundary(end) {
+            end -= 1;
+        }
+        s[..end].to_string()
     }
 }
 
@@ -303,6 +439,29 @@ pub struct ObservationInputs {
     /// Index-vs-HEAD diff. Kept separate because a bare `git diff` is silent
     /// about staged work.
     pub staged: String,
+    /// Both sides of every changed file, for the two-tree gates.
+    pub files: Vec<RawFile>,
+}
+
+/// One file's content at the base and in the worktree, as fetched.
+///
+/// Named `RawFile` because `palisade-observe` owns the canonical
+/// `FileView` that gates actually consume, and this crate sits below it and
+/// cannot name that type. The conversion is field-for-field, and the
+/// distinction is deliberate: this is "what git gave us", that is "what a gate
+/// is allowed to reason about".
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RawFile {
+    /// Repository-relative path; for a rename, the destination.
+    pub path: String,
+    /// Original path of a rename.
+    pub orig_path: Option<String>,
+    /// Content at the base commit, or `None` if absent there.
+    pub base: Option<String>,
+    /// Content in the worktree, or `None` if absent.
+    pub head: Option<String>,
+    /// Whether either side hit the per-file cap, or was not valid UTF-8.
+    pub truncated: bool,
 }
 
 /// One `git status --porcelain -z` entry, path already unquoted.

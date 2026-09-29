@@ -1,8 +1,11 @@
 //! `palisade-contract` — the parsed, validated `palisade.toml`.
 //!
-//! M0 scope: the type vocabulary only. No TOML parser yet (M3), but every
-//! type a gate result can name lives here so that `palisade-orchestrate`
-//! stays free of TOML (PLAN.md 2, boundary 4).
+//! Pulled forward from M3: no configurable gate can exist without it, so
+//! every M1 gate would otherwise be unrunnable. `palisade-orchestrate` stays
+//! free of TOML regardless (PLAN.md 2, boundary 4) — the parser lives here and
+//! the orchestrator consumes a validated [`Contract`].
+
+pub mod parse;
 
 use std::fmt;
 
@@ -238,6 +241,8 @@ pub struct Contract {
     pub baseline_ref: Option<String>,
     /// PRD 5. Mandatory. May be empty. Must carry a review date.
     pub judgement: JudgementSection,
+    /// Rule waivers, each with a gate, a path, and a reason.
+    pub suppressions: Vec<Suppression>,
 }
 
 /// One declared gate: an id, a primitive, and what a finding from it does.
@@ -258,6 +263,13 @@ pub struct Gate {
     pub provides: Vec<String>,
     /// Gates this one reads delegated output from.
     pub consumes: Vec<String>,
+    /// Frozen paths. Only meaningful for [`Primitive::PathsUnchanged`], and
+    /// rejected on any other primitive rather than read as a setting that
+    /// silently does nothing.
+    pub paths: Vec<String>,
+    /// Documented, reviewed additions. Not blanket permission: every entry is
+    /// a specific, reviewable exception.
+    pub allow: Vec<String>,
 }
 
 impl Gate {
@@ -271,9 +283,35 @@ impl Gate {
             reason: None,
             provides: Vec::new(),
             consumes: Vec::new(),
+            paths: Vec::new(),
+            allow: Vec::new(),
         }
     }
 }
+
+/// Every primitive, in a fixed order so error messages, documentation and the
+/// gate registry all agree. The registry matches on it exhaustively, so
+/// adding a variant here is a compile error until somebody decides what it
+/// does — which is the intended friction.
+pub const ALL_PRIMITIVES: [Primitive; 12] = [
+    Primitive::ChecksGreen,
+    Primitive::DependencySurfaceUnchanged,
+    Primitive::ExternalTool,
+    Primitive::Judged,
+    Primitive::PathsUnchanged,
+    Primitive::PublicApiUnchanged,
+    Primitive::SecretAbsent,
+    Primitive::SuppressionsNotWidened,
+    Primitive::TestsNotDeleted,
+    Primitive::UnsafeSurfaceUnchanged,
+    Primitive::ContractNotLoosened,
+    Primitive::ContractReviewStale,
+];
+
+/// Default observation budget when `[budget]` is absent. Matches
+/// `palisade_observe::Budget::DEFAULT`, duplicated as a literal so that
+/// `palisade-contract` stays free of a dependency on the observer.
+pub const DEFAULT_OBSERVATION_BYTES: usize = 128 * 1024;
 
 /// PRD 5. Mandatory, may be empty, must carry a review date. The section that
 /// decides whether a contract is a tool you can rely on or one that
