@@ -1,0 +1,78 @@
+{
+  "fitting": {
+    "drift": {
+      "auc": 0.775,
+      "acceptable_range": [
+        0.4801,
+        0.5637
+      ],
+      "unacceptable_range": [
+        0.4733,
+        0.5901
+      ],
+      "usable": false
+    },
+    "off_track": {
+      "auc": 0.775,
+      "acceptable_range": [
+        0.7351,
+        0.7661
+      ],
+      "unacceptable_range": [
+        0.7373,
+        0.7713
+      ],
+      "usable": false
+    },
+    "unverified": {
+      "auc": 0.475,
+      "acceptable_range": [
+        0.6731,
+        0.7546
+      ],
+      "unacceptable_range": [
+        0.6541,
+        0.8117
+      ],
+      "usable": false
+    }
+  },
+  "holdout": {
+    "drift": {
+      "auc": 0.5272727272727272,
+      "acceptable_range": [
+        0.5459,
+        0.6232
+      ],
+      "unacceptable_range": [
+        0.4957,
+        0.5884
+      ],
+      "usable": false
+    },
+    "off_track": {
+      "auc": 0.7090909090909091,
+      "acceptable_range": [
+        0.6768,
+        0.7706
+      ],
+      "unacceptable_range": [
+        0.722,
+        0.7992
+      ],
+      "usable": false
+    },
+    "unverified": {
+      "auc": 0.6181818181818182,
+      "acceptable_range": [
+        0.3516,
+        0.7203
+      ],
+      "unacceptable_range": [
+        0.3813,
+        0.9292
+      ],
+      "usable": false
+    }
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "fitting": {
+    "drift": {
+      "auc": 0.625,
+      "acceptable_range": [
+        0.0,
+        0.0
+      ],
+      "unacceptable_range": [
+        0.0,
+        0.9
+      ],
+      "usable": false
+    },
+    "off_track": {
+      "auc": 0.5,
+      "acceptable_range": [
+        0.1,
+        0.1
+      ],
+      "unacceptable_range": [
+        0.1,
+        0.1
+      ],
+      "usable": false
+    },
+    "unverified": {
+      "auc": 0.5875,
+      "acceptable_range": [
+        0.0,
+        0.85
+      ],
+      "unacceptable_range": [
+        0.0,
+        0.9
+      ],
+      "usable": false
+    }
+  },
+  "holdout": {
+    "drift": {
+      "auc": 0.5909090909090909,
+      "acceptable_range": [
+        0.0,
+        0.0
+      ],
+      "unacceptable_range": [
+        0.0,
+        0.95
+      ],
+      "usable": false
+    },
+    "off_track": {
+      "auc": 0.5,
+      "acceptable_range": [
+        0.1,
+        0.1
+      ],
+      "unacceptable_range": [
+        0.1,
+        0.1
+      ],
+      "usable": false
+    },
+    "unverified": {
+      "auc": 0.5545454545454546,
+      "acceptable_range": [
+        0.0,
+        0.6
+      ],
+      "unacceptable_range": [
+        0.0,
+        0.9
+      ],
+      "usable": false
+    }
+  }
+}

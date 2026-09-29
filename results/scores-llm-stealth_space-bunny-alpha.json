@@ -1,0 +1,37 @@
+{
+  "holdout": {
+    "drift": {
+      "auc": 0.6727272727272727,
+      "acceptable_range": [
+        0.9,
+        1.0
+      ],
+      "unacceptable_range": [
+        0.99,
+        1.0
+      ]
+    },
+    "off_track": {
+      "auc": 0.5909090909090909,
+      "acceptable_range": [
+        0.2,
+        1.0
+      ],
+      "unacceptable_range": [
+        0.1,
+        1.0
+      ]
+    },
+    "unverified": {
+      "auc": 0.5636363636363636,
+      "acceptable_range": [
+        0.7,
+        1.0
+      ],
+      "unacceptable_range": [
+        0.95,
+        1.0
+      ]
+    }
+  }
+}
