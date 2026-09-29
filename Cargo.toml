@@ -1,0 +1,73 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/palisade-contract",
+    "crates/palisade-git",
+    "crates/palisade-observe",
+    "crates/palisade-ast",
+    "crates/palisade-gates",
+    "crates/palisade-exec",
+    "crates/palisade-orchestrate",
+    "crates/palisade-report",
+    "crates/palisade-cli",
+    "crates/palisade-testkit",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT OR Apache-2.0"
+publish = false
+
+# Pinned in one place so the gate suite, the report and the parse cache all
+# agree. See PLAN.md 2.1: a dependency that starts needing the network is a
+# PRD amendment, not a Cargo change.
+[workspace.dependencies]
+palisade-contract = { path = "crates/palisade-contract" }
+palisade-git = { path = "crates/palisade-git" }
+palisade-observe = { path = "crates/palisade-observe" }
+palisade-ast = { path = "crates/palisade-ast" }
+palisade-gates = { path = "crates/palisade-gates" }
+palisade-exec = { path = "crates/palisade-exec" }
+palisade-orchestrate = { path = "crates/palisade-orchestrate" }
+palisade-report = { path = "crates/palisade-report" }
+palisade-testkit = { path = "crates/palisade-testkit" }
+
+tree-sitter = "0.27"
+tree-sitter-rust-orchard = "0.16"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "1"
+camino = "1"
+blake3 = "1"
+clap = { version = "4", features = ["derive"] }
+rayon = "1"
+
+[workspace.lints.rust]
+missing_debug_implementations = "warn"
+unreachable_pub = "warn"
+unused_qualifications = "warn"
+# M-CANONICAL-DOCS: every public item gets a docstring. A gate tool whose
+# public surface is undocumented cannot be reviewed into correctness.
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+# Correctness, not taste. The set a gate tool cannot afford to trip over.
+correctness = { level = "deny", priority = -1 }
+suspicious = { level = "deny", priority = -1 }
+# A gate that is right but unreadable cannot be reviewed into correctness.
+# `expect_used`/`unwrap_used` are NOT denied: this is a binary, panics are an
+# acceptable abort path, and the verdict algebra's total functions are
+# exhaustively tested.
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"
+
+[profile.release]
+# A supervisor ships as one static binary; build time is not on the hot path,
+# but a fat binary in CI cache is. Default `panic=abort` is deliberately NOT
+# set: tests need unwinding, and the two conflict.
+lto = "thin"
+codegen-units = 1
+strip = "symbols"

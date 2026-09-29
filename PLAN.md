@@ -62,12 +62,12 @@ schema, is `escalate`-only, and its implementation returns
 project that declares one gets a loud, correct failure instead of a silent
 regression to a heuristic.
 
-The design is built so this is additive. `Provenance` already has a `Judged`
-variant, the verdict algebra already routes `escalate` separately, and M6 adds
-a third gate kind beside `Analyzed` and `Delegated` without touching the
-reduction or either existing kind. Shipping the seam now and the body later is
-strictly better than shipping the body and discovering the seam was
-load-bearing.
+The design is built so this is additive. `Origin` already has exactly the two
+variants a judgement could not extend, the verdict algebra already routes
+`escalate` separately, and M6 adds a third gate kind — one that can only ever
+produce a `Fail` — without touching the reduction or either existing kind.
+Shipping the seam now and the body later is strictly better than shipping the
+body and discovering the seam was load-bearing.
 
 **Exit gate for M6** (must all hold before the tier is enabled by default):
 a fresh holdout set, never used for framing, with recall and specificity
@@ -143,6 +143,8 @@ append marker. Total never exceeds N.
 ```
 palisade/
   Cargo.toml                    # workspace
+  .github/workflows/ci.yml      # fmt, clippy, test, boundary, no-network, deny
+  scripts/check-boundary.sh     # "only git and exec may spawn", enforced
   crates/
     palisade-contract/          # palisade.toml: parse, validate, deny-unknown
     palisade-git/               # the only crate that shells out to git
@@ -151,17 +153,27 @@ palisade/
     palisade-gates/             # Analyzed gates: one module per primitive, no I/O
     palisade-exec/              # Delegated gates: the only crate that spawns
                                 #   non-git processes. Sole constructor of
-                                #   Provenance::Delegated.
+                                #   Origin::Delegated.
     palisade-orchestrate/       # verdict algebra, precedence, exit codes — pure
     palisade-report/            # human | json | sarif 2.1.0
-    palisade-cli/               # binary: `palisade check`, `palisade init`
-  tests/
-    fixtures/                   # two tiny repos, planted violations, committed
-    verdict_algebra.rs          # rule 1, 2, 5 as property tests
-    dirty_tree_regression.rs    # the EVIDENCE apparatus bug
+    palisade-cli/               # binary: `palisade check`, `palisade observe`
+    palisade-testkit/           # fixture repo builder. Dev-dependency only.
   docs/
     CONTRACT.md                 # generated from the schema, checked in CI
 ```
+
+Integration tests live in the crate that owns the behaviour, not in a
+top-level `tests/`: `crates/palisade-orchestrate/tests/verdict_algebra.rs`,
+`crates/palisade-observe/tests/dirty_tree_regression.rs` and `.../budget.rs`.
+A single top-level directory would mean the tests could not see the crates'
+private internals, and more importantly it would blur which boundary each test
+is exercising.
+
+`palisade-testkit` is a tenth crate rather than a `tests/fixtures/` directory
+of committed repositories. It builds fixtures deterministically, which means
+"here is how to make a dirty tree" is written down exactly once — and that
+particular knowledge is the thing the predecessor programme got wrong, so it
+gets one home rather than a copy per test file.
 
 Six boundaries that matter, each enforced by a lint or a test rather than
 convention:
@@ -215,28 +227,47 @@ Cargo change.
 This is the heart, and it is small enough to prove correct by exhaustion.
 
 ```rust
-enum Provenance {
+// Deliberately has NO `Judged` variant. A judgement can only ever be a `Fail`
+// at escalate severity, so "a model said this is fine" is not expressible as
+// a pass. That is the type system, not a convention.
+enum Origin {
     Analyzed { primitive: Primitive },            // Palisade's own analysis
     Delegated { tool: ToolId, version: String }, // a trusted process said so
-    Judged,                                      // M6 only; never in v1
 }
 
 enum GateOutcome {
-    Pass { provenance: Provenance },
-    Fail(Finding),          // Finding carries its own Provenance
-    NotImplemented { primitive: Primitive },
-    Untrustworthy { reason: UntrustworthyReason, provenance: Provenance },
+    Pass { origin: Origin },
+    Fail(Finding),          // Finding carries its own Origin
+    Untrustworthy { reason: UntrustworthyReason, origin: Origin },
     Skipped { reason: SkipReason },
+    // `NotImplemented` is a variant of UntrustworthyReason, not its own
+    // outcome: an unimplemented primitive produces no trustworthy verdict,
+    // which is precisely what `Untrustworthy` means.
 }
 
 enum Verdict { Accept, Block, Escalate, Error }
 ```
 
-A `Finding`'s `provenance` is not a free field to be filled in — it is
-constructed from the `Provenance` on the `GateOutcome` that produced it, by
+A `Finding`'s `origin` is not a free field to be filled in — it is
+constructed from the `Origin` on the `GateOutcome` that produced it, by
 `Analyzed` gates carrying `Primitive` and by `palisade-exec` carrying
 `ToolId`+`version`. There is no constructor that lets a gate claim a
 provenance it did not earn.
+
+Two predicates on `GateOutcome`, kept distinct because conflating them is
+itself a bug this milestone hit:
+
+- `is_adverse` — the outcome carries news: a `Fail` or an `Untrustworthy`.
+  Every adverse outcome is reported.
+- `rules_out_accept` — the outcome is *incompatible* with `Accept`. Strictly
+  stronger: a `warn` finding is adverse and perfectly compatible with
+  acceptance, which is what `warn` means and why PRD 5 makes it the default
+  severity. Only `error`/`escalate` findings and untrustworthy gates rule out
+  accept.
+
+The second is the one monotonicity is stated over, and stating it over the
+first is wrong — it would assert that a gate can *un*-accept a verdict, which
+is the opposite of the rule.
 
 ### 3.0 The two gate kinds, and why they are separated
 
@@ -288,10 +319,11 @@ Two properties this buys, both tested in `verdict_algebra.rs`:
   model provenance. In M6, `Judged` becomes a `Fail` with
   `severity: escalate` and a forced `provenance: Judged` marker; the property
   test asserts no input containing that marker yields `Accept`.
-- **Provenance is total.** Every `Finding` and every `Pass` has a
-  `Provenance`, and no `Provenance::Delegated` value can be constructed
-  outside `palisade-exec`. A test asserts the JSON and SARIF outputs both carry
-  it, because a report that cannot say whose verdict it is cannot be audited.
+- **Provenance is total.** Every `Finding` and every `Pass` has an `Origin`,
+  `Origin::Delegated` is constructible only by `palisade-exec`, and `Origin`
+  has no `Judged` variant at all. A test asserts the JSON and SARIF outputs
+  both carry it, because a report that cannot say whose verdict it is cannot be
+  audited.
 
 ### 3.1 Exit codes
 
@@ -344,7 +376,7 @@ struct Finding {
     observed: String,           // what was found
     message: String,            // human sentence, no facts not in the fields above
     fingerprint: Fingerprint,   // blake3(gate_id, path, rule params, normalized finding)
-    provenance: Provenance,     // Analyzed | Delegated { tool, version } | Judged
+    origin: Origin,             // Analyzed | Delegated { tool, version }
 }
 ```
 
@@ -403,27 +435,50 @@ Each milestone ends with a checkable exit criterion. No milestone starts before
 the previous one exits, and M0's regression test is written before any gate
 code exists.
 
-### M0 — Skeleton and the apparatus bug
-- Workspace, all nine crates, stubbed boundaries. `palisade-exec` ships empty
+### M0 — Skeleton and the apparatus bug — **shipped**
+- Workspace, all ten crates, stubbed boundaries. `palisade-exec` ships empty
   in M0 and is first populated in M3; its existence from the start is what
   keeps the boundary from being retrofitted later.
 - `palisade-git` with exactly the operations gates need: `rev_parse`, `status
-  --porcelain`, `diff` (unstaged **and** staged, and untracked file contents),
-  `show`, `merge_base`.
+  --porcelain -z`, `diff` (unstaged **and** staged, and untracked file
+  contents), `show`, `merge_base`.
 - `palisade-observe` with a hard byte budget and the marker-inside-the-budget
   rule.
-- **`tests/dirty_tree_regression.rs`**: a fixture repo with one unstaged edit.
-  Assert the observation is non-empty, contains the edit, and that the same
-  fixture *committed* yields an explicitly-flagged empty diff rather than a
-  silent success. This is the `EVIDENCE.md` bug, frozen as a test, before it
-  can recur.
+- **`crates/palisade-observe/tests/dirty_tree_regression.rs`**: a fixture repo
+  with one unstaged edit. Asserts the observation is non-empty and contains
+  the edit, and that the same fixture *committed* yields an explicitly-flagged
+  empty diff rather than a silent success. This is the `EVIDENCE.md` bug,
+  frozen as a test, before it can recur.
 - `palisade-orchestrate` verdict algebra with no gates registered.
-- CI: fmt, clippy `-D warnings`, test, `cargo deny`.
+- CI: fmt, clippy `-D warnings`, test, boundary check, no-network-in-tree,
+  `cargo deny`.
 
-**Exit:** a commit with no changes to the fixture yields `Accept` with an
-`observation: empty` record; a commit with an unstaged change yields a
-non-empty observation. Verdict algebra property tests pass over exhaustively
-enumerated gate vectors.
+**Exit — met.** A commit with no changes to the fixture yields an explicitly
+attributable empty observation; an unstaged change yields a non-empty one. The
+verdict algebra passes over every vector of length ≤3 drawn from a
+nine-element alphabet (585 vectors), plus a characterisation test that
+`accept` holds exactly when nothing rules it out. 53 tests, clippy clean under
+`-D warnings`, `cargo fmt --check` clean.
+
+**Two findings from building it, both worth more than the code:**
+
+1. **`git diff` does not include untracked files, however you spell the flag.**
+   `-u`/`-U` is unified context width; `diff` has no `--untracked-files`. A
+   supervisor whose observation omits new files is observing nothing where the
+   work usually is, and every gate reading a new file's content would be
+   silently blind. The first implementation of `diff_unstaged` carried a
+   comment asserting otherwise, and the regression test caught it. Untracked
+   content is now synthesised with `git diff --no-index` and labelled, so its
+   provenance stays visible in the diff itself.
+
+2. **Anchoring to a base commit makes the predecessor's harness bug a
+   non-event.** `git diff <base>` is base-vs-worktree and still sees committed
+   work; `git diff` alone is worktree-vs-index and goes blind the moment
+   someone commits. The regression test was originally written asserting the
+   *buggy* behaviour was expected, which was wrong in a useful way — the
+   two-tree model from §1.2 means the mistake is survivable, and the remaining
+   hazard (an index-anchored run) is reported as `diff_expected_but_absent`
+   rather than as a clean bill of health.
 
 ### M1 — Two-tree diff gates
 First gates, chosen because they need no AST and no subprocess, so they
@@ -536,8 +591,9 @@ failure.
 ### M6 — Judgement tier (opt-in, gated on §1.1)
 Only after M5. Fresh holdout, forced choice over
 `no_change | on_topic | off_topic | contradicts_rules`, `escalate` severity
-only, provenance marked `Judged`, the acceptance-impossibility property test
-extended to cover it.
+only, and the acceptance-impossibility test extended: since `Origin` has no
+`Judged` variant, the guarantee is structural, and M6's job is to keep it that
+way rather than to prove it.
 
 ---
 
@@ -548,9 +604,10 @@ tests do not exist in v1 (no model).
 
 | Layer | What | How |
 | --- | --- | --- |
-| Verdict algebra | rules 1, 2, 5, and the three-target separation | Exhaustive enumeration over small gate vectors + proptest for monotonicity |
+| Verdict algebra | rules 1, 2, 5, and the three-target separation | Exhaustive enumeration: every vector of length ≤3 over a nine-element alphabet, plus a characterisation test. A random sweep would be a strictly weaker claim for more code, and this state space is small enough to be closed |
 | `palisade-exec` | the §3.1 exit-code table, one row one test | A recording fake process; asserts timeout, missing binary, signal, and unknown exit code all yield `Untrustworthy` and `provenance: Delegated` naming the tool |
-| Provenance | "whose verdict is this" survives to the artefact | Test that `Provenance::Delegated` is unconstructible outside `palisade-exec`, plus a CI check that no other crate depends on `std::process` |
+| Provenance | "whose verdict is this" survives to the artefact | Test that `Origin::Delegated` is unconstructible outside `palisade-exec`, plus `scripts/check-boundary.sh` in CI |
+| `is_adverse` vs `rules_out_accept` | conflating them asserts a gate can un-accept a verdict | Both properties tested separately over the whole state space |
 | Gates | each fires, each stays silent | Two fixture repos, planted violations, committed; each gate gets a firing and a **must-not-fire** fixture |
 | Diff machinery | `EVIDENCE.md` apparatus bugs | Named regression tests, one per recorded bug (§1 of `EVIDENCE.md`, §4, §6) |
 | Observers | bounded observation | Property: for any input and any budget, output length ≤ budget, marker present exactly once |
@@ -591,9 +648,10 @@ project.
    exactly one of `accept | block | escalate | error`, with exit code 0/1/3/2.
 2. Every primitive in PRD §6 is implemented, or is `NotImplemented` and forces
    `Error`. No primitive silently passes.
-3. Every finding and every `Pass` carries a `Provenance`, present in the JSON
-   and SARIF output. `Delegated` is constructible only by `palisade-exec`, and
-   CI fails if any other crate spawns a process.
+3. Every finding and every `Pass` carries an `Origin`, present in the JSON and
+   SARIF output. `Origin::Delegated` is constructible only by `palisade-exec`,
+   `Origin` has no `Judged` variant, and CI fails if any crate outside
+   `palisade-git`/`palisade-exec` spawns a process.
 4. Zero false positives across the negative fixture suite, published with the
    count.
 5. Every artefact states what it did not cover, from `judgement.not_covered`.

@@ -1,0 +1,8 @@
+/target
+**/*.rs.bk
+Cargo.lock.orig
+
+# Local scratch, and the artefacts a threshold curve is derived from. The
+# curves themselves are published in docs/, not in the working tree.
+/scratch
+*.sarif

@@ -1,0 +1,54 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+  # A gate tool that reports a different result on a different machine cannot
+  # be calibrated. Reproducible builds are part of the product claim, not a
+  # nicety.
+  RUSTFLAGS: "-C target-cpu=x86-64-v3"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: fmt
+        run: cargo fmt --all --check
+
+      - name: clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: test
+        run: cargo test --workspace
+
+      - name: crate boundary
+        # Only palisade-git and palisade-exec may spawn a process. See
+        # scripts/check-boundary.sh for why this is not a lint.
+        run: ./scripts/check-boundary.sh
+
+      - name: no network at analysis time
+        # PRD 3.3: the supervisor must not add a language runtime and a
+        # network dependency to every commit. The dependency tree is the
+        # place that claim is kept.
+        run: |
+          ! cargo tree --workspace --edges normal \
+            | grep -E '^\S+ (reqtree|http|hyper|tokio|reqwest|ureq|openssl|native-tls|rustls) ' \
+            || (echo "network-capable dependency in the production tree" && exit 1)
+
+      - name: licence and advisory audit
+        run: |
+          cargo install cargo-deny --locked
+          cargo deny check licenses advisories

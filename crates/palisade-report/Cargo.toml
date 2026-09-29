@@ -1,0 +1,14 @@
+[package]
+name = "palisade-report"
+description = "human | json | sarif 2.1.0. The only SARIF serialiser."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+

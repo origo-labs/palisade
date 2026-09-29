@@ -1,0 +1,16 @@
+[package]
+name = "palisade-orchestrate"
+description = "The verdict algebra. Pure: no TOML, no tree-sitter, no processes."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+palisade-contract = { workspace = true }
+blake3 = { workspace = true }
+camino = { workspace = true }

@@ -1,0 +1,23 @@
+[package]
+name = "palisade-cli"
+description = "The single palisade binary."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "palisade"
+path = "src/main.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+palisade-git = { workspace = true }
+palisade-observe = { workspace = true }
+palisade-orchestrate = { workspace = true }
+palisade-contract = { workspace = true }
+camino = { workspace = true }
+clap = { workspace = true }
