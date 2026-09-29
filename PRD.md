@@ -272,23 +272,53 @@ what it could do:
 - Zero false positives is a measured claim about a corpus, never a property of
   the software.
 
-## 9. Success criteria
+## 9. Success criteria — **AMENDED 2026-09-29**
 
-Validated when all of these hold on **three real Rust repositories, none written
-by us**:
+> This section replaces criterion 1 and the three-repository validation design.
+> The reasoning is in `PLAN.md` §7. In short: a screen of 12 popular Rust
+> repositories found that **none of them write down code-quality rules** — the
+> large contribution guides are about build environments, editor setup and
+> release process. Criterion 1 therefore had a near-zero denominator on exactly
+> the repositories it was meant to be measured on, and the 4-of-4 result in
+> `EVIDENCE.md` §6 turns out to have been circular: those fixtures were written
+> *as* gates and then transcribed back out of gate form.
+>
+> The product is unchanged. The *question* is different, and the question is
+> the one the evidence can actually answer.
 
-1. A majority of each repository's *stated* quality rules transcribe into gates
-   without inventing a rule the project did not already believe.
+The amended claim: **Palisade is a standard for building Rust projects with
+agents, and its contract is the artefact.** The gates are commodity — `cargo
+test`, `clippy` and `fmt` are everywhere, and `slop-gate` already exists. What
+does not exist in any repository we examined is a single dated, owned artefact
+saying what this project's bar is and what it does not cover. That is the
+product; the gates are the content it holds.
+
+Validated when all of these hold:
+
+1. **A generated contract finds real problems in real agent-authored changes,
+   at an acceptable false-positive rate.** This replaces transcription rate,
+   which is tautological when Palisade writes the contract. The experiment:
+   generate a contract for a repository the tool has never seen, apply it to
+   real merges, and have a human judge each finding. A finding is a false
+   positive only if a human says the code was fine; no ground-truth labels are
+   needed, which is what makes this measurable at all.
 2. The full suite runs on every commit inside the repository's existing CI
    budget, with no model in the loop.
-3. Zero false positives at `error` severity over a corpus of real pull requests,
-   measured and published with the calibration.
+3. **Zero false positives at `error` severity** over the corpus, measured and
+   published with the calibration. This is now the *primary* criterion rather
+   than one of four, because with a generated contract there is no
+   transcription question left to answer.
 4. `judgement.not_covered` is non-empty, specific, and reviewed. An empty list
    means the contract claims more than it delivers, and the tool should warn.
+5. **The standard survives contact with at least two projects the author did
+   not write.** This is new, and it is the criterion that decides whether this
+   is a product or a personal tool. Every repository available to us is
+   agent-written by one author, who is also the person choosing the gates and
+   judging the findings. A false positive on our own corpus is a bug report; on
+   someone else's project it is the reason they turn it off.
 
-Criterion 1 decides whether this is a product or a demo. All existing
-gate-feasibility evidence comes from two Python fixtures we designed ourselves,
-which is close to a best case.
+Criterion 5 cannot be satisfied by us alone and is named here so it is not
+quietly dropped.
 
 ## 10. Open questions
 

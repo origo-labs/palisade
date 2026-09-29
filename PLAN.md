@@ -895,21 +895,65 @@ paths, an unchanged contract, a contract absent from the observation, a new gate
 at `error`, and a calibrated promotion. Unjustified loosenings block; justified
 ones are reported at `warn` with the reason attached.
 
-### M5 — Validation on repositories we did not write
-PRD §9. Not optional and not parallelisable with anything else.
+### M5 — Validation: the gates against real agent-written Rust
 
-- Three real Rust repositories, none authored by us, no tuning allowed.
-- For each: transcribe the project's *stated* rules into gates, recording
-  every rule that could not be transcribed and why. The transcription rate is
-  the primary number.
-- Corpus of real pull requests for false positives at `error` severity.
-  Published: N, FP count, and the threshold curve each threshold came from.
-- Publish the full result, including the criterion that failed, in `EVAL.md`.
+Superseded in scope by the PRD §9 amendment (2026-09-29) — see the entry there
+for why transcription rate is no longer the measurement. The rest stands.
 
-**Exit:** criteria 1–4 of PRD §9 measured and written down. If criterion 1
-fails, the plan stops and the PRD is amended — that is the decision this
-milestone exists to force, and it is a legitimate outcome, not a project
-failure.
+**Dry run, 2026-09-29, before the measurement.** Every gate run over the merge
+history of six real agent-written repositories. No contract exists for any of
+them, so this is a *robustness and false-positive-shape* run, not the
+calibration: it asks whether the gates survive real code, and what fires.
+
+| Repo | Merges | Clean | With findings | Errors |
+| --- | --- | --- | --- | --- |
+| `warmplane` | 104 | 81 | 23 | **0** |
+| `semble-rs` | 22 | 18 | 4 | 0 |
+| `gliner2-candle` | 5 | 4 | 1 | 0 |
+| `rust-okf` | 1 | 0 | 1 | 0 |
+| `pearls` | 4 | 4 | 0 | 0 |
+| `duiker` | 1 | 1 | 0 | 0 |
+
+**137 merges, zero errors.** The gates parse and compare real code without a
+single `Untrustworthy`, which is the first evidence that the M2 refusal-to-guess
+path is not firing constantly on ordinary Rust.
+
+Findings: 522 `public_api_unchanged` additions (all `warn`, by design — a gate
+that blocks on every new public function gets switched off), 2
+`tests_not_deleted`, 1 `suppressions_not_widened`.
+
+**The one real finding is correct.** `src/daemon/state.rs` gained
+`#[allow(dead_code)]` across several merges. That is genuine suppression growth
+and exactly what M2's gate exists to catch.
+
+**The two `tests_not_deleted` findings are false positives, and the most
+valuable thing the dry run produced.** `src/http_v1.rs` was split into a
+module: it became `src/http_v1/mod.rs` plus eight new files, and 17 tests moved
+into `src/http_v1/tests.rs`. The gate saw one file lose its tests and reported
+`3 test(s) removed from src/daemon.rs` and `17 test(s) removed from
+src/http_v1.rs`. **Verified: 17 tests before, 17 after, none deleted.**
+
+This is the same shape as the `EVIDENCE.md` §6 return-type false positive —
+one file's view of the world is not the repository's — and it is worse, because
+a file-to-module split is an ordinary refactor that a good agent does
+constantly. The fix is to compare test *identity across the whole tree*, not
+per file: a test that moved has not been deleted, and a test that exists
+nowhere has. That is a real design change to `tests_not_deleted`, and it is
+the first thing M5 should fix.
+
+**Two harness bugs, both mine, both instructive.** The first dry-run harness
+checked merges out in the working repository and left it dirty — the exact class
+of bug M0 exists to prevent, reintroduced by tooling written after it. And its
+batched `git cat-file --batch` parser ignored the size field, writing file
+contents offset and truncating one to 15 bytes instead of 1562. The gates
+correctly reported `Untrustworthy` on that corrupt file, which is M2's
+refusal-to-guess working exactly as designed. **Three gates refusing to reason
+about a file that does not parse is the system behaving correctly; the bug was
+in the thing feeding it.**
+
+**Exit:** the FP corpus is built and the false-positive shape is known. Two
+file-split false positives must be fixed before criterion 3 can be measured, and
+criterion 5 (repositories we did not write) is still open.
 
 ### M6 — Judgement tier (opt-in, gated on §1.1)
 Only after M5. Fresh holdout, forced choice over
