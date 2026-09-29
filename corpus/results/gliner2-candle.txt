@@ -1,0 +1,106 @@
+corpus: delegated gates excluded from /Users/origo/src/gliner2-candle (8 analyzed gates)
+=== /Users/origo/src/gliner2-candle @ 7bf0deee82b1e5e7060507855c1e50887fb0e1e2 ===
+replayed 5 of 5 merges   clean=4  with-findings=1  error=0  skipped=0
+
+findings by primitive:
+    88  public_api_unchanged
+     9  suppressions_not_widened
+
+samples:
+   public_api_unchanged | warn | public trait `Assignment` was added. Additions are not a compatibility break; list the path in  || exp=None obs=/// What a constraint reads: selected labels, decided t
+   public_api_unchanged | warn | public struct `BoundaryClassifier` was added. Additions are not a compatibility break; list the || exp=None obs=/// Classification head of GLiNER2.5 (`classifier.{0,3}
+   public_api_unchanged | warn | public struct `BoundaryEncoder` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Boundary encoder: projects token embeddings into bo
+   public_api_unchanged | warn | public struct `BoundaryModel` was added. Additions are not a compatibility break; list the path || exp=None obs=/// Complete GLiNER2.5 boundary model (everything excep
+   public_api_unchanged | warn | public struct `BoundaryProposer` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Sparse proposal stage: pairs top-k starts with ends
+   public_api_unchanged | warn | public struct `BoundaryQueryHead` was added. Additions are not a compatibility break; list the  || exp=None obs=/// Per-query projections producing start/end/inside bo
+   public_api_unchanged | warn | public enum `Constraint` was added. Additions are not a compatibility break; list the path in ` || exp=None obs=/// A hard constraint on a classification assignment. #
+   public_api_unchanged | warn | public const `DEFAULT_CHUNK_OVERLAP` was added. Additions are not a compatibility break; list t || exp=None obs=/// Default word overlap between adjacent chunks (match
+   public_api_unchanged | warn | public const `DEFAULT_CHUNK_SIZE` was added. Additions are not a compatibility break; list the  || exp=None obs=/// Default maximum words per chunk (matches the Python
+   public_api_unchanged | warn | public struct `DecodeProblem` was added. Additions are not a compatibility break; list the path || exp=None obs=/// The problem given to the decoder. pub struct Decode
+   public_api_unchanged | warn | public struct `DecodedRecord` was added. Additions are not a compatibility break; list the path || exp=None obs=/// One decoded record: field query id → selected (star
+   public_api_unchanged | warn | public struct `DictAssignment` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// Reference implementation backed by `HashMap`s. #[de
+   public_api_unchanged | warn | public trait impl `DictAssignment as (type_identifier)` was added. Additions are not a compatib || exp=None obs=impl Assignment for DictAssignment { fn is_decided(&sel
+   public_api_unchanged | warn | public struct `LocalAssignment` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// One local assignment for a task: a set of selected 
+   public_api_unchanged | warn | public const `MASK_LOGIT` was added. Additions are not a compatibility break; list the path in  || exp=None obs=/// Finite sentinel used by upstream instead of `-inf` 
+   public_api_unchanged | warn | public enum `MergePolicy` was added. Additions are not a compatibility break; list the path in  || exp=None obs=/// Policy for resolving spans that overlap after mergi
+   public_api_unchanged | warn | public const `NUM_INSTANCE_QUERIES` was added. Additions are not a compatibility break; list th || exp=None obs=/// Number of learned record-instance queries. pub cons
+   public_api_unchanged | warn | public struct `PairScorer` was added. Additions are not a compatibility break; list the path in || exp=None obs=/// Pairwise reranking scorer combining endpoint compat
+   public_api_unchanged | warn | public struct `RecordDecoder` was added. Additions are not a compatibility break; list the path || exp=None obs=/// Structured-record decoder (`record_decoder.*` at th
+   public_api_unchanged | warn | public struct `RelationScorer` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// Relation scoring module for joint entity/relation e
+   public_api_unchanged | warn | public struct `SharedPoolBuilder` was added. Additions are not a compatibility break; list the  || exp=None obs=/// Builds the shared candidate pool from proposed boun
+   public_api_unchanged | warn | public struct `SharedPoolScorer` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Scores candidates drawn from the shared pool agains
+   public_api_unchanged | warn | public struct `SharedPoolScores` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Result of `BoundaryModel::score_sample`. #[derive(D
+   public_api_unchanged | warn | public struct `Solution` was added. Additions are not a compatibility break; list the path in ` || exp=None obs=/// Solution returned by the decoder. #[derive(Debug)] 
+   public_api_unchanged | warn | public struct `TextChunk` was added. Additions are not a compatibility break; list the path in  || exp=None obs=/// A chunk of text with offsets into the original docu
+   public_api_unchanged | warn | public function `all_of` was added. Additions are not a compatibility break; list the path in ` || exp=None obs=pub fn all_of(children: Vec<Constraint>) -> Constraint
+   public_api_unchanged | warn | public function `any_of` was added. Additions are not a compatibility break; list the path in ` || exp=None obs=pub fn any_of(children: Vec<Constraint>) -> Constraint
+   public_api_unchanged | warn | public function `any_selected` was added. Additions are not a compatibility break; list the pat || exp=None obs=pub fn any_selected(task: &str) -> Constraint
+   public_api_unchanged | warn | public function `at_least` was added. Additions are not a compatibility break; list the path in || exp=None obs=pub fn at_least(task: &str, k: usize) -> Constraint
+   public_api_unchanged | warn | public function `at_most` was added. Additions are not a compatibility break; list the path in  || exp=None obs=pub fn at_most(task: &str, k: usize) -> Constraint
+   public_api_unchanged | warn | public function `bos_state` was added. Additions are not a compatibility break; list the path i || exp=None obs=/// The learned `[BOS]` token embedding used to anchor 
+   public_api_unchanged | warn | public function `candidate_norm_params` was added. Additions are not a compatibility break; lis || exp=None obs=/// Candidate LayerNorm parameters (`candidate_norm`). 
+   public_api_unchanged | warn | public function `classifier_ref` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Read-only access to the classification head. pub fn
+   public_api_unchanged | warn | public function `constraints_touching` was added. Additions are not a compatibility break; list || exp=None obs=/// Which constraints mention a given task? pub fn cons
+   public_api_unchanged | warn | public function `content_ln_params` was added. Additions are not a compatibility break; list th || exp=None obs=/// Span-content LayerNorm parameters (`content_pooler.
+   public_api_unchanged | warn | public function `content_ln_params` was added. Additions are not a compatibility break; list th || exp=None obs=/// Span-content LayerNorm parameters (`shared_pool_sco
+   public_api_unchanged | warn | public function `content_value` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Debug access to the span-content value projection (
+   public_api_unchanged | warn | public function `content_value_bias` was added. Additions are not a compatibility break; list t || exp=None obs=/// Span-content value-projection bias. pub fn content_
+   public_api_unchanged | warn | public function `content_value_weight` was added. Additions are not a compatibility break; list || exp=None obs=/// Span-content value-projection weights (`content_poo
+   public_api_unchanged | warn | public function `debug_candidate_norm` was added. Additions are not a compatibility break; list || exp=None obs=/// Debug access to the candidate LayerNorm (parity too
+   public_api_unchanged | warn | public function `debug_content_value` was added. Additions are not a compatibility break; list  || exp=None obs=/// Debug access to this scorer's span-content value pr
+   public_api_unchanged | warn | public function `debug_film_mlp` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Debug access to the FiLM output MLP (parity tooling
+   public_api_unchanged | warn | public function `debug_projections` was added. Additions are not a compatibility break; list th || exp=None obs=/// Debug access to pool-builder projections (parity to
+   public_api_unchanged | warn | public function `debug_projections` was added. Additions are not a compatibility break; list th || exp=None obs=/// Debug access to scorer projections (parity tooling)
+   public_api_unchanged | warn | public function `decode_exact` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// Exact DFS decoder with branch and bound. pub fn dec
+   public_api_unchanged | warn | public function `decode_group` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// Decode one record group into a list of `DecodedReco
+   public_api_unchanged | warn | public function `eos_state` was added. Additions are not a compatibility break; list the path i || exp=None obs=/// The learned `[EOS]` token embedding used to anchor 
+   public_api_unchanged | warn | public function `evaluate` was added. Additions are not a compatibility break; list the path in || exp=None obs=/// Evaluate against an assignment: `Some(true)` satisf
+   public_api_unchanged | warn | public function `exactly` was added. Additions are not a compatibility break; list the path in  || exp=None obs=pub fn exactly(task: &str, k: usize) -> Constraint
+   public_api_unchanged | warn | public function `exactly_one_of` was added. Additions are not a compatibility break; list the p || exp=None obs=pub fn exactly_one_of(children: Vec<Constraint>) -> Con
+   public_api_unchanged | warn | public function `excludes` was added. Additions are not a compatibility break; list the path in || exp=None obs=pub fn excludes(left: Constraint, right: Constraint) ->
+   public_api_unchanged | warn | public function `forward` was added. Additions are not a compatibility break; list the path in  || exp=None obs=/// Compute boundary states from word-level text states
+   public_api_unchanged | warn | public function `forward` was added. Additions are not a compatibility break; list the path in  || exp=None obs=/// Score query embeddings: `(num_queries, hidden) -> (
+   public_api_unchanged | warn | public function `forward` was added. Additions are not a compatibility break; list the path in  || exp=None obs=/// Score relation pairs from boundary endpoint states.
+   public_api_unchanged | warn | public function `forward_group` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Anchorless-mode forward: learned instance queries c
+   public_api_unchanged | warn | public function `iff` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=pub fn iff(left: Constraint, right: Constraint) -> Cons
+   public_api_unchanged | warn | public function `implies` was added. Additions are not a compatibility break; list the path in  || exp=None obs=pub fn implies(cond: Constraint, then: Constraint) -> C
+   public_api_unchanged | warn | public function `is_empty` was added. Additions are not a compatibility break; list the path in || exp=None obs=pub fn is_empty(&self) -> bool
+   public_api_unchanged | warn | public function `k_and` was added. Additions are not a compatibility break; list the path in `a || exp=None obs=pub fn k_and(values: impl Iterator<Item = Option<bool>>
+   public_api_unchanged | warn | public function `k_iff` was added. Additions are not a compatibility break; list the path in `a || exp=None obs=pub fn k_iff(a: Option<bool>, b: Option<bool>) -> Optio
+   public_api_unchanged | warn | public function `k_implies` was added. Additions are not a compatibility break; list the path i || exp=None obs=pub fn k_implies(a: Option<bool>, b: Option<bool>) -> O
+   public_api_unchanged | warn | public function `k_not` was added. Additions are not a compatibility break; list the path in `a || exp=None obs=pub fn k_not(v: Option<bool>) -> Option<bool>
+   public_api_unchanged | warn | public function `k_or` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=pub fn k_or(values: impl Iterator<Item = Option<bool>>)
+   public_api_unchanged | warn | public function `label` was added. Additions are not a compatibility break; list the path in `a || exp=None obs=pub fn label(task: &str, name: &str) -> Constraint
+   public_api_unchanged | warn | public function `load` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=/// Load from `vb` rooted at `classifier`. pub fn load(
+   public_api_unchanged | warn | public function `load` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=/// Load from `vb` rooted at `boundary_head.pair_scorer
+   public_api_unchanged | warn | public function `load` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=/// Load from `vb` rooted at `boundary_head.boundary_en
+   public_api_unchanged | warn | public function `load` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=/// Load from `vb` rooted at `relation_scorer`. pub fn 
+   public_api_unchanged | warn | public function `load` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=/// Load the full boundary model from a root VarBuilder
+   public_api_unchanged | warn | public function `load` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=/// Load from `vb` rooted at `boundary_head.boundary_qu
+   public_api_unchanged | warn | public function `load` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=/// Load from `vb` rooted at `boundary_head.shared_pool
+   public_api_unchanged | warn | public function `load` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=/// Load from `vb` rooted at `boundary_head.boundary_pr
+   public_api_unchanged | warn | public function `load` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=/// Load from `vb` rooted at `record_decoder`. pub fn l
+   public_api_unchanged | warn | public function `load` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=/// Load from `vb` rooted at `boundary_head.shared_pool
+   public_api_unchanged | warn | public function `merge_chunk_results` was added. Additions are not a compatibility break; list  || exp=None obs=/// Merge per-chunk extraction results into one documen
+   public_api_unchanged | warn | public function `new` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=pub fn new(selected: HashMap<String, HashSet<String>>, 
+   public_api_unchanged | warn | public function `not_` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=pub fn not_(child: Constraint) -> Constraint
+   public_api_unchanged | warn | public function `project_keys` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// Project boundary states / token embeddings into key
+   public_api_unchanged | warn | public function `project_queries` was added. Additions are not a compatibility break; list the  || exp=None obs=/// Project each query embedding into boundary query sp
+   public_api_unchanged | warn | public function `projections` was added. Additions are not a compatibility break; list the path || exp=None obs=/// Debug access to projection linears (parity tooling)
+   public_api_unchanged | warn | public function `references` was added. Additions are not a compatibility break; list the path  || exp=None obs=pub fn references(&self) -> HashSet<String>
+   public_api_unchanged | warn | public function `remap_result_spans` was added. Additions are not a compatibility break; list t || exp=None obs=/// Recursively shift chunk-local span offsets by `chun
+   public_api_unchanged | warn | public function `satisfied` was added. Additions are not a compatibility break; list the path i || exp=None obs=/// Is this constraint fully satisfied? pub fn satisfie
+   public_api_unchanged | warn | public function `score_explicit_pairs` was added. Additions are not a compatibility break; list || exp=None obs=/// Marginal-free, query-conditioned compatibility for 
+   public_api_unchanged | warn | public function `score_explicit_spans` was added. Additions are not a compatibility break; list || exp=None obs=/// Score caller-provided half-open spans for every que
+   public_api_unchanged | warn | public function `score_sample` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// Score candidate spans for a single sample via the s
+   public_api_unchanged | warn | public function `split_text_into_chunks` was added. Additions are not a compatibility break; li || exp=None obs=/// Split `text` into overlapping word windows on white
+   public_api_unchanged | warn | public function `still_satisfiable` was added. Additions are not a compatibility break; list th || exp=None obs=/// Is this constraint still satisfiable? pub fn still_
+   suppressions_not_widened | warn | a diagnostic suppression `#[allow(clippy::needless_range_loop)]` was added to `src/model/bounda || exp=None obs=#[allow(clippy::needless_range_loop)]
+   suppressions_not_widened | warn | a diagnostic suppression `#[allow(clippy::needless_range_loop)]` was added to `src/model/bounda || exp=None obs=#[allow(clippy::needless_range_loop)]
+   suppressions_not_widened | warn | a diagnostic suppression `#[allow(clippy::needless_range_loop)]` was added to `src/model/bounda || exp=None obs=#[allow(clippy::needless_range_loop)]
+   suppressions_not_widened | warn | a diagnostic suppression `#[allow(clippy::too_many_arguments)]` was added to `src/constraints.r || exp=None obs=#[allow(clippy::too_many_arguments)]
+   suppressions_not_widened | warn | a diagnostic suppression `#[allow(clippy::too_many_arguments)]` was added to `src/model/boundar || exp=None obs=#[allow(clippy::too_many_arguments)]
+   suppressions_not_widened | warn | a diagnostic suppression `#[allow(clippy::type_complexity)]` was added to `src/inference/bounda || exp=None obs=#[allow(clippy::type_complexity)]
+   suppressions_not_widened | warn | a diagnostic suppression `#[allow(clippy::type_complexity)]` was added to `src/inference/bounda || exp=None obs=#[allow(clippy::type_complexity)]
+   suppressions_not_widened | warn | a diagnostic suppression `#[allow(dead_code)]` was added to `tests/real_inference_test_25.rs` || exp=None obs=#[allow(dead_code)]
+   suppressions_not_widened | warn | a diagnostic suppression `#[allow(dead_code)]` was added to `src/constraints.rs` || exp=None obs=#[allow(dead_code)]

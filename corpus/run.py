@@ -74,6 +74,17 @@ def generate_contract(root: str, repo: str) -> str:
                       contract, flags=re.M)
     return contract
 
+# Git's own wording for a branch sync. Matched on the subject because that is
+# what `git merge` puts there, and because a heuristic on parent topology would
+# also catch genuine PR merges (a PR merge and a branch merge look identical in
+# the commit graph).
+BRANCH_MERGE = re.compile(
+    r"remote-tracking branch|"
+    r"^Merge branch .* into |"
+    r"^Merge pull request .*/\S+ into \S+ into ",   # branch sync via GitHub
+    re.I)
+
+
 def git(*args, cwd, check=True):
     r = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True)
     if check and r.returncode != 0:
@@ -115,6 +126,20 @@ def main():
             p = git("rev-parse", f"{m}^1", cwd=clone).stdout.strip()
             if not p:
                 skipped += 1; continue
+            # A merge of one branch into another is not a change under
+            # review. Replaying `diff(first_parent, merge)` for one reports
+            # every test and file the *other* branch had not yet merged as
+            # deleted by this change.
+            #
+            # Found by the corpus: 12 of 98 `adk-rust` merges are branch
+            # merges, and every one produced a phantom `tests_not_deleted`
+            # finding. A reviewer would call every one of them noise, and a
+            # gate that reports a branch sync as a mass test deletion is a
+            # gate nobody keeps.
+            subject = git("log", "-1", "--format=%s", m, cwd=clone).stdout
+            if BRANCH_MERGE.search(subject):
+                skipped += 1
+                continue
             try:
                 git("checkout", "-q", "--detach", p, cwd=clone)
                 git("read-tree", "-q", "-m", "-u", p, cwd=clone)

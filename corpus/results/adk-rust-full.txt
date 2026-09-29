@@ -1,0 +1,411 @@
+corpus: delegated gates excluded from /tmp/corpusrepos/zavora-ai_adk-rust (8 analyzed gates)
+=== /tmp/corpusrepos/zavora-ai_adk-rust @ 3b946c1949b28545f992c631ad167441a36e4e66 ===
+replayed 98 of 98 merges   clean=58  with-findings=17  error=0  skipped=23
+
+findings by primitive:
+  1640  public_api_unchanged
+    13  suppressions_not_widened
+     8  tests_not_deleted
+     4  unsafe_surface_unchanged
+
+samples:
+   public_api_unchanged | warn | public const `AGENT_NAME` was added. Additions are not a compatibility break; list the path in  || exp=None obs=/// The name the ACP server advertises for this agent. 
+   public_api_unchanged | warn | public const `CONFIG_STATE_KEY_PREFIX` was added. Additions are not a compatibility break; list || exp=None obs=/// Prefix for session-state keys under which configura
+   public_api_unchanged | warn | public const `CONFIRM_CALL_ID` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// Stable function-call id used for the gated tool cal
+   public_api_unchanged | warn | public const `CONFIRM_TOOL` was added. Additions are not a compatibility break; list the path i || exp=None obs=/// The confirmation-gated tool whose execution is brid
+   public_api_unchanged | warn | public const `DELETE_TARGET` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// The path the gated `delete_file` tool operates on. 
+   public_api_unchanged | warn | public const `MODE_STATE_KEY` was added. Additions are not a compatibility break; list the path || exp=None obs=/// Session-state key under which the selected mode id 
+   public_api_unchanged | warn | public struct `ScriptedAgent` was added. Additions are not a compatibility break; list the path || exp=None obs=/// A deterministic agent that exercises the ACP server
+   public_api_unchanged | warn | public trait impl `ScriptedAgent as (type_identifier)` was added. Additions are not a compatibi || exp=None obs=#[async_trait] impl Agent for ScriptedAgent { fn name(&
+   public_api_unchanged | warn | public trait `SessionControls` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// Provider of session modes and configuration options
+   public_api_unchanged | warn | public function `applied_decision` was added. Additions are not a compatibility break; list the || exp=None obs=/// Shared slot recording the last tool-confirmation de
+   public_api_unchanged | warn | public function `block_to_part` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Convert an inbound ACP [`ContentBlock`] into an [`a
+   public_api_unchanged | warn | public function `build_delete_tool` was added. Additions are not a compatibility break; list th || exp=None obs=/// Build the confirmation-gated `delete_file` tool. //
+   public_api_unchanged | warn | public function `build_session_service` was added. Additions are not a compatibility break; lis || exp=None obs=/// Build a fresh in-memory session service. pub fn bui
+   public_api_unchanged | warn | public function `config_state_key` was added. Additions are not a compatibility break; list the || exp=None obs=/// Build the session-state key under which a configura
+   public_api_unchanged | warn | public function `content_to_blocks` was added. Additions are not a compatibility break; list th || exp=None obs=/// Convert an outbound ADK [`Content`] into the ACP [`
+   public_api_unchanged | warn | public function `executed_flag` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Shared flag recording whether the gated tool actual
+   public_api_unchanged | warn | public function `new` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=/// Create a new scripted agent wrapping the given conf
+   public_api_unchanged | warn | public function `part_to_block` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Convert an outbound [`adk_core::Part`] into an ACP 
+   public_api_unchanged | warn | public trait impl `tests::NoControls as (type_identifier)` was added. Additions are not a compa || exp=None obs=impl SessionControls for NoControls {}
+   public_api_unchanged | warn | public trait `AcpFileSystem` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// File operations that an ACP client chooses to expos
+   public_api_unchanged | warn | public trait impl `AcpHostHandler as (generic_type type: (type_identifier) type_arguments: (typ || exp=None obs=impl HandleDispatchFrom<Agent> for AcpHostHandler { asy
+   public_api_unchanged | warn | public trait `AcpTerminal` was added. Additions are not a compatibility break; list the path in || exp=None obs=/// Terminal lifecycle operations that an ACP client ex
+   public_api_unchanged | warn | public enum `ActionClass` was added. Additions are not a compatibility break; list the path in  || exp=None obs=/// Operation-aware action class used by authorization 
+   public_api_unchanged | warn | public struct `ActionEnvelope` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// Immutable action proposed by the graph and enforced
+   public_api_unchanged | warn | public enum `ActionPostcondition` was added. Additions are not a compatibility break; list the  || exp=None obs=/// Digest-only expected state independently verified b
+   public_api_unchanged | warn | public struct `ActionPreview` was added. Additions are not a compatibility break; list the path || exp=None obs=/// Result of `preview_action` used for deterministic g
+   public_api_unchanged | warn | public struct `ActionProvenance` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Provenance describing whether an action derives fro
+   public_api_unchanged | warn | public struct `ActionResourceContext` was added. Additions are not a compatibility break; list  || exp=None obs=/// Optional resource identifiers describing what an ac
+   public_api_unchanged | warn | public trait impl `AdkError as (generic_type type: (type_identifier) type_arguments: (type_argu || exp=None obs=impl From<ComputerUseError> for AdkError { fn from(erro
+   public_api_unchanged | warn | public struct `AdkEvaluationClaims` was added. Additions are not a compatibility break; list th || exp=None obs=/// Claims asserted by an [`AdkEvaluationReceipt`] and 
+   public_api_unchanged | warn | public struct `AdkEvaluationReceipt` was added. Additions are not a compatibility break; list t || exp=None obs=/// Tamper-evident release-evaluation receipt for a com
+   public_api_unchanged | warn | public struct `AdkEvaluationSource` was added. Additions are not a compatibility break; list th || exp=None obs=/// A source file digest included in an [`AdkEvaluation
+   public_api_unchanged | warn | public trait `AgentInterrupter` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Minimal boundary implemented by `adk_runner::Runner
+   public_api_unchanged | warn | public struct `ApprovalGrant` was added. Additions are not a compatibility break; list the path || exp=None obs=/// Read-only, disclosure-safe authority returned by th
+   public_api_unchanged | warn | public trait impl `ApprovalGrant as (generic_type type: (type_identifier) type_arguments: (type || exp=None obs=impl TryFrom<RawApprovalGrant> for ApprovalGrant { type
+   public_api_unchanged | warn | public enum `ApprovalGrantScope` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Scope of an [`ApprovalGrant`]. #[derive(Debug, Clon
+   public_api_unchanged | warn | public enum `AuthorizationError` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Reason a [`ScopeAuthorizer`] rejected a [`ComputerU
+   public_api_unchanged | warn | public struct `Bounds` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=/// Axis-aligned bounding box in display coordinates. #
+   public_api_unchanged | warn | public struct `CancellationBridge` was added. Additions are not a compatibility break; list the || exp=None obs=/// Propagates controls in the safe order: revoke deskt
+   public_api_unchanged | warn | public enum `CancellationError` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Failure propagating a cancellation control to the d
+   public_api_unchanged | warn | public trait impl `Cleanup as (type_identifier)` was added. Additions are not a compatibility b || exp=None obs=impl Drop for Cleanup { fn drop(&mut self) { for path i
+   public_api_unchanged | warn | public struct `ComputerUseAuthContext` was added. Additions are not a compatibility break; list || exp=None obs=/// Authenticated identity and exact operation context 
+   public_api_unchanged | warn | public enum `ComputerUseError` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// Structured error surfaced by the computer-use graph
+   public_api_unchanged | warn | public trait impl `ComputerUseError as (generic_type type: (type_identifier) type_arguments: (t || exp=None obs=impl From<serde_json::Error> for ComputerUseError { fn 
+   public_api_unchanged | warn | public struct `ComputerUseEvaluation` was added. Additions are not a compatibility break; list  || exp=None obs=/// Outcome of scoring one session's event trajectory. 
+   public_api_unchanged | warn | public struct `ComputerUseEvaluator` was added. Additions are not a compatibility break; list t || exp=None obs=/// Deterministic release evaluator layered beside ADK'
+   public_api_unchanged | warn | public trait impl `ComputerUseEvaluator as (type_identifier)` was added. Additions are not a co || exp=None obs=impl Default for ComputerUseEvaluator { fn default() ->
+   public_api_unchanged | warn | public struct `ComputerUseMcpConfig` was added. Additions are not a compatibility break; list t || exp=None obs=/// Static configuration binding a [`ComputerUseMcpRunt
+   public_api_unchanged | warn | public struct `ComputerUseMcpRuntime` was added. Additions are not a compatibility break; list  || exp=None obs=/// [`ComputerUseRuntime`] implementation backed by a l
+   public_api_unchanged | warn | public trait impl `ComputerUseMcpRuntime<S> as (type_identifier)` was added. Additions are not  || exp=None obs=#[async_trait] impl<S> ComputerUseRuntime for ComputerU
+   public_api_unchanged | warn | public trait `ComputerUseRuntime` was added. Additions are not a compatibility break; list the  || exp=None obs=/// Runtime boundary implemented by the computer-use MC
+   public_api_unchanged | warn | public struct `ControlLease` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// One-writer desktop control lease. #[derive(Debug, C
+   public_api_unchanged | warn | public trait impl `DemoPathCleanup as (type_identifier)` was added. Additions are not a compati || exp=None obs=impl Drop for DemoPathCleanup { fn drop(&mut self) { fo
+   public_api_unchanged | warn | public struct `ExecutionCapability` was added. Additions are not a compatibility break; list th || exp=None obs=/// A verified execution capability advertised by the r
+   public_api_unchanged | warn | public enum `ExecutionMode` was added. Additions are not a compatibility break; list the path i || exp=None obs=/// Enforced execution mode selected for an action. #[d
+   public_api_unchanged | warn | public struct `ExecutionReceipt` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Idempotency receipt returned by `execute_action`. #
+   public_api_unchanged | warn | public trait impl `F as (type_identifier)` was added. Additions are not a compatibility break;  || exp=None obs=impl<F> AgentInterrupter for F where F: Fn(&str) -> boo
+   public_api_unchanged | warn | public trait impl `FakeRuntime as (type_identifier)` was added. Additions are not a compatibili || exp=None obs=#[async_trait] impl ComputerUseRuntime for FakeRuntime 
+   public_api_unchanged | warn | public trait impl `InProcessRuntime as (type_identifier)` was added. Additions are not a compat || exp=None obs=#[async_trait] impl ComputerUseRuntime for InProcessRun
+   public_api_unchanged | warn | public struct `LeaseBoundaries` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// App/window/display boundaries restricting a [`Contr
+   public_api_unchanged | warn | public struct `PolicyDecision` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// A policy decision for a previewed action. #[derive(
+   public_api_unchanged | warn | public struct `PostconditionEvidence` was added. Additions are not a compatibility break; list  || exp=None obs=/// A single postcondition and whether it was satisfied
+   public_api_unchanged | warn | public trait impl `PrintingResourceHandler as (type_identifier)` was added. Additions are not a || exp=None obs=#[async_trait::async_trait] impl ResourceNotificationHa
+   public_api_unchanged | warn | public trait impl `RawApprovalGrant as (generic_type type: (type_identifier) type_arguments: (t || exp=None obs=impl From<ApprovalGrant> for RawApprovalGrant { fn from
+   public_api_unchanged | warn | public trait impl `RawTargetSensitivityEvidence as (generic_type type: (type_identifier) type_a || exp=None obs=impl From<TargetSensitivityEvidence> for RawTargetSensi
+   public_api_unchanged | warn | public trait impl `ReadOnlyWorkspace as (type_identifier)` was added. Additions are not a compa || exp=None obs=#[async_trait] impl AcpFileSystem for ReadOnlyWorkspace
+   public_api_unchanged | warn | public enum `ReceiptStatus` was added. Additions are not a compatibility break; list the path i || exp=None obs=/// Terminal status of an execution receipt. #[derive(D
+   public_api_unchanged | warn | public trait `ResourceNotificationHandler` was added. Additions are not a compatibility break;  || exp=None obs=/// Receives resource update notifications from an MCP 
+   public_api_unchanged | warn | public trait impl `ResourceServer as (type_identifier)` was added. Additions are not a compatib || exp=None obs=#[tool_handler] impl ServerHandler for ResourceServer {
+   public_api_unchanged | warn | public type alias `Result` was added. Additions are not a compatibility break; list the path in || exp=None obs=/// Convenience alias for fallible computer-use operati
+   public_api_unchanged | warn | public struct `RuntimeSession` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// A runtime session and its current lifecycle state. 
+   public_api_unchanged | warn | public struct `SafetyCorpus` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// Versioned cross-runtime deterministic safety corpus
+   public_api_unchanged | warn | public struct `SafetyExpectation` was added. Additions are not a compatibility break; list the  || exp=None obs=/// Expected effects, restores, and status for a [`Safe
+   public_api_unchanged | warn | public struct `SafetyScenario` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// A single deterministic safety scenario and its expe
+   public_api_unchanged | warn | public struct `ScopeAuthorizer` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Coarse ADK scope gate. The runtime policy engine st
+   public_api_unchanged | warn | public struct `SessionCompletionEvidence` was added. Additions are not a compatibility break; l || exp=None obs=/// Evidence describing how a session reached completio
+   public_api_unchanged | warn | public struct `SessionDeletionResult` was added. Additions are not a compatibility break; list  || exp=None obs=/// Principal-bound result of deleting one terminal run
+   public_api_unchanged | warn | public struct `SessionEvent` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// Stable supervisor event used for ADK/runtime trace 
+   public_api_unchanged | warn | public struct `SessionFollowUp` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Principal-owned, monotonic steering instruction con
+   public_api_unchanged | warn | public struct `SessionFollowUpPage` was added. Additions are not a compatibility break; list th || exp=None obs=/// A page of follow-ups plus the cursor for the next p
+   public_api_unchanged | warn | public struct `TargetEvidence` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// Evidence binding an action to a fresh desktop obser
+   public_api_unchanged | warn | public struct `TargetReservation` was added. Additions are not a compatibility break; list the  || exp=None obs=/// Non-authoritative, expiring planner intent for mult
+   public_api_unchanged | warn | public struct `TargetReservationScope` was added. Additions are not a compatibility break; list || exp=None obs=/// Application/window scope of a [`TargetReservation`]
+   public_api_unchanged | warn | public enum `TargetSensitivityAssessment` was added. Additions are not a compatibility break; l || exp=None obs=/// Conclusion of an accessibility-based target sensiti
+   public_api_unchanged | warn | public struct `TargetSensitivityEvidence` was added. Additions are not a compatibility break; l || exp=None obs=/// Value-free native accessibility evidence used for a
+   public_api_unchanged | warn | public trait impl `TargetSensitivityEvidence as (generic_type type: (type_identifier) type_argu || exp=None obs=impl TryFrom<RawTargetSensitivityEvidence> for TargetSe
+   public_api_unchanged | warn | public enum `TargetSensitivitySignal` was added. Additions are not a compatibility break; list  || exp=None obs=/// A single value-free signal contributing to a sensit
+   public_api_unchanged | warn | public enum `TargetSensitivitySource` was added. Additions are not a compatibility break; list  || exp=None obs=/// Source of a [`TargetSensitivityEvidence`] assessmen
+   public_api_unchanged | warn | public struct `TraceCorrelation` was added. Additions are not a compatibility break; list the p || exp=None obs=/// ADK ↔ runtime trace correlation identifiers attache
+   public_api_unchanged | warn | public module `action` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=pub mod action;
+   public_api_unchanged | warn | `adk-acp/src/server/permission.rs` declared public API and was deleted || exp=5 (PermissionOutcome, PermissionBridge, new, request_pe obs=None
+   public_api_unchanged | warn | `adk-acp/src/server/transport/http.rs` declared public API and was deleted || exp=3 (HttpTransport, new, HttpTransport as (type_identifie obs=None
+   public_api_unchanged | warn | public module `approval` was added. Additions are not a compatibility break; list the path in ` || exp=None obs=pub mod approval;
+   public_api_unchanged | warn | public function `assessment` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// The conclusion of the sensitivity check. pub fn ass
+   public_api_unchanged | warn | public function `authorize` was added. Additions are not a compatibility break; list the path i || exp=None obs=/// Verify coarse entitlement without treating it as ru
+   public_api_unchanged | warn | public function `build_reference_graph` was added. Additions are not a compatibility break; lis || exp=None obs=/// Build the flagship deterministic ADK graph. /// ///
+   public_api_unchanged | warn | public function `build_reference_graph_with_checkpointer` was added. Additions are not a compat || exp=None obs=/// Build the reference graph with a durable host-suppl
+   public_api_unchanged | warn | public module `contracts` was added. Additions are not a compatibility break; list the path in  || exp=None obs=pub mod contracts;
+   public_api_unchanged | warn | public function `delete_terminal_session` was added. Additions are not a compatibility break; l || exp=None obs=/// Permanently remove this adapter's terminal runtime 
+   public_api_unchanged | warn | public function `emergency_stop` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Revoke all desktop authority immediately, then inte
+   public_api_unchanged | warn | public function `evaluate` was added. Additions are not a compatibility break; list the path in || exp=None obs=/// Score an observed event trajectory against an expec
+   public_api_unchanged | warn | public function `fields_checked` was added. Additions are not a compatibility break; list the p || exp=None obs=/// The number of fields inspected during the check. pu
+   public_api_unchanged | warn | public function `from_verified_identity` was added. Additions are not a compatibility break; li || exp=None obs=/// Construct from identity already verified by adk-aut
+   public_api_unchanged | warn | public function `get_follow_ups` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Consume remote/local steering with a monotonic curs
+   public_api_unchanged | warn | public function `grant_id` was added. Additions are not a compatibility break; list the path in || exp=None obs=/// The unique grant identifier. pub fn grant_id(&self)
+   public_api_unchanged | warn | public module `lease` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=pub mod lease;
+   public_api_unchanged | warn | public module `mcp` was added. Additions are not a compatibility break; list the path in `allow || exp=None obs=pub mod mcp;
+   public_api_unchanged | warn | public function `new` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=/// Construct a scope gate from verified JWT/OIDC reque
+   public_api_unchanged | warn | public function `new` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=/// Create an adapter bound to the supplied MCP toolset
+   public_api_unchanged | warn | public function `new` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=/// Pair a desktop runtime with an agent interrupter. p
+   public_api_unchanged | warn | public function `object` was added. Additions are not a compatibility break; list the path in ` || exp=None obs=/// Convert a JSON value into an object map, dropping n
+   public_api_unchanged | warn | public function `observe_tool` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// Run a read-only desktop tool through the governed s
+   public_api_unchanged | warn | public function `observed_at` was added. Additions are not a compatibility break; list the path || exp=None obs=/// RFC 3339 timestamp of the observation. pub fn obser
+   public_api_unchanged | warn | public function `output` was added. Additions are not a compatibility break; list the path in ` || exp=None obs=/// Unwrap the `
+   public_api_unchanged | warn | public function `pause` was added. Additions are not a compatibility break; list the path in `a || exp=None obs=/// Pause desktop authority for the runtime session, th
+   public_api_unchanged | warn | public function `prune_terminal_sessions` was added. Additions are not a compatibility break; l || exp=None obs=/// Explicitly prune caller-owned terminal sessions bef
+   public_api_unchanged | warn | public function `read_clipboard` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Read the system clipboard on macOS, Linux, or Windo
+   public_api_unchanged | warn | public module `receipt` was added. Additions are not a compatibility break; list the path in `a || exp=None obs=pub mod receipt;
+   public_api_unchanged | warn | public function `remaining_uses` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Remaining uses before the grant is exhausted. pub f
+   public_api_unchanged | warn | public module `safety` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=pub mod safety;
+   public_api_unchanged | warn | public function `scope` was added. Additions are not a compatibility break; list the path in `a || exp=None obs=/// The scope of authority this grant confers. pub fn s
+   public_api_unchanged | warn | public function `scope_digest` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// The digest the grant's scope is bound to. pub fn sc
+   public_api_unchanged | warn | public function `seal` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=/// Compute and set the canonical `receipt_digest` over
+   public_api_unchanged | warn | public module `session` was added. Additions are not a compatibility break; list the path in `a || exp=None obs=pub mod session;
+   public_api_unchanged | warn | public function `signals` was added. Additions are not a compatibility break; list the path in  || exp=None obs=/// The distinct signals that contributed to the assess
+   public_api_unchanged | warn | public function `source` was added. Additions are not a compatibility break; list the path in ` || exp=None obs=/// The source of the assessment. pub fn source(&self) 
+   public_api_unchanged | warn | public function `spawn_pip` was added. Additions are not a compatibility break; list the path i || exp=None obs=/// Launch the picture-in-picture supervisor approval w
+   public_api_unchanged | warn | public function `stop` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=/// Stop desktop authority for the runtime session, the
+   public_api_unchanged | warn | public function `submit_follow_up` was added. Additions are not a compatibility break; list the || exp=None obs=/// Submit steering through the same principal-bound MC
+   public_api_unchanged | warn | public function `supervisor_dir` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Resolve the `computer-use-supervisor` package direc
+   public_api_unchanged | warn | public module `target` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=pub mod target;
+   public_api_unchanged | warn | public trait impl `tests::RecordingHandler as (type_identifier)` was added. Additions are not a || exp=None obs=#[async_trait::async_trait] impl ResourceNotificationHa
+   public_api_unchanged | warn | public function `trajectory` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// Extract the tool-use trajectory from `action.starte
+   public_api_unchanged | warn | public function `try_new` was added. Additions are not a compatibility break; list the path in  || exp=None obs=/// Build validated sensitivity evidence. /// /// # Err
+   public_api_unchanged | warn | public function `verified_tenant_id` was added. Additions are not a compatibility break; list t || exp=None obs=/// Tenant identity already verified by adk-auth middle
+   public_api_unchanged | warn | public function `verify` was added. Additions are not a compatibility break; list the path in ` || exp=None obs=/// Validate schema, protocol, claims, and the canonica
+   suppressions_not_widened | warn | a diagnostic suppression `#[allow(clippy::too_many_arguments)]` was added to `adk-computer-use/ || exp=None obs=#[allow(clippy::too_many_arguments)]
+   tests_not_deleted | warn | 1 test(s) no longer exist anywhere in the tree: tests::test_approval_flow || exp=tests::test_approval_flow obs=None
+   tests_not_deleted | warn | 1 test(s) no longer exist anywhere in the tree: tests::test_denial_flow || exp=tests::test_denial_flow obs=None
+   tests_not_deleted | warn | 1 test(s) no longer exist anywhere in the tree: tests::test_resolve_unknown_id || exp=tests::test_resolve_unknown_id obs=None
+   tests_not_deleted | warn | 1 test(s) no longer exist anywhere in the tree: tests::test_timeout_flow || exp=tests::test_timeout_flow obs=None
+   public_api_unchanged | warn | public trait `AcpFileSystem` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// File operations that an ACP client chooses to expos
+   public_api_unchanged | warn | public trait impl `AcpHostHandler as (generic_type type: (type_identifier) type_arguments: (typ || exp=None obs=impl HandleDispatchFrom<Agent> for AcpHostHandler { asy
+   public_api_unchanged | warn | public trait `AcpTerminal` was added. Additions are not a compatibility break; list the path in || exp=None obs=/// Terminal lifecycle operations that an ACP client ex
+   public_api_unchanged | warn | public enum `ActionClass` was added. Additions are not a compatibility break; list the path in  || exp=None obs=/// Operation-aware action class used by authorization 
+   public_api_unchanged | warn | public struct `ActionEnvelope` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// Immutable action proposed by the graph and enforced
+   public_api_unchanged | warn | public enum `ActionPostcondition` was added. Additions are not a compatibility break; list the  || exp=None obs=/// Digest-only expected state independently verified b
+   public_api_unchanged | warn | public struct `ActionPreview` was added. Additions are not a compatibility break; list the path || exp=None obs=/// Result of `preview_action` used for deterministic g
+   public_api_unchanged | warn | public struct `ActionProvenance` was added. Additions are not a compatibility break; list the p || exp=None obs=#[derive(Debug, Clone, PartialEq, Serialize, Deserializ
+   public_api_unchanged | warn | public struct `ActionResourceContext` was added. Additions are not a compatibility break; list  || exp=None obs=#[derive(Debug, Clone, PartialEq, Serialize, Deserializ
+   public_api_unchanged | warn | public struct `AdkEvaluationClaims` was added. Additions are not a compatibility break; list th || exp=None obs=#[derive(Debug, Clone, PartialEq, Serialize, Deserializ
+   public_api_unchanged | warn | public struct `AdkEvaluationReceipt` was added. Additions are not a compatibility break; list t || exp=None obs=#[derive(Debug, Clone, PartialEq, Serialize, Deserializ
+   public_api_unchanged | warn | public struct `AdkEvaluationSource` was added. Additions are not a compatibility break; list th || exp=None obs=#[derive(Debug, Clone, PartialEq, Serialize, Deserializ
+   public_api_unchanged | warn | public trait `AgentInterrupter` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Minimal boundary implemented by `adk_runner::Runner
+   public_api_unchanged | warn | public struct `ApprovalGrant` was added. Additions are not a compatibility break; list the path || exp=None obs=/// Read-only, disclosure-safe authority returned by th
+   public_api_unchanged | warn | public trait impl `ApprovalGrant as (generic_type type: (type_identifier) type_arguments: (type || exp=None obs=impl TryFrom<RawApprovalGrant> for ApprovalGrant { type
+   public_api_unchanged | warn | public enum `ApprovalGrantScope` was added. Additions are not a compatibility break; list the p || exp=None obs=#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, 
+   public_api_unchanged | warn | public enum `AuthorizationError` was added. Additions are not a compatibility break; list the p || exp=None obs=#[derive(Debug, Error, PartialEq, Eq)] pub enum Authori
+   public_api_unchanged | warn | public struct `Bounds` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=#[derive(Debug, Clone, PartialEq, Serialize, Deserializ
+   public_api_unchanged | warn | public struct `CancellationBridge` was added. Additions are not a compatibility break; list the || exp=None obs=/// Propagates controls in the safe order: revoke deskt
+   public_api_unchanged | warn | public enum `CancellationError` was added. Additions are not a compatibility break; list the pa || exp=None obs=#[derive(Debug, Error, PartialEq, Eq)] pub enum Cancell
+   public_api_unchanged | warn | public struct `ComputerUseAuthContext` was added. Additions are not a compatibility break; list || exp=None obs=/// Authenticated identity and exact operation context 
+   public_api_unchanged | warn | public struct `ComputerUseEvaluation` was added. Additions are not a compatibility break; list  || exp=None obs=#[derive(Debug, Clone, PartialEq)] pub struct ComputerU
+   public_api_unchanged | warn | public struct `ComputerUseEvaluator` was added. Additions are not a compatibility break; list t || exp=None obs=/// Deterministic release evaluator layered beside ADK'
+   public_api_unchanged | warn | public trait impl `ComputerUseEvaluator as (type_identifier)` was added. Additions are not a co || exp=None obs=impl Default for ComputerUseEvaluator { fn default() ->
+   public_api_unchanged | warn | public struct `ComputerUseMcpConfig` was added. Additions are not a compatibility break; list t || exp=None obs=#[derive(Debug, Clone)] pub struct ComputerUseMcpConfig
+   public_api_unchanged | warn | public struct `ComputerUseMcpRuntime` was added. Additions are not a compatibility break; list  || exp=None obs=/// Actual MCP-backed runtime for the deterministic ADK
+   public_api_unchanged | warn | public trait impl `ComputerUseMcpRuntime<S> as (type_identifier)` was added. Additions are not  || exp=None obs=#[async_trait] impl<S> ComputerUseRuntime for ComputerU
+   public_api_unchanged | warn | public trait `ComputerUseRuntime` was added. Additions are not a compatibility break; list the  || exp=None obs=/// Runtime boundary implemented by the computer-use v8
+   public_api_unchanged | warn | public struct `ControlLease` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// One-writer desktop control lease. #[derive(Debug, C
+   public_api_unchanged | warn | public trait impl `DemoPathCleanup as (type_identifier)` was added. Additions are not a compati || exp=None obs=impl Drop for DemoPathCleanup { fn drop(&mut self) { fo
+   public_api_unchanged | warn | public struct `ExecutionCapability` was added. Additions are not a compatibility break; list th || exp=None obs=#[derive(Debug, Clone, PartialEq, Serialize, Deserializ
+   public_api_unchanged | warn | public enum `ExecutionMode` was added. Additions are not a compatibility break; list the path i || exp=None obs=/// Enforced execution mode selected for an action. #[d
+   public_api_unchanged | warn | public struct `ExecutionReceipt` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Idempotency receipt returned by `execute_action`. #
+   public_api_unchanged | warn | public trait impl `F as (type_identifier)` was added. Additions are not a compatibility break;  || exp=None obs=impl<F> AgentInterrupter for F where F: Fn(&str) -> boo
+   public_api_unchanged | warn | public trait impl `FakeRuntime as (type_identifier)` was added. Additions are not a compatibili || exp=None obs=#[async_trait] impl ComputerUseRuntime for FakeRuntime 
+   public_api_unchanged | warn | public struct `LeaseBoundaries` was added. Additions are not a compatibility break; list the pa || exp=None obs=#[derive(Debug, Clone, PartialEq, Serialize, Deserializ
+   public_api_unchanged | warn | public struct `PolicyDecision` was added. Additions are not a compatibility break; list the pat || exp=None obs=#[derive(Debug, Clone, PartialEq, Serialize, Deserializ
+   public_api_unchanged | warn | public struct `PostconditionEvidence` was added. Additions are not a compatibility break; list  || exp=None obs=#[derive(Debug, Clone, PartialEq, Serialize, Deserializ
+   public_api_unchanged | warn | public trait impl `RawApprovalGrant as (generic_type type: (type_identifier) type_arguments: (t || exp=None obs=impl From<ApprovalGrant> for RawApprovalGrant { fn from
+   public_api_unchanged | warn | public trait impl `RawTargetSensitivityEvidence as (generic_type type: (type_identifier) type_a || exp=None obs=impl From<TargetSensitivityEvidence> for RawTargetSensi
+   public_api_unchanged | warn | public trait impl `ReadOnlyWorkspace as (type_identifier)` was added. Additions are not a compa || exp=None obs=#[async_trait] impl AcpFileSystem for ReadOnlyWorkspace
+   public_api_unchanged | warn | public enum `ReceiptStatus` was added. Additions are not a compatibility break; list the path i || exp=None obs=/// Terminal status of a v8 execution receipt. #[derive
+   public_api_unchanged | warn | public struct `RuntimeSession` was added. Additions are not a compatibility break; list the pat || exp=None obs=#[derive(Debug, Clone, PartialEq, Serialize, Deserializ
+   public_api_unchanged | warn | public struct `SafetyCorpus` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// Versioned cross-runtime deterministic safety corpus
+   public_api_unchanged | warn | public struct `SafetyExpectation` was added. Additions are not a compatibility break; list the  || exp=None obs=#[derive(Debug, Clone, PartialEq, Serialize, Deserializ
+   public_api_unchanged | warn | public struct `SafetyScenario` was added. Additions are not a compatibility break; list the pat || exp=None obs=#[derive(Debug, Clone, PartialEq, Serialize, Deserializ
+   public_api_unchanged | warn | public struct `ScopeAuthorizer` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Coarse ADK scope gate. The v8 policy engine still e
+   public_api_unchanged | warn | public struct `SessionCompletionEvidence` was added. Additions are not a compatibility break; l || exp=None obs=#[derive(Debug, Clone, PartialEq, Serialize, Deserializ
+   public_api_unchanged | warn | public struct `SessionDeletionResult` was added. Additions are not a compatibility break; list  || exp=None obs=/// Principal-bound result of deleting one terminal v8 
+   public_api_unchanged | warn | public struct `SessionEvent` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// Stable supervisor event used for ADK/v8 trace corre
+   public_api_unchanged | warn | public struct `SessionFollowUp` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Principal-owned, monotonic steering instruction con
+   public_api_unchanged | warn | public struct `SessionFollowUpPage` was added. Additions are not a compatibility break; list th || exp=None obs=#[derive(Debug, Clone, PartialEq, Serialize, Deserializ
+   public_api_unchanged | warn | public struct `TargetEvidence` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// Evidence binding an action to a fresh desktop obser
+   public_api_unchanged | warn | public struct `TargetReservation` was added. Additions are not a compatibility break; list the  || exp=None obs=/// Non-authoritative, expiring planner intent for mult
+   public_api_unchanged | warn | public struct `TargetReservationScope` was added. Additions are not a compatibility break; list || exp=None obs=#[derive(Debug, Clone, PartialEq, Serialize, Deserializ
+   public_api_unchanged | warn | public enum `TargetSensitivityAssessment` was added. Additions are not a compatibility break; l || exp=None obs=#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, 
+   public_api_unchanged | warn | public struct `TargetSensitivityEvidence` was added. Additions are not a compatibility break; l || exp=None obs=/// Value-free native accessibility evidence used for a
+   public_api_unchanged | warn | public trait impl `TargetSensitivityEvidence as (generic_type type: (type_identifier) type_argu || exp=None obs=impl TryFrom<RawTargetSensitivityEvidence> for TargetSe
+   public_api_unchanged | warn | public enum `TargetSensitivitySignal` was added. Additions are not a compatibility break; list  || exp=None obs=#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Seria
+   public_api_unchanged | warn | public enum `TargetSensitivitySource` was added. Additions are not a compatibility break; list  || exp=None obs=#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, 
+   public_api_unchanged | warn | public struct `TraceCorrelation` was added. Additions are not a compatibility break; list the p || exp=None obs=#[derive(Debug, Clone, Default)] pub struct TraceCorrel
+   public_api_unchanged | warn | `adk-acp/src/server/permission.rs` declared public API and was deleted || exp=5 (PermissionOutcome, PermissionBridge, new, request_pe obs=None
+   public_api_unchanged | warn | `adk-acp/src/server/transport/http.rs` declared public API and was deleted || exp=3 (HttpTransport, new, HttpTransport as (type_identifie obs=None
+   public_api_unchanged | warn | public function `assessment` was added. Additions are not a compatibility break; list the path  || exp=None obs=pub fn assessment(&self) -> TargetSensitivityAssessment
+   public_api_unchanged | warn | public function `authorize` was added. Additions are not a compatibility break; list the path i || exp=None obs=/// Verify coarse entitlement without treating it as v8
+   public_api_unchanged | warn | public function `build_reference_graph` was added. Additions are not a compatibility break; lis || exp=None obs=/// Build the flagship deterministic ADK graph. /// ///
+   public_api_unchanged | warn | public function `build_reference_graph_with_checkpointer` was added. Additions are not a compat || exp=None obs=/// Build the reference graph with a durable host-suppl
+   public_api_unchanged | warn | public function `delete_terminal_session` was added. Additions are not a compatibility break; l || exp=None obs=/// Permanently remove this adapter's terminal v8 sessi
+   public_api_unchanged | warn | public function `emergency_stop` was added. Additions are not a compatibility break; list the p || exp=None obs=pub async fn emergency_stop(&self, adk_session_id: &str
+   public_api_unchanged | warn | public function `evaluate` was added. Additions are not a compatibility break; list the path in || exp=None obs=pub fn evaluate(&self, expected_trajectory: &[ToolUse],
+   public_api_unchanged | warn | public function `fields_checked` was added. Additions are not a compatibility break; list the p || exp=None obs=pub fn fields_checked(&self) -> u32
+   public_api_unchanged | warn | public function `from_verified_identity` was added. Additions are not a compatibility break; li || exp=None obs=/// Construct from identity already verified by adk-aut
+   public_api_unchanged | warn | public function `get_follow_ups` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Consume remote/local steering with a monotonic curs
+   public_api_unchanged | warn | public function `grant_id` was added. Additions are not a compatibility break; list the path in || exp=None obs=pub fn grant_id(&self) -> &str
+   public_api_unchanged | warn | public function `new` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=pub fn new(toolset: Arc<McpToolset<S>>, config: Compute
+   public_api_unchanged | warn | public function `new` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=pub fn new(runtime: Arc<dyn ComputerUseRuntime>, interr
+   public_api_unchanged | warn | public function `new` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=/// Construct a scope gate from verified JWT/OIDC reque
+   public_api_unchanged | warn | public function `observe_tool` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// Run a read-only desktop tool through the governed v
+   public_api_unchanged | warn | public function `observed_at` was added. Additions are not a compatibility break; list the path || exp=None obs=pub fn observed_at(&self) -> &str
+   public_api_unchanged | warn | public function `pause` was added. Additions are not a compatibility break; list the path in `a || exp=None obs=pub async fn pause(&self, v8_session_id: &str, adk_sess
+   public_api_unchanged | warn | public function `prune_terminal_sessions` was added. Additions are not a compatibility break; l || exp=None obs=/// Explicitly prune caller-owned terminal sessions bef
+   public_api_unchanged | warn | public function `remaining_uses` was added. Additions are not a compatibility break; list the p || exp=None obs=pub fn remaining_uses(&self) -> u32
+   public_api_unchanged | warn | public function `scope` was added. Additions are not a compatibility break; list the path in `a || exp=None obs=pub fn scope(&self) -> ApprovalGrantScope
+   public_api_unchanged | warn | public function `scope_digest` was added. Additions are not a compatibility break; list the pat || exp=None obs=pub fn scope_digest(&self) -> &str
+   public_api_unchanged | warn | public function `seal` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=pub fn seal(mut self) -> Result<Self, serde_json::Error
+   public_api_unchanged | warn | public function `signals` was added. Additions are not a compatibility break; list the path in  || exp=None obs=pub fn signals(&self) -> &[TargetSensitivitySignal]
+   public_api_unchanged | warn | public function `source` was added. Additions are not a compatibility break; list the path in ` || exp=None obs=pub fn source(&self) -> TargetSensitivitySource
+   public_api_unchanged | warn | public function `stop` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=pub async fn stop(&self, v8_session_id: &str, adk_sessi
+   public_api_unchanged | warn | public function `submit_follow_up` was added. Additions are not a compatibility break; list the || exp=None obs=/// Submit steering through the same principal-bound MC
+   public_api_unchanged | warn | public function `trajectory` was added. Additions are not a compatibility break; list the path  || exp=None obs=pub fn trajectory(events: &[SessionEvent]) -> Vec<ToolU
+   public_api_unchanged | warn | public function `try_new` was added. Additions are not a compatibility break; list the path in  || exp=None obs=pub fn try_new(assessment: TargetSensitivityAssessment,
+   public_api_unchanged | warn | public function `verified_tenant_id` was added. Additions are not a compatibility break; list t || exp=None obs=/// Tenant identity already verified by adk-auth middle
+   public_api_unchanged | warn | public function `verify` was added. Additions are not a compatibility break; list the path in ` || exp=None obs=pub fn verify(&self) -> bool
+   tests_not_deleted | warn | 1 test(s) no longer exist anywhere in the tree: tests::test_approval_flow || exp=tests::test_approval_flow obs=None
+   tests_not_deleted | warn | 1 test(s) no longer exist anywhere in the tree: tests::test_denial_flow || exp=tests::test_denial_flow obs=None
+   tests_not_deleted | warn | 1 test(s) no longer exist anywhere in the tree: tests::test_resolve_unknown_id || exp=tests::test_resolve_unknown_id obs=None
+   tests_not_deleted | warn | 1 test(s) no longer exist anywhere in the tree: tests::test_timeout_flow || exp=tests::test_timeout_flow obs=None
+   public_api_unchanged | warn | public trait impl `AddTool as (scoped_type_identifier path: (identifier) name: (type_identifier || exp=None obs=#[async_trait] impl adk_core::Tool for AddTool { fn nam
+   public_api_unchanged | warn | public trait impl `BuiltinTool as (type_identifier)` was added. Additions are not a compatibili || exp=None obs=#[async_trait] impl Tool for BuiltinTool { fn name(&sel
+   public_api_unchanged | warn | public const `CODEACT_SYSTEM_PROMPT` was added. Additions are not a compatibility break; list t || exp=None obs=/// The default, language-agnostic CodeAct system promp
+   public_api_unchanged | warn | public trait impl `CallIdTool as (type_identifier)` was added. Additions are not a compatibilit || exp=None obs=#[async_trait] impl Tool for CallIdTool { fn name(&self
+   public_api_unchanged | warn | public struct `CodeActAgent` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// A configured CodeAct agent. /// /// Build one with 
+   public_api_unchanged | warn | public trait impl `CodeActAgent as (scoped_type_identifier path: (scoped_identifier path: (iden || exp=None obs=impl std::fmt::Debug for CodeActAgent { fn fmt(&self, f
+   public_api_unchanged | warn | public trait impl `CodeActAgent as (type_identifier)` was added. Additions are not a compatibil || exp=None obs=#[async_trait] impl Agent for CodeActAgent { fn name(&s
+   public_api_unchanged | warn | public struct `CodeActAgentBuilder` was added. Additions are not a compatibility break; list th || exp=None obs=/// Builder for [`CodeActAgent`]. /// /// [`model`](Sel
+   public_api_unchanged | warn | public trait impl `CodeActAgentBuilder as (type_identifier)` was added. Additions are not a com || exp=None obs=impl Default for CodeActAgentBuilder { fn default() -> 
+   public_api_unchanged | warn | public struct `CodeActCheckpoint` was added. Additions are not a compatibility break; list the  || exp=None obs=/// A serializable snapshot of a suspended CodeAct run,
+   public_api_unchanged | warn | public trait `CodeRuntime` was added. Additions are not a compatibility break; list the path in || exp=None obs=/// A step-wise, language-agnostic code interpreter cap
+   public_api_unchanged | warn | public trait impl `CodeToolContext as (type_identifier)` was added. Additions are not a compati || exp=None obs=#[async_trait] impl CallbackContext for CodeToolContext
+   public_api_unchanged | warn | public trait impl `CodeToolContext as (type_identifier)` was added. Additions are not a compati || exp=None obs=#[async_trait] impl ToolContext for CodeToolContext { f
+   public_api_unchanged | warn | public trait impl `CodeToolContext as (type_identifier)` was added. Additions are not a compati || exp=None obs=#[async_trait] impl ReadonlyContext for CodeToolContext
+   public_api_unchanged | warn | public const `DEFAULT_MAX_ERROR_CHARS` was added. Additions are not a compatibility break; list || exp=None obs=/// Default cap (in chars) on an error message fed back
+   public_api_unchanged | warn | public const `DEFAULT_MAX_ITERATIONS` was added. Additions are not a compatibility break; list  || exp=None obs=/// Default number of model turns before the loop gives
+   public_api_unchanged | warn | public const `DEFAULT_MAX_SKILL_CHARS` was added. Additions are not a compatibility break; list || exp=None obs=/// Default cap (in chars) on injected skill content. p
+   public_api_unchanged | warn | public const `DEFAULT_OUTPUT_MAX_RETRIES` was added. Additions are not a compatibility break; l || exp=None obs=/// Default number of correction retries for output-sch
+   public_api_unchanged | warn | public const `DEFAULT_TOOL_TIMEOUT` was added. Additions are not a compatibility break; list th || exp=None obs=/// Default per-tool execution timeout (5 minutes), mat
+   public_api_unchanged | warn | public trait impl `DemoLlm as (type_identifier)` was added. Additions are not a compatibility b || exp=None obs=#[async_trait] impl Llm for DemoLlm { fn name(&self) ->
+   public_api_unchanged | warn | public trait impl `DemoLlm as (type_identifier)` was added. Additions are not a compatibility b || exp=None obs=#[async_trait] impl Llm for DemoLlm { fn name(&self) ->
+   public_api_unchanged | warn | public enum `Disposition` was added. Additions are not a compatibility break; list the path in  || exp=None obs=/// Why a checkpoint was written, and how to resume fro
+   public_api_unchanged | warn | public trait impl `EchoTool as (type_identifier)` was added. Additions are not a compatibility  || exp=None obs=#[async_trait] impl Tool for EchoTool { fn name(&self) 
+   public_api_unchanged | warn | public trait impl `EscalatingLongRunningTool as (type_identifier)` was added. Additions are not || exp=None obs=#[async_trait] impl Tool for EscalatingLongRunningTool 
+   public_api_unchanged | warn | public trait impl `EscalatingTool as (type_identifier)` was added. Additions are not a compatib || exp=None obs=#[async_trait] impl Tool for EscalatingTool { fn name(&
+   public_api_unchanged | warn | public trait impl `FailingTool as (type_identifier)` was added. Additions are not a compatibili || exp=None obs=#[async_trait] impl Tool for FailingTool { fn name(&sel
+   public_api_unchanged | warn | public trait impl `FakeAgent as (type_identifier)` was added. Additions are not a compatibility || exp=None obs=#[async_trait] impl Agent for FakeAgent { fn name(&self
+   public_api_unchanged | warn | public trait impl `FakePendingCall as (type_identifier)` was added. Additions are not a compati || exp=None obs=impl PendingCall for FakePendingCall { fn function_name
+   public_api_unchanged | warn | public trait impl `FakeToolset as (type_identifier)` was added. Additions are not a compatibili || exp=None obs=#[async_trait] impl Toolset for FakeToolset { fn name(&
+   public_api_unchanged | warn | public trait impl `FetchCartTool as (scoped_type_identifier path: (identifier) name: (type_iden || exp=None obs=#[async_trait] impl adk_core::Tool for FetchCartTool { 
+   public_api_unchanged | warn | public trait impl `FlakyTool as (type_identifier)` was added. Additions are not a compatibility || exp=None obs=#[async_trait] impl Tool for FlakyTool { fn name(&self)
+   public_api_unchanged | warn | public trait impl `LinePendingCall as (type_identifier)` was added. Additions are not a compati || exp=None obs=impl PendingCall for LinePendingCall { fn function_name
+   public_api_unchanged | warn | public struct `LineScriptRuntime` was added. Additions are not a compatibility break; list the  || exp=None obs=/// A self-contained [`CodeRuntime`] over the line-scri
+   public_api_unchanged | warn | public trait impl `LineScriptRuntime as (type_identifier)` was added. Additions are not a compa || exp=None obs=impl CodeRuntime for LineScriptRuntime { fn start(&self
+   public_api_unchanged | warn | public trait impl `LongRunningTool as (type_identifier)` was added. Additions are not a compati || exp=None obs=#[async_trait] impl Tool for LongRunningTool { fn name(
+   public_api_unchanged | warn | public trait impl `MockInvocationContext as (type_identifier)` was added. Additions are not a c || exp=None obs=#[async_trait] impl ReadonlyContext for MockInvocationC
+   public_api_unchanged | warn | public trait impl `MockInvocationContext as (type_identifier)` was added. Additions are not a c || exp=None obs=#[async_trait] impl CallbackContext for MockInvocationC
+   public_api_unchanged | warn | public trait impl `MockInvocationContext as (type_identifier)` was added. Additions are not a c || exp=None obs=#[async_trait] impl InvocationContext for MockInvocatio
+   public_api_unchanged | warn | public trait impl `MockSession as (type_identifier)` was added. Additions are not a compatibili || exp=None obs=impl Session for MockSession { fn id(&self) -> &str { "
+   public_api_unchanged | warn | public trait impl `MockState as (type_identifier)` was added. Additions are not a compatibility || exp=None obs=impl State for MockState { fn get(&self, key: &str) -> 
+   public_api_unchanged | warn | public trait impl `MontyPendingCall as (type_identifier)` was added. Additions are not a compat || exp=None obs=impl PendingCall for MontyPendingCall { fn function_nam
+   public_api_unchanged | warn | public struct `MontyRuntime` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// A Python [`CodeRuntime`] for the [`CodeActAgent`](a
+   public_api_unchanged | warn | public trait impl `MontyRuntime as (type_identifier)` was added. Additions are not a compatibil || exp=None obs=impl Default for MontyRuntime { fn default() -> Self { 
+   public_api_unchanged | warn | public trait impl `MontyRuntime as (type_identifier)` was added. Additions are not a compatibil || exp=None obs=impl CodeRuntime for MontyRuntime { fn start(&self, scr
+   public_api_unchanged | warn | public struct `MontyRuntimeBuilder` was added. Additions are not a compatibility break; list th || exp=None obs=/// Builder for [`MontyRuntime`]. pub struct MontyRunti
+   public_api_unchanged | warn | public trait impl `MontyRuntimeBuilder as (type_identifier)` was added. Additions are not a com || exp=None obs=impl Default for MontyRuntimeBuilder { fn default() -> 
+   public_api_unchanged | warn | public struct `OsAccess` was added. Additions are not a compatibility break; list the path in ` || exp=None obs=/// The OS-access policy a [`MontyRuntime`](crate::Mont
+   public_api_unchanged | warn | public trait impl `OsAccess as (type_identifier)` was added. Additions are not a compatibility  || exp=None obs=impl Default for OsAccess { fn default() -> Self { Self
+   public_api_unchanged | warn | public struct `OsAccessBuilder` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Builder for [`OsAccess`]. #[derive(Debug, Clone)] p
+   public_api_unchanged | warn | public trait impl `OsAccessBuilder as (type_identifier)` was added. Additions are not a compati || exp=None obs=impl Default for OsAccessBuilder { fn default() -> Self
+   public_api_unchanged | warn | public const `PENDING_STATE_KEY` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Session-state key under which the pending checkpoin
+   public_api_unchanged | warn | public enum `PathAccess` was added. Additions are not a compatibility break; list the path in ` || exp=None obs=/// Access mode for a path made available to a script. 
+   public_api_unchanged | warn | public trait `PendingCall` was added. Additions are not a compatibility break; list the path in || exp=None obs=/// A paused external-function call awaiting a result. 
+   public_api_unchanged | warn | public struct `PendingToolCall` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// The tool call a suspended run is waiting on. #[deri
+   public_api_unchanged | warn | public enum `ResolutionRecord` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// The result to feed back into a resumed continuation
+   public_api_unchanged | warn | public enum `ResumeWith` was added. Additions are not a compatibility break; list the path in ` || exp=None obs=/// How to resume a paused external-function call. #[de
+   public_api_unchanged | warn | public trait impl `RouteTool as (type_identifier)` was added. Additions are not a compatibility || exp=None obs=#[async_trait] impl Tool for RouteTool { fn name(&self)
+   public_api_unchanged | warn | public enum `RunStep` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=/// The result of advancing the interpreter to its next
+   public_api_unchanged | warn | public trait impl `RunStep as (scoped_type_identifier path: (scoped_identifier path: (identifie || exp=None obs=impl std::fmt::Debug for RunStep { fn fmt(&self, f: &mu
+   public_api_unchanged | warn | public struct `RuntimeCapabilities` was added. Additions are not a compatibility break; list th || exp=None obs=/// What a [`CodeRuntime`] reports about itself. /// //
+   public_api_unchanged | warn | public enum `RuntimeError` was added. Additions are not a compatibility break; list the path in || exp=None obs=/// A host-level failure of the runtime itself (not a s
+   public_api_unchanged | warn | public enum `ScriptOutput` was added. Additions are not a compatibility break; list the path in || exp=None obs=/// The typed value a CodeAct script must return. /// /
+   public_api_unchanged | warn | public trait impl `ScriptedRuntime as (type_identifier)` was added. Additions are not a compati || exp=None obs=impl CodeRuntime for ScriptedRuntime { fn start(&self, 
+   public_api_unchanged | warn | public trait impl `SkipSummarizationTool as (type_identifier)` was added. Additions are not a c || exp=None obs=#[async_trait] impl Tool for SkipSummarizationTool { fn
+   public_api_unchanged | warn | public trait impl `SleepingTool as (type_identifier)` was added. Additions are not a compatibil || exp=None obs=#[async_trait] impl Tool for SleepingTool { fn name(&se
+   public_api_unchanged | warn | public trait impl `StateTool as (type_identifier)` was added. Additions are not a compatibility || exp=None obs=#[async_trait] impl Tool for StateTool { fn name(&self)
+   public_api_unchanged | warn | public trait impl `TaxRateTool as (scoped_type_identifier path: (identifier) name: (type_identi || exp=None obs=#[async_trait] impl adk_core::Tool for TaxRateTool { fn
+   public_api_unchanged | warn | public trait impl `TextAgent as (type_identifier)` was added. Additions are not a compatibility || exp=None obs=#[async_trait] impl Agent for TextAgent { fn name(&self
+   public_api_unchanged | warn | public type alias `ToolMap` was added. Additions are not a compatibility break; list the path i || exp=None obs=/// A tool lookup table keyed by tool name. pub type To
+   public_api_unchanged | warn | public trait impl `ToolOutcomeContext as (type_identifier)` was added. Additions are not a comp || exp=None obs=#[async_trait] impl CallbackContext for ToolOutcomeCont
+   public_api_unchanged | warn | public trait impl `ToolOutcomeContext as (type_identifier)` was added. Additions are not a comp || exp=None obs=#[async_trait] impl ReadonlyContext for ToolOutcomeCont
+   public_api_unchanged | warn | public function `additional_prompt` was added. Additions are not a compatibility break; list th || exp=None obs=/// Append extra text to the language briefing in the s
+   public_api_unchanged | warn | public function `after_callback` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Add an after-agent callback. /// /// Callbacks run 
+   public_api_unchanged | warn | public function `after_model_callback` was added. Additions are not a compatibility break; list || exp=None obs=/// Add an after-model callback, invoked after each mod
+   public_api_unchanged | warn | public function `after_tool_callback` was added. Additions are not a compatibility break; list  || exp=None obs=/// Add an after-tool callback, invoked after each tool
+   public_api_unchanged | warn | public function `after_tool_callback_full` was added. Additions are not a compatibility break;  || exp=None obs=/// Add a rich after-tool callback receiving the tool, 
+   public_api_unchanged | warn | public module `agent` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=pub mod agent;
+   public_api_unchanged | warn | public function `allow_path` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// Make a host directory available to scripts at `virt
+   public_api_unchanged | warn | public function `allow_path` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// Make a host directory available to scripts at `virt
+   public_api_unchanged | warn | public function `before_callback` was added. Additions are not a compatibility break; list the  || exp=None obs=/// Add a before-agent callback. /// /// Callbacks run 
+   public_api_unchanged | warn | public function `before_model_callback` was added. Additions are not a compatibility break; lis || exp=None obs=/// Add a before-model callback, invoked before each mo
+   public_api_unchanged | warn | public function `before_tool_callback` was added. Additions are not a compatibility break; list || exp=None obs=/// Add a before-tool callback, invoked before each too
+   public_api_unchanged | warn | public function `bind_call_args` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Bind a call's positional and keyword arguments onto
+   public_api_unchanged | warn | public function `build` was added. Additions are not a compatibility break; list the path in `a || exp=None obs=/// Finish building the policy. #[must_use] pub fn buil
+   public_api_unchanged | warn | public function `build` was added. Additions are not a compatibility break; list the path in `a || exp=None obs=/// Finish building the runtime. #[must_use] pub fn bui
+   public_api_unchanged | warn | public function `build` was added. Additions are not a compatibility break; list the path in `a || exp=None obs=/// Build the [`CodeActAgent`]. /// /// # Errors /// Re
+   public_api_unchanged | warn | public function `build_tool_map` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Build a [`ToolMap`] from a tool list, excluding bui
+   public_api_unchanged | warn | public function `builder` was added. Additions are not a compatibility break; list the path in  || exp=None obs=/// Start building a policy. #[must_use] pub fn builder
+   public_api_unchanged | warn | public function `builder` was added. Additions are not a compatibility break; list the path in  || exp=None obs=/// Start building a runtime with custom limits or prom
+   public_api_unchanged | warn | public function `builder` was added. Additions are not a compatibility break; list the path in  || exp=None obs=/// Start building a [`CodeActAgent`]. pub fn builder()
+   public_api_unchanged | warn | public function `call` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=/// A tool-call step with no captured output. #[must_us
+   public_api_unchanged | warn | public module `checkpoint` was added. Additions are not a compatibility break; list the path in || exp=None obs=pub mod checkpoint;
+   public_api_unchanged | warn | public function `circuit_breaker_threshold` was added. Additions are not a compatibility break; || exp=None obs=/// Set the circuit-breaker threshold: after this many 
+   public_api_unchanged | warn | public function `complete` was added. Additions are not a compatibility break; list the path in || exp=None obs=/// A completion step with no captured output. #[must_u
+   public_api_unchanged | warn | public function `decode` was added. Additions are not a compatibility break; list the path in ` || exp=None obs=/// Decode a completed script's returned value into a [
+   public_api_unchanged | warn | public function `default_retry_budget` was added. Additions are not a compatibility break; list || exp=None obs=/// Set the default retry budget applied to tools witho
+   public_api_unchanged | warn | public function `default_tool_catalog` was added. Additions are not a compatibility break; list || exp=None obs=/// A generic, language-neutral tool listing. /// /// R
+   public_api_unchanged | warn | public function `denied_message` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Message raised when a human denies a confirmation-g
+   public_api_unchanged | warn | public function `description` was added. Additions are not a compatibility break; list the path || exp=None obs=/// Set the agent description. pub fn description(mut s
+   public_api_unchanged | warn | public function `disallow_transfer_to_parent` was added. Additions are not a compatibility brea || exp=None obs=/// Prevent this agent from transferring control back t
+   public_api_unchanged | warn | public function `disallow_transfer_to_peers` was added. Additions are not a compatibility break || exp=None obs=/// Prevent this agent from transferring control to pee
+   public_api_unchanged | warn | public function `enhanced_plugin` was added. Additions are not a compatibility break; list the  || exp=None obs=/// Register an enhanced plugin. Plugins intercept tool
+   public_api_unchanged | warn | public function `enhanced_plugins` was added. Additions are not a compatibility break; list the || exp=None obs=/// Register multiple enhanced plugins at once. #[cfg(f
+   public_api_unchanged | warn | public function `environ` was added. Additions are not a compatibility break; list the path in  || exp=None obs=/// Replace the environment map exposed via `os.getenv`
+   public_api_unchanged | warn | public function `environ` was added. Additions are not a compatibility break; list the path in  || exp=None obs=/// Replace the environment map exposed to scripts via 
+   public_api_unchanged | warn | public function `environ_var` was added. Additions are not a compatibility break; list the path || exp=None obs=/// Add or overwrite a single environment variable. #[m
+   public_api_unchanged | warn | public function `environ_var` was added. Additions are not a compatibility break; list the path || exp=None obs=/// Add or overwrite a single environment variable visi
+   public_api_unchanged | warn | public module `error_map` was added. Additions are not a compatibility break; list the path in  || exp=None obs=pub mod error_map;
+   public_api_unchanged | warn | public function `extract_code_block` was added. Additions are not a compatibility break; list t || exp=None obs=/// Extract the body of the first fenced code block, sk
+   public_api_unchanged | warn | public function `generate_content_config` was added. Additions are not a compatibility break; l || exp=None obs=/// Set the generation config (temperature, tokens, etc
+   public_api_unchanged | warn | public function `global_instruction` was added. Additions are not a compatibility break; list t || exp=None obs=/// Set a global instruction placed before the agent in
+   public_api_unchanged | warn | public function `global_instruction_provider` was added. Additions are not a compatibility brea || exp=None obs=/// Set a dynamic global instruction provider evaluated
+   public_api_unchanged | warn | public function `include_contents` was added. Additions are not a compatibility break; list the || exp=None obs=/// Control which conversation history the agent sees (
+   public_api_unchanged | warn | public function `input_guardrails` was added. Additions are not a compatibility break; list the || exp=None obs=/// Set guardrails applied to the incoming user content
+   public_api_unchanged | warn | public function `input_schema` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// Set a JSON schema describing this agent's input (de
+   public_api_unchanged | warn | public function `input_schema` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// The JSON schema describing this agent's input, if s
+   public_api_unchanged | warn | public function `instruction` was added. Additions are not a compatibility break; list the path || exp=None obs=/// Set the agent instruction, placed first in the syst
+   public_api_unchanged | warn | public function `instruction_provider` was added. Additions are not a compatibility break; list || exp=None obs=/// Set a dynamic instruction provider evaluated per in
+   public_api_unchanged | warn | public function `into_builder` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// Recover a builder seeded with this policy's setting
+   public_api_unchanged | warn | public function `max_allocations` was added. Additions are not a compatibility break; list the  || exp=None obs=/// Cap the number of heap allocations a script may mak
+   public_api_unchanged | warn | public function `max_duration` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// Cap wall-clock execution time for each interpreter 
+   public_api_unchanged | warn | public function `max_error_chars` was added. Additions are not a compatibility break; list the  || exp=None obs=/// Set the maximum error-message length fed back to th
+   public_api_unchanged | warn | public function `max_iterations` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Set the maximum number of model turns. pub fn max_i
+   public_api_unchanged | warn | public function `max_memory` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// Cap approximate heap memory (bytes) a script may us
+   public_api_unchanged | warn | public function `max_output_tokens` was added. Additions are not a compatibility break; list th || exp=None obs=/// Set the default maximum output tokens for model req
+   public_api_unchanged | warn | public function `model` was added. Additions are not a compatibility break; list the path in `a || exp=None obs=/// Set the model (required). pub fn model(mut self, mo
+   public_api_unchanged | warn | public function `name` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=/// Set the agent name. pub fn name(mut self, name: imp
+   public_api_unchanged | warn | public function `new` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=/// Create a builder seeded with the conservative defau
+   public_api_unchanged | warn | public function `new` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=/// Create a builder with default settings. pub fn new(
+   public_api_unchanged | warn | public function `new` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=/// Construct capabilities from a suspension flag and a
+   public_api_unchanged | warn | public function `new` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=/// A builder seeded with the fully sandboxed defaults:
+   public_api_unchanged | warn | public function `new` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=/// Create a runtime with conservative default resource
+   public_api_unchanged | warn | public function `on_tool_error` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Add an on-tool-error callback. When a tool ultimate
+   public_api_unchanged | warn | public function `os_access` was added. Additions are not a compatibility break; list the path i || exp=None obs=/// Replace the whole OS-access policy. /// /// Use thi
+   public_api_unchanged | warn | public module `output` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=pub mod output;
+   public_api_unchanged | warn | public function `output_guardrails` was added. Additions are not a compatibility break; list th || exp=None obs=/// Set guardrails applied to the final result before i
+   public_api_unchanged | warn | public function `output_key` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// Set a session state key under which the final resul
+   public_api_unchanged | warn | public function `output_max_retries` was added. Additions are not a compatibility break; list t || exp=None obs=/// Set the maximum number of output-schema correction 
+   public_api_unchanged | warn | public function `output_schema` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Require the final result to validate against this J
+   public_api_unchanged | warn | public function `output_type` was added. Additions are not a compatibility break; list the path || exp=None obs=/// Require the final result to match `T`'s JSON schema
+   public_api_unchanged | warn | public function `raised` was added. Additions are not a compatibility break; list the path in ` || exp=None obs=/// A script-error step with no captured output. #[must
+   public_api_unchanged | warn | public function `require_tool_confirmation` was added. Additions are not a compatibility break; || exp=None obs=/// Require human confirmation for a specific tool. pub
+   public_api_unchanged | warn | public function `require_tool_confirmation_for_all` was added. Additions are not a compatibilit || exp=None obs=/// Require human confirmation for every tool call. pub
+   public_api_unchanged | warn | public function `resource_limits` was added. Additions are not a compatibility break; list the  || exp=None obs=/// Replace the full set of resource limits. #[must_use
+   public_api_unchanged | warn | public function `runtime` was added. Additions are not a compatibility break; list the path in  || exp=None obs=/// Set the code runtime (required). pub fn runtime(mut
+   public_api_unchanged | warn | public module `runtime` was added. Additions are not a compatibility break; list the path in `a || exp=None obs=pub mod runtime;
+   public_api_unchanged | warn | public function `sandboxed` was added. Additions are not a compatibility break; list the path i || exp=None obs=/// A fully sandboxed policy: no filesystem access, an 
+   public_api_unchanged | warn | public function `sub_agent` was added. Additions are not a compatibility break; list the path i || exp=None obs=/// Add a sub-agent this agent may transfer control to.
+   public_api_unchanged | warn | public function `system_clock` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// Enable or disable host-clock access (`date.today()`
+   public_api_unchanged | warn | public function `system_clock` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// Enable or disable host-clock access (`date.today()`
+   public_api_unchanged | warn | public function `temperature` was added. Additions are not a compatibility break; list the path || exp=None obs=/// Set the default sampling temperature for model requ
+   public_api_unchanged | warn | public trait impl `tests::DemoTool as (type_identifier)` was added. Additions are not a compati || exp=None obs=#[async_trait] impl Tool for DemoTool { fn name(&self) 
+   public_api_unchanged | warn | public trait impl `tests::FakeLlm as (type_identifier)` was added. Additions are not a compatib || exp=None obs=#[async_trait] impl Llm for FakeLlm { fn name(&self) ->
+   public_api_unchanged | warn | public trait impl `tests::HyphenTool as (type_identifier)` was added. Additions are not a compa || exp=None obs=#[async_trait] impl Tool for HyphenTool { fn name(&self
+   public_api_unchanged | warn | public trait impl `tests::KeywordParamTool as (type_identifier)` was added. Additions are not a || exp=None obs=#[async_trait] impl Tool for KeywordParamTool { fn name
+   public_api_unchanged | warn | public trait impl `tests::ModelShortCircuit as (type_identifier)` was added. Additions are not  || exp=None obs=#[cfg(feature = "enhanced-plugins")] #[async_trait] imp
+   public_api_unchanged | warn | public trait impl `tests::NoArgTool as (type_identifier)` was added. Additions are not a compat || exp=None obs=#[async_trait] impl Tool for NoArgTool { fn name(&self)
+   public_api_unchanged | warn | public trait impl `tests::ToolArgRewriter as (type_identifier)` was added. Additions are not a  || exp=None obs=#[cfg(feature = "enhanced-plugins")] #[async_trait] imp
+   public_api_unchanged | warn | public trait impl `tests::ToolShortCircuit as (type_identifier)` was added. Additions are not a || exp=None obs=#[cfg(feature = "enhanced-plugins")] #[async_trait] imp
+   public_api_unchanged | warn | public function `tool` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=/// Register a tool callable from scripts. pub fn tool(
+   public_api_unchanged | warn | public function `tool_confirmation_policy` was added. Additions are not a compatibility break;  || exp=None obs=/// Set the tool confirmation policy. pub fn tool_confi
+   public_api_unchanged | warn | public function `tool_error_message` was added. Additions are not a compatibility break; list t || exp=None obs=/// Message raised into the script when a tool fails. p

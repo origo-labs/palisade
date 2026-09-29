@@ -46,6 +46,13 @@ evidence: one author, who also chooses the gates and judges the findings. A
 false positive on our own corpus is a bug report; on someone else's project it
 is why they turn it off.
 
+## Results
+
+See `JUDGEMENT.md` for the finding-by-finding pass and `results/*.txt` for raw
+output. Summary: 253 merges, **0 errors**, 0 blocking-severity false
+positives, and one real substantive finding (`adk-rust` PR #434 removing four
+tests, in a repo whose CONTRIBUTING.md says every PR must pass its checks).
+
 ## Known limits of this corpus
 
 - **`proton-tui` has 3 usable merges and `simonw/tools` has 2.** A

@@ -1,0 +1,409 @@
+corpus: delegated gates excluded from /Users/origo/src/warmplane (8 analyzed gates)
+=== /Users/origo/src/warmplane @ 0cd572c00d120c8951f9afa4011cabe941977f5a ===
+replayed 104 of 104 merges   clean=81  with-findings=23  error=0  skipped=0
+
+findings by primitive:
+   406  public_api_unchanged
+     1  suppressions_not_widened
+
+samples:
+   public_api_unchanged | warn | public function `read_jsonrpc_until_id` was added. Additions are not a compatibility break; lis || exp=None obs=/// Reads lines from an async buffered reader until a J
+   public_api_unchanged | warn | public const `DEFAULT_KEYCHAIN_SERVICE` was added. Additions are not a compatibility break; lis || exp=None obs=/// Default service name used for Warmplane secrets in 
+   public_api_unchanged | warn | public function `delete_os_keychain_secret` was added. Additions are not a compatibility break; || exp=None obs=/// Deletes a generic password from the OS Keychain. pu
+   public_api_unchanged | warn | public function `get_os_keychain_secret` was added. Additions are not a compatibility break; li || exp=None obs=/// Reads a generic password from the OS Keychain. pub 
+   public_api_unchanged | warn | public function `redact_secret_for_display` was added. Additions are not a compatibility break; || exp=None obs=/// Formats a value for display in the UI / logs, repla
+   public_api_unchanged | warn | public function `resolve_secret_value` was added. Additions are not a compatibility break; list || exp=None obs=/// Resolves a potentially secret URI into its plaintex
+   public_api_unchanged | warn | public function `set_os_keychain_secret` was added. Additions are not a compatibility break; li || exp=None obs=/// Saves a generic password into the OS Keychain. pub 
+   public_api_unchanged | warn | public struct `GenericCallbackPayload` was added. Additions are not a compatibility break; list || exp=None obs=/// Generic callback payload structure. #[derive(Deseri
+   public_api_unchanged | warn | public struct `TestWebhookRequest` was added. Additions are not a compatibility break; list the || exp=None obs=/// Request payload for simulating a test webhook dispa
+   public_api_unchanged | warn | public enum `WebhookFormat` was added. Additions are not a compatibility break; list the path i || exp=None obs=/// Payload layout format for outbound webhooks. #[deri
+   public_api_unchanged | warn | public function `format_webhook_payload` was added. Additions are not a compatibility break; li || exp=None obs=/// Formats an outbound webhook payload based on the co
+   public_api_unchanged | warn | public function `handle_test_webhook` was added. Additions are not a compatibility break; list  || exp=None obs=/// Handles POST `/v1/webhooks/test` sending a simulate
+   public_api_unchanged | warn | public function `handle_webhook_callback` was added. Additions are not a compatibility break; l || exp=None obs=/// Handles POST `/v1/webhooks/callbacks` processing in
+   public_api_unchanged | warn | public function `verify_signature` was added. Additions are not a compatibility break; list the || exp=None obs=/// Verifies an HMAC-SHA256 signature for incoming webh
+   public_api_unchanged | warn | public struct `AttachOptions` was added. Additions are not a compatibility break; list the path || exp=None obs=/// Options when attaching Warmplane to a client. #[der
+   public_api_unchanged | warn | public struct `AttachResult` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// Result of an attach operation. #[derive(Debug, Clon
+   public_api_unchanged | warn | public struct `ClientAppDef` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// Information definition for a known AI client applic
+   public_api_unchanged | warn | public struct `ClientAppStatus` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Status of a detected client application on the host
+   public_api_unchanged | warn | public enum `ClientDialect` was added. Additions are not a compatibility break; list the path i || exp=None obs=/// JSON schema dialect used by the client for MCP conf
+   public_api_unchanged | warn | public struct `DetachResult` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// Result of a detach operation. #[derive(Debug, Clone
+   public_api_unchanged | warn | public function `attach_client` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Attaches Warmplane to a target client application. 
+   public_api_unchanged | warn | public function `detach_client` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Detaches Warmplane from a target client application
+   public_api_unchanged | warn | public function `detect_clients` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Scans the local system and returns statuses for all
+   public_api_unchanged | warn | public function `get_supported_clients` was added. Additions are not a compatibility break; lis || exp=None obs=/// Returns definitions of all supported client applica
+   public_api_unchanged | warn | public function `resolve_client_config_path` was added. Additions are not a compatibility break || exp=None obs=/// Resolves the primary configuration file path for a 
+   public_api_unchanged | warn | public struct `CancelTaskRequest` was added. Additions are not a compatibility break; list the  || exp=None obs=/// Request payload for cancelling a task. #[derive(Deb
+   public_api_unchanged | warn | public struct `CreateTaskParams` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Request parameters for creating a new Task. #[deriv
+   public_api_unchanged | warn | public struct `ListTasksResponse` was added. Additions are not a compatibility break; list the  || exp=None obs=/// Response payload for listing tasks. #[derive(Debug,
+   public_api_unchanged | warn | public struct `TaskRecord` was added. Additions are not a compatibility break; list the path in || exp=None obs=/// Durable internal record of a Task. #[derive(Clone, 
+   public_api_unchanged | warn | public struct `TaskRegistry` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// Global registry managing active and persisted tasks
+   public_api_unchanged | warn | public struct `TaskResponse` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// Wire representation of a Task for `tasks/get` and `
+   public_api_unchanged | warn | public trait impl `TaskResponse as (generic_type type: (type_identifier) type_arguments: (type_ || exp=None obs=impl From<&TaskRecord> for TaskResponse { fn from(recor
+   public_api_unchanged | warn | public enum `TaskStatus` was added. Additions are not a compatibility break; list the path in ` || exp=None obs=/// Task execution status per SEP-2663. #[derive(Clone,
+   public_api_unchanged | warn | public struct `UpdateTaskRequest` was added. Additions are not a compatibility break; list the  || exp=None obs=/// Request payload for updating a task with input resp
+   public_api_unchanged | warn | public function `cancel_task` was added. Additions are not a compatibility break; list the path || exp=None obs=/// Cancels an in-progress or suspended task cooperativ
+   public_api_unchanged | warn | public function `complete_task` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Marks a task as completed with results. pub async f
+   public_api_unchanged | warn | public function `create_task` was added. Additions are not a compatibility break; list the path || exp=None obs=/// Creates and registers a new task. pub async fn crea
+   public_api_unchanged | warn | public function `fail_task` was added. Additions are not a compatibility break; list the path i || exp=None obs=/// Marks a task as failed with an error payload. pub a
+   public_api_unchanged | warn | public function `find_by_idempotency_key` was added. Additions are not a compatibility break; l || exp=None obs=/// Finds an active or completed task by idempotency ke
+   public_api_unchanged | warn | public function `get_task` was added. Additions are not a compatibility break; list the path in || exp=None obs=/// Retrieves a task by its task ID, checking for TTL e
+   public_api_unchanged | warn | public function `handle_cancel_task` was added. Additions are not a compatibility break; list t || exp=None obs=/// Handles `POST /v1/tasks/:id/cancel` - cancels an ac
+   public_api_unchanged | warn | public function `handle_get_task` was added. Additions are not a compatibility break; list the  || exp=None obs=/// Handles `GET /v1/tasks/:id` - gets single task stat
+   public_api_unchanged | warn | public function `handle_list_tasks` was added. Additions are not a compatibility break; list th || exp=None obs=/// Handles `GET /v1/tasks` - lists all known tasks. pu
+   public_api_unchanged | warn | public function `handle_update_task` was added. Additions are not a compatibility break; list t || exp=None obs=/// Handles `POST /v1/tasks/:id/update` - submits input
+   public_api_unchanged | warn | public function `list_tasks` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// Lists all tasks. pub async fn list_tasks(&self) -> 
+   public_api_unchanged | warn | public function `new` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=/// Creates a new in-memory `TaskRegistry`. pub fn new(
+   public_api_unchanged | warn | public function `open_or_create` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Initializes a `TaskRegistry` backed by a persistent
+   public_api_unchanged | warn | public function `update_task` was added. Additions are not a compatibility break; list the path || exp=None obs=/// Updates a task with client input responses. pub asy
+   public_api_unchanged | warn | public struct `CapabilitiesListResponse` was added. Additions are not a compatibility break; li || exp=None obs=/// Response payload for capability catalog listing. #[
+   public_api_unchanged | warn | public struct `CapabilityDescribeResponse` was added. Additions are not a compatibility break;  || exp=None obs=/// Response payload for capability schema describe. #[
+   public_api_unchanged | warn | public struct `CapabilityDetail` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Detailed capability specification including schema 
+   public_api_unchanged | warn | public struct `CapabilitySearchResponse` was added. Additions are not a compatibility break; li || exp=None obs=/// Response payload for capability search. #[derive(De
+   public_api_unchanged | warn | public struct `CapabilitySummary` was added. Additions are not a compatibility break; list the  || exp=None obs=/// Compact capability metadata summary for catalog ind
+   public_api_unchanged | warn | public struct `ControlPlaneHandle` was added. Additions are not a compatibility break; list the || exp=None obs=/// Cloneable handle to invoke capabilities, query reso
+   public_api_unchanged | warn | public struct `EmbeddedWarmplane` was added. Additions are not a compatibility break; list the  || exp=None obs=/// In-process entry point for booting and managing War
+   public_api_unchanged | warn | public struct `EngineHealthStatus` was added. Additions are not a compatibility break; list the || exp=None obs=/// Health and status overview of the embedded Warmplan
+   public_api_unchanged | warn | public struct `Envelope` was added. Additions are not a compatibility break; list the path in ` || exp=None obs=/// Strongly typed response envelope returned by all em
+   public_api_unchanged | warn | public struct `ExecutionOptions` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Optional invocation settings for calling a capabili
+   public_api_unchanged | warn | public struct `GetPromptOptions` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Optional parameters for rendering a prompt template
+   public_api_unchanged | warn | public struct `PromptSummary` was added. Additions are not a compatibility break; list the path || exp=None obs=/// Compact prompt metadata summary. #[derive(Debug, Cl
+   public_api_unchanged | warn | public struct `PromptsListResponse` was added. Additions are not a compatibility break; list th || exp=None obs=/// Response payload for listing prompts. #[derive(Debu
+   public_api_unchanged | warn | public struct `ReadResourceOptions` was added. Additions are not a compatibility break; list th || exp=None obs=/// Optional parameters for reading a resource. #[deriv
+   public_api_unchanged | warn | public struct `ResourceSummary` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Compact resource metadata summary. #[derive(Debug, 
+   public_api_unchanged | warn | public struct `ResourcesListResponse` was added. Additions are not a compatibility break; list  || exp=None obs=/// Response payload for listing resources. #[derive(De
+   public_api_unchanged | warn | public struct `WarmplaneError` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// Standard error structure included in failed respons
+   public_api_unchanged | warn | public function `batch_call` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// Executes an ordered sequence of tool execution step
+   public_api_unchanged | warn | public function `call_capability` was added. Additions are not a compatibility break; list the  || exp=None obs=/// Invokes a capability tool with policy enforcement, 
+   public_api_unchanged | warn | public function `describe_capability` was added. Additions are not a compatibility break; list  || exp=None obs=/// Describes a single capability schema and examples. 
+   public_api_unchanged | warn | public function `failure` was added. Additions are not a compatibility break; list the path in  || exp=None obs=/// Constructs an error response envelope. pub fn failu
+   public_api_unchanged | warn | public function `get_prompt` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// Renders a registered prompt template. pub async fn 
+   public_api_unchanged | warn | public function `health_status` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Returns current health and diagnostic status of all
+   public_api_unchanged | warn | public function `list_capabilities` was added. Additions are not a compatibility break; list th || exp=None obs=/// Lists registered capabilities, optionally filtered 
+   public_api_unchanged | warn | public function `new` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=/// Creates a new `WarmplaneError`. pub fn new(code: im
+   public_api_unchanged | warn | public function `new` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=/// Creates default `ExecutionOptions`. pub fn new() ->
+   public_api_unchanged | warn | public function `new` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=/// Creates a new `ControlPlaneHandle` wrapping an acti
+   public_api_unchanged | warn | public function `next_trace_id` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Generates a trace ID for request correlation. #[inl
+   public_api_unchanged | warn | public function `operator_rejected` was added. Additions are not a compatibility break; list th || exp=None obs=/// Creates a HITL operator rejection error. pub fn ope
+   public_api_unchanged | warn | public function `read_resource` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Reads a registered resource URI. pub async fn read_
+   public_api_unchanged | warn | public function `resolve_profile_context` was added. Additions are not a compatibility break; l || exp=None obs=/// Resolves profile context for server scoping. pub as
+   public_api_unchanged | warn | public function `search_capabilities` was added. Additions are not a compatibility break; list  || exp=None obs=/// Performs hybrid lexical and semantic search over re
+   public_api_unchanged | warn | public function `shutdown` was added. Additions are not a compatibility break; list the path in || exp=None obs=/// Gracefully initiates shutdown of all background sup
+   public_api_unchanged | warn | public function `start` was added. Additions are not a compatibility break; list the path in `a || exp=None obs=/// Spawns upstream MCP supervisors and background work
+   public_api_unchanged | warn | public function `start_from_path` was added. Additions are not a compatibility break; list the  || exp=None obs=/// Helper to load a config from a JSON file and boot t
+   public_api_unchanged | warn | public function `state` was added. Additions are not a compatibility break; list the path in `a || exp=None obs=/// Returns a reference to the underlying daemon `AppSt
+   public_api_unchanged | warn | public function `success` was added. Additions are not a compatibility break; list the path in  || exp=None obs=/// Constructs a successful response envelope. pub fn s
+   public_api_unchanged | warn | public module `types` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=pub mod types;
+   public_api_unchanged | warn | public function `with_idempotency_key` was added. Additions are not a compatibility break; list || exp=None obs=/// Sets idempotency key. pub fn with_idempotency_key(m
+   public_api_unchanged | warn | public function `with_profile` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// Sets profile. pub fn with_profile(mut self, profile
+   public_api_unchanged | warn | public function `with_request_id` was added. Additions are not a compatibility break; list the  || exp=None obs=/// Sets request ID. pub fn with_request_id(mut self, i
+   public_api_unchanged | warn | public struct `JwtConfig` was added. Additions are not a compatibility break; list the path in  || exp=None obs=/// Configuration for JWT / OIDC token validation. #[de
+   public_api_unchanged | warn | public struct `RbacConfig` was added. Additions are not a compatibility break; list the path in || exp=None obs=/// Multi-tenant RBAC configuration structure. #[derive
+   public_api_unchanged | warn | public struct `RbacEngine` was added. Additions are not a compatibility break; list the path in || exp=None obs=/// In-memory RBAC evaluation engine. #[derive(Clone, D
+   public_api_unchanged | warn | public struct `RolePolicyConfig` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Role capability and execution policy rules. #[deriv
+   public_api_unchanged | warn | public struct `TenantContext` was added. Additions are not a compatibility break; list the path || exp=None obs=/// Verified tenant caller context attached to HTTP req
+   public_api_unchanged | warn | public struct `TokenAssignment` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Token binding assignment for static API tokens. #[d
+   public_api_unchanged | warn | public function `authenticate` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// Authenticates a token or credentials string and bui
+   public_api_unchanged | warn | public function `compute_effective_policy` was added. Additions are not a compatibility break;  || exp=None obs=/// Resolves the effective policy for a given role name
+   public_api_unchanged | warn | public function `default_for_policy` was added. Additions are not a compatibility break; list t || exp=None obs=/// Constructs an unauthenticated fallback context usin
+   public_api_unchanged | warn | public function `default_role` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// Returns the configured default role name. pub fn de
+   public_api_unchanged | warn | public module `engine` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=pub mod engine;
+   public_api_unchanged | warn | public function `is_enabled` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// Whether RBAC enforcement is globally enabled. pub f
+   public_api_unchanged | warn | public module `middleware` was added. Additions are not a compatibility break; list the path in || exp=None obs=pub mod middleware;
+   public_api_unchanged | warn | public module `models` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=pub mod models;
+   public_api_unchanged | warn | public function `new` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=/// Initializes an RBAC engine from optional configurat
+   public_api_unchanged | warn | public function `rbac_auth_middleware` was added. Additions are not a compatibility break; list || exp=None obs=/// Middleware enforcing RBAC authentication and inject
+   public_api_unchanged | warn | public function `resolve_secret` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Resolves the JWT HMAC secret from environment varia
+   public_api_unchanged | warn | public struct `CreateMessageParams` was added. Additions are not a compatibility break; list th || exp=None obs=/// Parameters for creating a sampling completion messa
+   public_api_unchanged | warn | public struct `CreateMessageResult` was added. Additions are not a compatibility break; list th || exp=None obs=/// Assistant completion result payload returned by cli
+   public_api_unchanged | warn | public struct `ModelPreferences` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Model selection hint and priority preferences. #[de
+   public_api_unchanged | warn | public struct `PendingSamplingRequest` was added. Additions are not a compatibility break; list || exp=None obs=/// In-memory and persistent record of a tracked sampli
+   public_api_unchanged | warn | public enum `SamplingContent` was added. Additions are not a compatibility break; list the path || exp=None obs=/// Content element within a sampling message. #[derive
+   public_api_unchanged | warn | public struct `SamplingMessage` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// A message exchanged in a sampling request. #[derive
+   public_api_unchanged | warn | public struct `SamplingRegistry` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Central registry managing pending sampling tickets 
+   public_api_unchanged | warn | public enum `SamplingRequestStatus` was added. Additions are not a compatibility break; list th || exp=None obs=/// Lifecycle status of a sampling ticket. #[derive(Clo
+   public_api_unchanged | warn | public type alias `SamplingWaitSender` was added. Additions are not a compatibility break; list || exp=None obs=/// Type alias for sampling completion sender channel. 
+   public_api_unchanged | warn | public function `create_request` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Creates and registers a new pending sampling ticket
+   public_api_unchanged | warn | public function `expire_ticket` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Expires an overdue pending sampling ticket. pub asy
+   public_api_unchanged | warn | public function `get_request` was added. Additions are not a compatibility break; list the path || exp=None obs=/// Retrieves a single sampling ticket by ID. pub async
+   public_api_unchanged | warn | public function `list_requests` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Lists all tracked sampling tickets sorted by creati
+   public_api_unchanged | warn | public function `new` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=/// Creates a new in-memory `SamplingRegistry`. pub fn 
+   public_api_unchanged | warn | public function `open_or_create` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Initializes a `SamplingRegistry` backed by atomic p
+   public_api_unchanged | warn | public function `reject_request` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Rejects a pending sampling ticket with a given reas
+   public_api_unchanged | warn | public function `respond_to_request` was added. Additions are not a compatibility break; list t || exp=None obs=/// Resolves a pending sampling ticket with a successfu
+   public_api_unchanged | warn | public struct `AtomicFile` was added. Additions are not a compatibility break; list the path in || exp=None obs=/// Thread-safe manager for an atomically persisted JSO
+   public_api_unchanged | warn | public struct `StateDirectory` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// Helper to ensure the base state directory exists an
+   public_api_unchanged | warn | public function `approvals_file` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Returns the file path for persistent HITL approvals
+   public_api_unchanged | warn | public function `base_dir` was added. Additions are not a compatibility break; list the path in || exp=None obs=/// Returns the base directory path. pub fn base_dir(&s
+   public_api_unchanged | warn | public function `catalog_events_file` was added. Additions are not a compatibility break; list  || exp=None obs=/// Returns the file path for persistent catalog events
+   public_api_unchanged | warn | public function `ensure_exists` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Ensures the state directory exists on disk. /// ///
+   public_api_unchanged | warn | public function `idempotency_file` was added. Additions are not a compatibility break; list the || exp=None obs=/// Returns the file path for persistent idempotency ca
+   public_api_unchanged | warn | public function `load_opt` was added. Additions are not a compatibility break; list the path in || exp=None obs=/// Loads and deserializes data from disk, returning `O
+   public_api_unchanged | warn | public function `load_or_default` was added. Additions are not a compatibility break; list the  || exp=None obs=/// Loads data from disk or returns the provided defaul
+   public_api_unchanged | warn | public function `new` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=/// Creates a new `AtomicFile` handler for the specifie
+   public_api_unchanged | warn | public function `new` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=/// Creates a new `StateDirectory` instance. /// /// # 
+   public_api_unchanged | warn | public function `oauth_tokens_file` was added. Additions are not a compatibility break; list th || exp=None obs=/// Returns the file path for persistent OAuth2 tokens.
+   public_api_unchanged | warn | public function `path` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=/// Returns the target file path. pub fn path(&self) ->
+   public_api_unchanged | warn | public function `remove` was added. Additions are not a compatibility break; list the path in ` || exp=None obs=/// Deletes the state file if it exists on disk. /// //
+   public_api_unchanged | warn | public function `save` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=/// Atomically saves data to disk by writing to a tempo
+   public_api_unchanged | warn | public function `spawn_supervised_stdio_server` was added. Additions are not a compatibility br || exp=None obs=/// Spawns an auto-restarting supervisor for an upstrea
+   public_api_unchanged | warn | public struct `CircuitBreaker` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// Circuit breaker tracking failure counts, state tran
+   public_api_unchanged | warn | public struct `CircuitBreakerRegistry` was added. Additions are not a compatibility break; list || exp=None obs=/// Thread-safe registry holding circuit breakers for a
+   public_api_unchanged | warn | public struct `CircuitOpenError` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Error returned when an invocation is rejected due t
+   public_api_unchanged | warn | public trait impl `CircuitOpenError as (scoped_type_identifier path: (scoped_identifier path: ( || exp=None obs=impl std::error::Error for CircuitOpenError {}
+   public_api_unchanged | warn | public trait impl `CircuitOpenError as (scoped_type_identifier path: (scoped_identifier path: ( || exp=None obs=impl std::fmt::Display for CircuitOpenError { fn fmt(&s
+   public_api_unchanged | warn | public enum `CircuitState` was added. Additions are not a compatibility break; list the path in || exp=None obs=/// Operational state of a circuit breaker. #[derive(De
+   public_api_unchanged | warn | public struct `CircuitStatusSnapshot` was added. Additions are not a compatibility break; list  || exp=None obs=/// Serializable snapshot of a circuit breaker's curren
+   public_api_unchanged | warn | public struct `ResilienceConfig` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Configuration options for circuit breaker fault tol
+   public_api_unchanged | warn | public trait impl `ResilienceConfig as (type_identifier)` was added. Additions are not a compat || exp=None obs=impl Default for ResilienceConfig { fn default() -> Sel
+   public_api_unchanged | warn | public function `all_statuses` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// Returns a list of all circuit breaker status snapsh
+   public_api_unchanged | warn | public function `check_permission` was added. Additions are not a compatibility break; list the || exp=None obs=/// Checks if a request is permitted to proceed or shou
+   public_api_unchanged | warn | public function `check_permission` was added. Additions are not a compatibility break; list the || exp=None obs=/// Checks if call is permitted to proceed for the give
+   public_api_unchanged | warn | public function `get_or_create` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Retrieves or instantiates a circuit breaker for an 
+   public_api_unchanged | warn | public function `new` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=/// Creates a new circuit breaker for a named upstream 
+   public_api_unchanged | warn | public function `record_failure` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Records failure for server. pub async fn record_fai
+   public_api_unchanged | warn | public function `record_failure` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Records an upstream execution failure (e.g. timeout
+   public_api_unchanged | warn | public function `record_success` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Records success for server. pub async fn record_suc
+   public_api_unchanged | warn | public function `record_success` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Records a successful upstream call. pub async fn re
+   public_api_unchanged | warn | public function `status` was added. Additions are not a compatibility break; list the path in ` || exp=None obs=/// Gets current circuit status snapshot. pub async fn 
+   public_api_unchanged | warn | public struct `BatchCallRequest` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Request payload for batch capability execution. #[d
+   public_api_unchanged | warn | public struct `BatchCallResponse` was added. Additions are not a compatibility break; list the  || exp=None obs=/// Summary response envelope returned by batch capabil
+   public_api_unchanged | warn | public struct `BatchStep` was added. Additions are not a compatibility break; list the path in  || exp=None obs=/// Single execution step within a batch capability cal
+   public_api_unchanged | warn | public struct `BatchStepResult` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Result of an individual step within a batch executi
+   public_api_unchanged | warn | public function `execute_batch` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Executes a series of batch capability steps sequent
+   public_api_unchanged | warn | public function `interpolate_step_references` was added. Additions are not a compatibility brea || exp=None obs=/// Recursively traverses a JSON Value, replacing any `
+   public_api_unchanged | warn | public struct `DistillationOptions` was added. Additions are not a compatibility break; list th || exp=None obs=/// Modifiers for distilling and truncating large tool/
+   public_api_unchanged | warn | public function `distill_value` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Distills and truncates a JSON value according to sp
+   public_api_unchanged | warn | public function `from_args` was added. Additions are not a compatibility break; list the path i || exp=None obs=/// Constructs distillation options from an arbitrary J
+   public_api_unchanged | warn | public function `is_active` was added. Additions are not a compatibility break; list the path i || exp=None obs=/// Checks if any distillation rules are active. /// //
+   public_api_unchanged | warn | public struct `AuditEvent` was added. Additions are not a compatibility break; list the path in || exp=None obs=/// Canonical audit log event record with cryptographic
+   public_api_unchanged | warn | public enum `AuditEventStatus` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// Execution or disposition status for an audit event.
+   public_api_unchanged | warn | public enum `AuditEventType` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// Categorical event type for audit trail entries. #[d
+   public_api_unchanged | warn | public struct `AuditEventsQuery` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Query parameters for GET `/v1/audit/events`. #[deri
+   public_api_unchanged | warn | public struct `AuditExportQuery` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Query parameters for GET `/v1/audit/export`. #[deri
+   public_api_unchanged | warn | public struct `AuditHandle` was added. Additions are not a compatibility break; list the path i || exp=None obs=/// Producer handle for sending raw audit events into t
+   public_api_unchanged | warn | public struct `AuditQueryFilter` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Query filter options for searching audit events. #[
+   public_api_unchanged | warn | public struct `AuditStore` was added. Additions are not a compatibility break; list the path in || exp=None obs=/// Append-only audit store protecting log records from
+   public_api_unchanged | warn | public const `DEFAULT_AUDIT_BUFFER_CAPACITY` was added. Additions are not a compatibility break || exp=None obs=/// Default buffer capacity for the audit logging chann
+   public_api_unchanged | warn | public const `DEFAULT_AUDIT_FLUSH_INTERVAL_MS` was added. Additions are not a compatibility bre || exp=None obs=/// Default batch flush interval in milliseconds. pub c
+   public_api_unchanged | warn | public const `DEFAULT_AUDIT_MAX_BATCH_SIZE` was added. Additions are not a compatibility break; || exp=None obs=/// Maximum batch size before triggering immediate stor
+   public_api_unchanged | warn | public const `GENESIS_HASH` was added. Additions are not a compatibility break; list the path i || exp=None obs=/// Genesis hash constant used for the root audit recor
+   public_api_unchanged | warn | public struct `RawAuditEvent` was added. Additions are not a compatibility break; list the path || exp=None obs=/// Unsigned incoming audit event item prior to cryptog
+   public_api_unchanged | warn | public type alias `SharedAuditStore` was added. Additions are not a compatibility break; list t || exp=None obs=pub type SharedAuditStore = Arc<AuditStore>;
+   public_api_unchanged | warn | public struct `SiemDispatcher` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// High-throughput dispatcher exporting audit events t
+   public_api_unchanged | warn | public struct `VerificationReport` was added. Additions are not a compatibility break; list the || exp=None obs=/// Verification result report for cryptographic audit 
+   public_api_unchanged | warn | public function `append` was added. Additions are not a compatibility break; list the path in ` || exp=None obs=/// Appends a raw audit event to the append-only log at
+   public_api_unchanged | warn | public function `append_batch` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// Appends a batch of raw audit events atomically with
+   public_api_unchanged | warn | public module `chain` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=pub mod chain;
+   public_api_unchanged | warn | public function `compute_event_hash` was added. Additions are not a compatibility break; list t || exp=None obs=/// Computes the SHA-256 hash for an audit record given
+   public_api_unchanged | warn | public function `count` was added. Additions are not a compatibility break; list the path in `a || exp=None obs=/// Returns the total count of audit events in the stor
+   public_api_unchanged | warn | public function `dispatch_batch` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Dispatches a batch of signed audit records to all c
+   public_api_unchanged | warn | public function `get_by_id` was added. Additions are not a compatibility break; list the path i || exp=None obs=/// Retrieves an audit event by its unique ID. pub asyn
+   public_api_unchanged | warn | public function `handle_export_audit` was added. Additions are not a compatibility break; list  || exp=None obs=/// Handles GET `/v1/audit/export` streaming audit logs
+   public_api_unchanged | warn | public function `handle_get_audit_event` was added. Additions are not a compatibility break; li || exp=None obs=/// Handles GET `/v1/audit/events/:id` returning a sing
+   public_api_unchanged | warn | public function `handle_get_audit_stats` was added. Additions are not a compatibility break; li || exp=None obs=/// Handles GET `/v1/audit/stats` aggregating audit tra
+   public_api_unchanged | warn | public function `handle_list_audit_events` was added. Additions are not a compatibility break;  || exp=None obs=/// Handles GET `/v1/audit/events` returning paginated 
+   public_api_unchanged | warn | public function `handle_verify_audit_chain` was added. Additions are not a compatibility break; || exp=None obs=/// Handles GET `/v1/audit/verify` performing a cryptog
+   public_api_unchanged | warn | public function `in_memory` was added. Additions are not a compatibility break; list the path i || exp=None obs=/// Creates an empty in-memory audit store. pub fn in_m
+   public_api_unchanged | warn | public module `models` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=pub mod models;
+   public_api_unchanged | warn | public function `new` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=/// Creates a new `AuditHandle` with the given channel 
+   public_api_unchanged | warn | public function `new` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=/// Creates a new `SiemDispatcher` given the optional `
+   public_api_unchanged | warn | public function `open_or_create` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Initializes an audit store backed by an append-only
+   public_api_unchanged | warn | public function `query` was added. Additions are not a compatibility break; list the path in `a || exp=None obs=/// Queries audit events matching the provided filter c
+   public_api_unchanged | warn | public function `send` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=/// Dispatches a raw audit event non-blockingly to the 
+   public_api_unchanged | warn | public function `send_async` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// Asynchronously sends a raw audit event, waiting if 
+   public_api_unchanged | warn | public module `siem` was added. Additions are not a compatibility break; list the path in `allo || exp=None obs=pub mod siem;
+   public_api_unchanged | warn | public function `spawn_audit_worker` was added. Additions are not a compatibility break; list t || exp=None obs=/// Spawns the background audit worker task. /// /// # 
+   public_api_unchanged | warn | public module `store` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=pub mod store;
+   public_api_unchanged | warn | public function `verify_chain` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// Verifies the complete cryptographic hash chain acro
+   public_api_unchanged | warn | public function `verify_record_hash` was added. Additions are not a compatibility break; list t || exp=None obs=/// Verifies whether an existing `AuditEvent` matches i
+   public_api_unchanged | warn | public module `worker` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=pub mod worker;
+   public_api_unchanged | warn | public struct `AppState` was added. Additions are not a compatibility break; list the path in ` || exp=None obs=/// Global application state shared across Axum HTTP ha
+   public_api_unchanged | warn | public struct `AppStateBuilder` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Builder for constructing `AppState` instances (`M-I
+   public_api_unchanged | warn | public struct `CapabilityMeta` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// Metadata describing a registered capability tool. #
+   public_api_unchanged | warn | public const `DEFAULT_MCP_PROTOCOL_VERSION` was added. Additions are not a compatibility break; || exp=None obs=/// Default Model Context Protocol version string suppo
+   public_api_unchanged | warn | public struct `Policy` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=/// Active security policy rules governing capability/r
+   public_api_unchanged | warn | public struct `PromptMeta` was added. Additions are not a compatibility break; list the path in || exp=None obs=/// Metadata describing a registered prompt template. #
+   public_api_unchanged | warn | public struct `ResourceMeta` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// Metadata describing a registered resource. #[derive
+   public_api_unchanged | warn | public enum `ServerMsg` was added. Additions are not a compatibility break; list the path in `a || exp=None obs=/// Messages dispatched across worker threads to upstre
+   public_api_unchanged | warn | public type alias `SharedCapabilities` was added. Additions are not a compatibility break; list || exp=None obs=/// Thread-safe map of registered capabilities. pub typ
+   public_api_unchanged | warn | public type alias `SharedCatalogVersion` was added. Additions are not a compatibility break; li || exp=None obs=/// Thread-safe active catalog SHA256 version string. p
+   public_api_unchanged | warn | public type alias `SharedPolicy` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Thread-safe active security policy. pub type Shared
+   public_api_unchanged | warn | public type alias `SharedPrompts` was added. Additions are not a compatibility break; list the  || exp=None obs=/// Thread-safe map of registered prompt templates. pub
+   public_api_unchanged | warn | public type alias `SharedResources` was added. Additions are not a compatibility break; list th || exp=None obs=/// Thread-safe map of registered resources. pub type S
+   public_api_unchanged | warn | public type alias `SharedServerConfigs` was added. Additions are not a compatibility break; lis || exp=None obs=/// Thread-safe map of active server configurations. pu
+   public_api_unchanged | warn | public type alias `SharedServerStatuses` was added. Additions are not a compatibility break; li || exp=None obs=/// Thread-safe map of server status envelopes. pub typ
+   public_api_unchanged | warn | public type alias `SharedServers` was added. Additions are not a compatibility break; list the  || exp=None obs=/// Thread-safe map of active upstream server sender ma
+   public_api_unchanged | warn | public enum `UpstreamCallError` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Upstream MCP execution error categories. #[derive(D
+   public_api_unchanged | warn | public function `allows` was added. Additions are not a compatibility break; list the path in ` || exp=None obs=/// Checks whether the given capability or resource ID 
+   public_api_unchanged | warn | public function `approval_registry` was added. Additions are not a compatibility break; list th || exp=None obs=/// Sets HITL approval registry. pub fn approval_regist
+   public_api_unchanged | warn | public function `build` was added. Additions are not a compatibility break; list the path in `a || exp=None obs=/// Builds the `AppState` struct instance with defaults
+   public_api_unchanged | warn | public function `build_http_headers` was added. Additions are not a compatibility break; list t || exp=None obs=/// Constructs HTTP header map including protocol versi
+   public_api_unchanged | warn | public function `builder` was added. Additions are not a compatibility break; list the path in  || exp=None obs=/// Creates a new `AppStateBuilder` for constructing `A
+   public_api_unchanged | warn | public function `capabilities` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// Sets capabilities map from raw HashMap. pub fn capa
+   public_api_unchanged | warn | public function `capabilities_arc` was added. Additions are not a compatibility break; list the || exp=None obs=/// Sets capabilities map from Arc. pub fn capabilities
+   public_api_unchanged | warn | public function `catalog_version` was added. Additions are not a compatibility break; list the  || exp=None obs=/// Sets catalog version from string. pub fn catalog_ve
+   public_api_unchanged | warn | public function `catalog_version_arc` was added. Additions are not a compatibility break; list  || exp=None obs=/// Sets catalog version from Arc. pub fn catalog_versi
+   public_api_unchanged | warn | public function `compute_catalog_version` was added. Additions are not a compatibility break; l || exp=None obs=/// Computes deterministic SHA256 ETag version string o
+   public_api_unchanged | warn | public function `config_path` was added. Additions are not a compatibility break; list the path || exp=None obs=/// Sets active configuration file path. pub fn config_
+   public_api_unchanged | warn | public function `event_store` was added. Additions are not a compatibility break; list the path || exp=None obs=/// Sets catalog event store instance. pub fn event_sto
+   public_api_unchanged | warn | public function `from_config` was added. Additions are not a compatibility break; list the path || exp=None obs=/// Constructs a `Policy` from optional `PolicyConfig`.
+   public_api_unchanged | warn | public function `idempotency_store` was added. Additions are not a compatibility break; list th || exp=None obs=/// Sets idempotency deduplication store instance. pub 
+   public_api_unchanged | warn | public function `initialize_state` was added. Additions are not a compatibility break; list the || exp=None obs=/// Boots all configured upstream MCP servers and const
+   public_api_unchanged | warn | public module `lifecycle` was added. Additions are not a compatibility break; list the path in  || exp=None obs=pub mod lifecycle;
+   public_api_unchanged | warn | public function `mount_upstream_server` was added. Additions are not a compatibility break; lis || exp=None obs=/// Mounts a single upstream server dynamically into `A
+   public_api_unchanged | warn | public function `oauth_proxy_port` was added. Additions are not a compatibility break; list the || exp=None obs=/// Sets optional OAuth proxy server port. pub fn oauth
+   public_api_unchanged | warn | public function `oauth_registry` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Sets OAuth client registry. pub fn oauth_registry(m
+   public_api_unchanged | warn | public function `operation_registry` was added. Additions are not a compatibility break; list t || exp=None obs=/// Sets in-flight operation registry. pub fn operation
+   public_api_unchanged | warn | public function `policy` was added. Additions are not a compatibility break; list the path in ` || exp=None obs=/// Sets policy from concrete struct. pub fn policy(mut
+   public_api_unchanged | warn | public module `policy` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=pub mod policy;
+   public_api_unchanged | warn | public function `policy_arc` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// Sets policy from Arc. pub fn policy_arc(mut self, p
+   public_api_unchanged | warn | public function `prompts` was added. Additions are not a compatibility break; list the path in  || exp=None obs=/// Sets prompts map from raw HashMap. pub fn prompts(m
+   public_api_unchanged | warn | public function `prompts_arc` was added. Additions are not a compatibility break; list the path || exp=None obs=/// Sets prompts map from Arc. pub fn prompts_arc(mut s
+   public_api_unchanged | warn | public function `reload_from_disk` was added. Additions are not a compatibility break; list the || exp=None obs=/// Reconciles the runtime daemon state against the on-
+   public_api_unchanged | warn | public function `requires_approval` was added. Additions are not a compatibility break; list th || exp=None obs=/// Checks whether the given capability requires human 
+   public_api_unchanged | warn | public function `resolve_secret` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Resolves a secret from direct config value or envir
+   public_api_unchanged | warn | public function `resources` was added. Additions are not a compatibility break; list the path i || exp=None obs=/// Sets resources map from raw HashMap. pub fn resourc
+   public_api_unchanged | warn | public function `resources_arc` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Sets resources map from Arc. pub fn resources_arc(m
+   public_api_unchanged | warn | public function `run_daemon` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// Starts the HTTP daemon server listening on the spec
+   public_api_unchanged | warn | public function `search_engine` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Sets hybrid search engine instance. pub fn search_e
+   public_api_unchanged | warn | public module `server` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=pub mod server;
+   public_api_unchanged | warn | public function `server_configs` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Sets server configs map from raw HashMap. pub fn se
+   public_api_unchanged | warn | public function `server_configs_arc` was added. Additions are not a compatibility break; list t || exp=None obs=/// Sets server configs map from Arc. pub fn server_con
+   public_api_unchanged | warn | public function `server_statuses` was added. Additions are not a compatibility break; list the  || exp=None obs=/// Sets server statuses map from raw HashMap. pub fn s
+   public_api_unchanged | warn | public function `server_statuses_arc` was added. Additions are not a compatibility break; list  || exp=None obs=/// Sets server statuses map from Arc. pub fn server_st
+   public_api_unchanged | warn | public function `servers` was added. Additions are not a compatibility break; list the path in  || exp=None obs=/// Sets upstream servers map from raw HashMap. pub fn 
+   public_api_unchanged | warn | public function `servers_arc` was added. Additions are not a compatibility break; list the path || exp=None obs=/// Sets upstream servers map from Arc. pub fn servers_
+   public_api_unchanged | warn | `src/daemon.rs` declared public API and was deleted || exp=52 (ServerMsg, UpstreamCallError, CapabilityMeta, Resou obs=None
+   public_api_unchanged | warn | public module `state` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=pub mod state;
+   public_api_unchanged | warn | public function `tool_timeout_ms` was added. Additions are not a compatibility break; list the  || exp=None obs=/// Sets global tool execution timeout in milliseconds.
+   public_api_unchanged | warn | public module `transport` was added. Additions are not a compatibility break; list the path in  || exp=None obs=pub mod transport;
+   public_api_unchanged | warn | public module `types` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=pub mod types;
+   public_api_unchanged | warn | public function `unmount_upstream_server` was added. Additions are not a compatibility break; l || exp=None obs=/// Unmounts an upstream server dynamically from `AppSt
+   public_api_unchanged | warn | public function `wildcard_match` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Matches a string against a simple wildcard expressi
+   suppressions_not_widened | warn | a diagnostic suppression `#[allow(dead_code)]` was added to `src/daemon/state.rs` || exp=None obs=#[allow(dead_code)]
+   public_api_unchanged | warn | public struct `ApproveTicketRequest` was added. Additions are not a compatibility break; list t || exp=None obs=/// Request body for approving a pending capability exe
+   public_api_unchanged | warn | public struct `CallCapabilityRequest` was added. Additions are not a compatibility break; list  || exp=None obs=/// Request body for capability execution. #[derive(Des
+   public_api_unchanged | warn | public struct `CatalogEventsQuery` was added. Additions are not a compatibility break; list the || exp=None obs=/// Query parameters for listing catalog events. #[deri
+   public_api_unchanged | warn | public struct `CatalogEventsResponse` was added. Additions are not a compatibility break; list  || exp=None obs=/// Response envelope for catalog event change feed. #[
+   public_api_unchanged | warn | public struct `CompletionRequest` was added. Additions are not a compatibility break; list the  || exp=None obs=/// Request body for prompt/resource argument autocompl
+   public_api_unchanged | warn | public struct `GetPromptRequest` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Request body for fetching a prompt template. #[deri
+   public_api_unchanged | warn | public struct `ImportConfigRequest` was added. Additions are not a compatibility break; list th || exp=None obs=/// Request payload for ecosystem config import. #[deri
+   public_api_unchanged | warn | public struct `ReadResourceRequest` was added. Additions are not a compatibility break; list th || exp=None obs=/// Request body for reading a resource. #[derive(Deser
+   public_api_unchanged | warn | public struct `RejectTicketRequest` was added. Additions are not a compatibility break; list th || exp=None obs=/// Request body for rejecting a pending capability exe
+   public_api_unchanged | warn | public struct `SamplingRequest` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Request body for sampling LLM completion delegation
+   public_api_unchanged | warn | public struct `SearchCapabilitiesRequest` was added. Additions are not a compatibility break; l || exp=None obs=/// Request body for hybrid capability search. #[derive
+   public_api_unchanged | warn | public struct `UpdateAliasRequest` was added. Additions are not a compatibility break; list the || exp=None obs=/// Request payload for updating alias mappings. #[deri
+   public_api_unchanged | warn | public struct `UpsertServerRequest` was added. Additions are not a compatibility break; list th || exp=None obs=/// Request payload for adding or updating an upstream 
+   public_api_unchanged | warn | public module `approvals_api` was added. Additions are not a compatibility break; list the path || exp=None obs=pub mod approvals_api;
+   public_api_unchanged | warn | public module `catalog` was added. Additions are not a compatibility break; list the path in `a || exp=None obs=pub mod catalog;
+   public_api_unchanged | warn | public function `check_if_none_match` was added. Additions are not a compatibility break; list  || exp=None obs=/// Validates whether HTTP `If-None-Match` header match
+   public_api_unchanged | warn | public module `config_api` was added. Additions are not a compatibility break; list the path in || exp=None obs=pub mod config_api;
+   public_api_unchanged | warn | public function `error_envelope` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Constructs a standardized error response envelope. 
+   public_api_unchanged | warn | public module `execute` was added. Additions are not a compatibility break; list the path in `a || exp=None obs=pub mod execute;
+   public_api_unchanged | warn | public function `handle_approve_ticket` was added. Additions are not a compatibility break; lis || exp=None obs=/// Handles POST `/v1/approvals/:id/approve` approving 
+   public_api_unchanged | warn | public function `handle_call_capability` was added. Additions are not a compatibility break; li || exp=None obs=/// Handles HTTP POST `/v1/tools/call` executing an MCP
+   public_api_unchanged | warn | public function `handle_cancel_operation` was added. Additions are not a compatibility break; l || exp=None obs=/// Handles HTTP POST `/v1/operations/:id/cancel` cance
+   public_api_unchanged | warn | public function `handle_catalog_events` was added. Additions are not a compatibility break; lis || exp=None obs=/// Handles HTTP GET `/v1/catalog/events` change feed e
+   public_api_unchanged | warn | public function `handle_completion` was added. Additions are not a compatibility break; list th || exp=None obs=/// Handles HTTP POST `/v1/completion/complete` autocom
+   public_api_unchanged | warn | public function `handle_delete_server` was added. Additions are not a compatibility break; list || exp=None obs=/// Handles DELETE `/v1/config/servers/:id` to remove a
+   public_api_unchanged | warn | public function `handle_describe_capability` was added. Additions are not a compatibility break || exp=None obs=/// Handles HTTP GET `/v1/capabilities/:id` describing 
+   public_api_unchanged | warn | public function `handle_get_approval` was added. Additions are not a compatibility break; list  || exp=None obs=/// Handles GET `/v1/approvals/:id` returning details o
+   public_api_unchanged | warn | public function `handle_get_config` was added. Additions are not a compatibility break; list th || exp=None obs=/// Handles GET `/v1/config` returning the active confi
+   public_api_unchanged | warn | public function `handle_get_ecosystem_sources` was added. Additions are not a compatibility bre || exp=None obs=/// Handles GET `/v1/config/ecosystem` discovering exte
+   public_api_unchanged | warn | public function `handle_get_prompt` was added. Additions are not a compatibility break; list th || exp=None obs=/// Handles HTTP POST `/v1/prompts/get` fetching render
+   public_api_unchanged | warn | public function `handle_import_config` was added. Additions are not a compatibility break; list || exp=None obs=/// Handles POST `/v1/config/import` importing external
+   public_api_unchanged | warn | public function `handle_list_approvals` was added. Additions are not a compatibility break; lis || exp=None obs=/// Handles GET `/v1/approvals` returning active pendin
+   public_api_unchanged | warn | public function `handle_list_capabilities` was added. Additions are not a compatibility break;  || exp=None obs=/// Handles HTTP GET `/v1/capabilities` listing all reg
+   public_api_unchanged | warn | public function `handle_list_prompts` was added. Additions are not a compatibility break; list  || exp=None obs=/// Handles HTTP GET `/v1/prompts` listing all register
+   public_api_unchanged | warn | public function `handle_list_resources` was added. Additions are not a compatibility break; lis || exp=None obs=/// Handles HTTP GET `/v1/resources` listing all regist
+   public_api_unchanged | warn | public function `handle_read_resource` was added. Additions are not a compatibility break; list || exp=None obs=/// Handles HTTP POST `/v1/resources/read` reading an M
+   public_api_unchanged | warn | public function `handle_reject_ticket` was added. Additions are not a compatibility break; list || exp=None obs=/// Handles POST `/v1/approvals/:id/reject` rejecting a
+   public_api_unchanged | warn | public function `handle_reload_config` was added. Additions are not a compatibility break; list || exp=None obs=/// Handles POST `/v1/config/reload` explicitly trigger
+   public_api_unchanged | warn | public function `handle_resource_updates` was added. Additions are not a compatibility break; l || exp=None obs=/// Handles Server-Sent Events (SSE) `GET /v1/resources
+   public_api_unchanged | warn | public function `handle_sampling_create_message` was added. Additions are not a compatibility b || exp=None obs=/// Handles HTTP POST `/v1/sampling/create_message` sam
+   public_api_unchanged | warn | public function `handle_search_capabilities` was added. Additions are not a compatibility break || exp=None obs=/// Handles HTTP POST `/v1/capabilities/search` hybrid 
+   public_api_unchanged | warn | public function `handle_ui_dashboard` was added. Additions are not a compatibility break; list  || exp=None obs=/// Serves the Warmplane Control Deck single-page web U
+   public_api_unchanged | warn | public function `handle_update_alias` was added. Additions are not a compatibility break; list  || exp=None obs=/// Handles POST `/v1/config/alias` adding or removing 
+   public_api_unchanged | warn | public function `handle_update_policy` was added. Additions are not a compatibility break; list || exp=None obs=/// Handles POST `/v1/config/policy` updating security 
+   public_api_unchanged | warn | public function `handle_upsert_server` was added. Additions are not a compatibility break; list || exp=None obs=/// Handles POST `/v1/config/servers` to add or update 
+   public_api_unchanged | warn | public module `helpers` was added. Additions are not a compatibility break; list the path in `a || exp=None obs=pub mod helpers;
+   public_api_unchanged | warn | public function `make_etag_header` was added. Additions are not a compatibility break; list the || exp=None obs=/// Constructs HTTP `ETag` response headers matching ca
+   public_api_unchanged | warn | public function `next_trace_id` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Generates a monotonically increasing trace identifi
+   public_api_unchanged | warn | public function `redact_value` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// Recursively masks sensitive JSON keys according to 
+   public_api_unchanged | warn | public function `resolve_idempotency_key` was added. Additions are not a compatibility break; l || exp=None obs=/// Resolves idempotency key from payload body or stand
+   public_api_unchanged | warn | `src/http_v1.rs` declared public API and was deleted || exp=41 (check_if_none_match, make_etag_header, CatalogEvent obs=None
+   public_api_unchanged | warn | public module `types` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=pub mod types;
+   public_api_unchanged | warn | public module `ui` was added. Additions are not a compatibility break; list the path in `allow` || exp=None obs=pub mod ui;
+   public_api_unchanged | warn | public struct `ApprovalRegistry` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Global registry managing pending human approvals an
+   public_api_unchanged | warn | public enum `ApprovalResolution` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Resolution returned through the internal wait chann
+   public_api_unchanged | warn | public enum `ApprovalStatus` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// Status of an approval ticket. #[derive(Clone, Debug
+   public_api_unchanged | warn | public struct `CreateApprovalRequest` was added. Additions are not a compatibility break; list  || exp=None obs=/// Parameters for creating a pending approval ticket. 
+   public_api_unchanged | warn | public struct `PendingApproval` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// In-memory record of an approval ticket. #[derive(Cl
+   public_api_unchanged | warn | public function `approve` was added. Additions are not a compatibility break; list the path in  || exp=None obs=/// Atomically approves a pending ticket, notifying the
+   public_api_unchanged | warn | public function `create_approval` was added. Additions are not a compatibility break; list the  || exp=None obs=/// Registers a new pending approval ticket and returns
+   public_api_unchanged | warn | public function `dispatch_webhook` was added. Additions are not a compatibility break; list the || exp=None obs=/// Dispatches an outbound webhook event with HMAC-SHA2
+   public_api_unchanged | warn | public function `expire_if_pending` was added. Additions are not a compatibility break; list th || exp=None obs=/// Expires a ticket if still pending after the timeout
+   public_api_unchanged | warn | public function `get` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=/// Gets a single approval ticket by ID. pub async fn g
+   public_api_unchanged | warn | public function `list` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=/// Lists all pending approvals and recent history. pub
+   public_api_unchanged | warn | public function `new` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=/// Creates a new empty `ApprovalRegistry`. pub fn new(
+   public_api_unchanged | warn | public function `reject` was added. Additions are not a compatibility break; list the path in ` || exp=None obs=/// Atomically rejects a pending ticket, notifying the 
+   public_api_unchanged | warn | public module `catalog` was added. Additions are not a compatibility break; list the path in `a || exp=None obs=pub mod catalog;
+   public_api_unchanged | warn | public module `cli_config` was added. Additions are not a compatibility break; list the path in || exp=None obs=pub mod cli_config;
+   public_api_unchanged | warn | public module `config` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=pub mod config;
+   public_api_unchanged | warn | public module `config_import` was added. Additions are not a compatibility break; list the path || exp=None obs=pub mod config_import;
+   public_api_unchanged | warn | public module `context` was added. Additions are not a compatibility break; list the path in `a || exp=None obs=pub mod context;
+   public_api_unchanged | warn | public module `daemon` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=pub mod daemon;
+   public_api_unchanged | warn | public module `http_v1` was added. Additions are not a compatibility break; list the path in `a || exp=None obs=pub mod http_v1;
+   public_api_unchanged | warn | public module `idempotency` was added. Additions are not a compatibility break; list the path i || exp=None obs=pub mod idempotency;
+   public_api_unchanged | warn | public module `interactive` was added. Additions are not a compatibility break; list the path i || exp=None obs=pub mod interactive;
+   public_api_unchanged | warn | public module `mcp_server` was added. Additions are not a compatibility break; list the path in || exp=None obs=pub mod mcp_server;
+   public_api_unchanged | warn | public module `models` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=pub mod models;
+   public_api_unchanged | warn | public module `oauth2` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=pub mod oauth2;
+   public_api_unchanged | warn | public module `operations` was added. Additions are not a compatibility break; list the path in || exp=None obs=pub mod operations;
+   public_api_unchanged | warn | public module `search` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=pub mod search;
+   public_api_unchanged | warn | public module `telemetry` was added. Additions are not a compatibility break; list the path in  || exp=None obs=pub mod telemetry;
+   public_api_unchanged | warn | public struct `DiscoveredSource` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Discovered configuration source from the host syste
+   public_api_unchanged | warn | public function `discover_sources` was added. Additions are not a compatibility break; list the || exp=None obs=/// Discovers known MCP configuration files on the loca
+   public_api_unchanged | warn | public function `handle_config_command` was added. Additions are not a compatibility break; lis || exp=None obs=/// Dispatches `warmplane config` subcommands. pub asyn
+   public_api_unchanged | warn | public function `handle_server_command` was added. Additions are not a compatibility break; lis || exp=None obs=/// Dispatches `warmplane server` subcommands. pub asyn
+   public_api_unchanged | warn | public function `import_servers_into_config` was added. Additions are not a compatibility break || exp=None obs=/// Imports servers from a map into the Warmplane targe
+   public_api_unchanged | warn | public function `interactive_add_server` was added. Additions are not a compatibility break; li || exp=None obs=/// Runs an interactive wizard to configure and add or 
+   public_api_unchanged | warn | public function `parse_args_string` was added. Additions are not a compatibility break; list th || exp=None obs=/// Splits an argument string respecting quotes or comm
+   public_api_unchanged | warn | public function `parse_standard_mcp_source` was added. Additions are not a compatibility break; || exp=None obs=/// Parses standard `mcpServers` object from JSON file.
+   public_api_unchanged | warn | public enum `DeduplicateResult` was added. Additions are not a compatibility break; list the pa || exp=None obs=pub enum DeduplicateResult { New, InProgress(broadcast:
+   public_api_unchanged | warn | public struct `IdempotencyStore` was added. Additions are not a compatibility break; list the p || exp=None obs=pub struct IdempotencyStore { ttl: Duration, entries: R
+   public_api_unchanged | warn | public trait impl `IdempotencyStore as (type_identifier)` was added. Additions are not a compat || exp=None obs=impl Default for IdempotencyStore { fn default() -> Sel
+   public_api_unchanged | warn | public struct `OperationRegistry` was added. Additions are not a compatibility break; list the  || exp=None obs=#[derive(Clone, Default)] pub struct OperationRegistry 
+   public_api_unchanged | warn | public struct `RetryMetadata` was added. Additions are not a compatibility break; list the path || exp=None obs=#[derive(Debug, Clone, Serialize, Deserialize, PartialE
+   public_api_unchanged | warn | public function `cancel` was added. Additions are not a compatibility break; list the path in ` || exp=None obs=pub async fn cancel(&self, request_id: &str) -> bool
+   public_api_unchanged | warn | public function `check_or_start` was added. Additions are not a compatibility break; list the p || exp=None obs=pub async fn check_or_start(&self, key: &str) -> Dedupl
+   public_api_unchanged | warn | public function `complete` was added. Additions are not a compatibility break; list the path in || exp=None obs=pub async fn complete(&self, key: &str, result: Value)
+   public_api_unchanged | warn | public function `idempotent` was added. Additions are not a compatibility break; list the path  || exp=None obs=pub fn idempotent(state: &str) -> Self
+   public_api_unchanged | warn | public function `new` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=pub fn new(ttl: Duration) -> Self
+   public_api_unchanged | warn | public function `new` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=pub fn new() -> Self
+   public_api_unchanged | warn | public function `register` was added. Additions are not a compatibility break; list the path in || exp=None obs=pub async fn register(&self, request_id: &str) -> Cance
+   public_api_unchanged | warn | public function `remove` was added. Additions are not a compatibility break; list the path in ` || exp=None obs=pub async fn remove(&self, key: &str)
+   public_api_unchanged | warn | public function `safe` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=pub fn safe(state: &str) -> Self
+   public_api_unchanged | warn | public function `unregister` was added. Additions are not a compatibility break; list the path  || exp=None obs=pub async fn unregister(&self, request_id: &str)
+   public_api_unchanged | warn | public function `unsafe_op` was added. Additions are not a compatibility break; list the path i || exp=None obs=pub fn unsafe_op(state: &str) -> Self
+   public_api_unchanged | warn | public struct `RequestContext` was added. Additions are not a compatibility break; list the pat || exp=None obs=#[derive(Debug, Clone, Serialize, Deserialize, Default,
+   public_api_unchanged | warn | public function `extract_header_str` was added. Additions are not a compatibility break; list t || exp=None obs=pub fn extract_header_str(headers: &HeaderMap, key: &st
+   public_api_unchanged | warn | public function `resolve_request_context` was added. Additions are not a compatibility break; l || exp=None obs=pub fn resolve_request_context(payload_context: Option<
+   public_api_unchanged | warn | public function `resolve_request_id` was added. Additions are not a compatibility break; list t || exp=None obs=pub fn resolve_request_id(payload_id: Option<String>, h
+   public_api_unchanged | warn | public struct `CatalogEvent` was added. Additions are not a compatibility break; list the path  || exp=None obs=#[derive(Debug, Clone, Serialize, Deserialize)] pub str
+   public_api_unchanged | warn | public struct `CatalogEventStore` was added. Additions are not a compatibility break; list the  || exp=None obs=pub struct CatalogEventStore { events: RwLock<Vec<Catal
+   public_api_unchanged | warn | public module `events` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=pub mod events;
+   public_api_unchanged | warn | public function `get_events_after` was added. Additions are not a compatibility break; list the || exp=None obs=pub fn get_events_after(&self, after_cursor: Option<&st
+   public_api_unchanged | warn | public function `new` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=pub fn new() -> Self
+   public_api_unchanged | warn | public function `record` was added. Additions are not a compatibility break; list the path in ` || exp=None obs=pub fn record(&self, object_type: &str, object_id: &str
+   public_api_unchanged | warn | public struct `CapabilitySearchResult` was added. Additions are not a compatibility break; list || exp=None obs=#[derive(Debug, Clone, Serialize, Deserialize)] pub str
+   public_api_unchanged | warn | public struct `HybridSearchEngine` was added. Additions are not a compatibility break; list the || exp=None obs=pub struct HybridSearchEngine { vector_index: Option<Ve
+   public_api_unchanged | warn | public struct `LexicalMatchResult` was added. Additions are not a compatibility break; list the || exp=None obs=#[derive(Debug, Clone)] pub struct LexicalMatchResult {
+   public_api_unchanged | warn | public struct `SearchFilter` was added. Additions are not a compatibility break; list the path  || exp=None obs=#[derive(Debug, Clone, Default)] pub struct SearchFilte
+   public_api_unchanged | warn | public struct `VectorMatchResult` was added. Additions are not a compatibility break; list the  || exp=None obs=#[derive(Debug, Clone)] pub struct VectorMatchResult { 
+   public_api_unchanged | warn | public struct `VectorSearchIndex` was added. Additions are not a compatibility break; list the  || exp=None obs=#[cfg(feature = "semantic-search")] pub struct VectorSe
+   public_api_unchanged | warn | public struct `VectorSearchIndex` was added. Additions are not a compatibility break; list the  || exp=None obs=#[cfg(not(feature = "semantic-search"))] pub struct Vec
+   public_api_unchanged | warn | public function `cosine_similarity` was added. Additions are not a compatibility break; list th || exp=None obs=#[cfg(any(feature = "semantic-search", test))] pub fn c
+   public_api_unchanged | warn | public module `hybrid` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=pub mod hybrid;
+   public_api_unchanged | warn | public module `lexical` was added. Additions are not a compatibility break; list the path in `a || exp=None obs=pub mod lexical;
+   public_api_unchanged | warn | public function `new` was added. Additions are not a compatibility break; list the path in `all || exp=None obs=pub fn new() -> Self

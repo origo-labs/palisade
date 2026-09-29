@@ -6,3 +6,6 @@ Cargo.lock.orig
 # curves themselves are published in docs/, not in the working tree.
 /scratch
 *.sarif
+
+# Corpus results are measurements, and they are committed -- a number nobody
+# can reproduce is not evidence. Transient scratch is not.

@@ -1,0 +1,35 @@
+corpus: delegated gates excluded from /Users/origo/src/semble-rs (8 analyzed gates)
+=== /Users/origo/src/semble-rs @ ba85035205528cff078c8225d218c21ab321c7a1 ===
+replayed 22 of 22 merges   clean=18  with-findings=4  error=0  skipped=0
+
+findings by primitive:
+    27  public_api_unchanged
+
+samples:
+   public_api_unchanged | warn | public struct `CacheLoc` was added. Additions are not a compatibility break; list the path in ` || exp=None obs=/// The resolved cache location for a user-supplied ind
+   public_api_unchanged | warn | public function `resolve_source_key` was added. Additions are not a compatibility break; list t || exp=None obs=/// Resolves a user-supplied index handle into its cach
+   public_api_unchanged | warn | public function `run_cache_info` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Prints the cache root location and total on-disk si
+   public_api_unchanged | warn | public function `run_clear_all` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Removes the entire cache root, optionally without p
+   public_api_unchanged | warn | public function `run_clear_one` was added. Additions are not a compatibility break; list the pa || exp=None obs=/// Removes the cache for a single index handle. pub fn
+   public_api_unchanged | warn | public function `run_status` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// Prints cache and corpus status for a single index h
+   public_api_unchanged | warn | public const `CACHE_VERSION` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// Bumped whenever the on-disk cache layout or semanti
+   public_api_unchanged | warn | public struct `FileRecord` was added. Additions are not a compatibility break; list the path in || exp=None obs=/// A file's chunk range within the cached chunk/embedd
+   public_api_unchanged | warn | public struct `Manifest` was added. Additions are not a compatibility break; list the path in ` || exp=None obs=/// The persisted metadata describing which files a cac
+   public_api_unchanged | warn | public struct `ManifestEntry` was added. Additions are not a compatibility break; list the path || exp=None obs=/// A single file's change-detection record within a ca
+   public_api_unchanged | warn | public function `cache_dir` was added. Additions are not a compatibility break; list the path i || exp=None obs=/// Resolves the on-disk cache directory for a source a
+   public_api_unchanged | warn | public function `classify_dirty` was added. Additions are not a compatibility break; list the p || exp=None obs=/// Classifies walked files into a `HashMap<rel_path, h
+   public_api_unchanged | warn | public function `content_hash` was added. Additions are not a compatibility break; list the pat || exp=None obs=/// The content hash (blake3 hex) of a file's bytes. pu
+   public_api_unchanged | warn | public function `fingerprint` was added. Additions are not a compatibility break; list the path || exp=None obs=/// Computes a stable hex digest of a cache key. pub fn
+   public_api_unchanged | warn | public function `load` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=/// Loads a manifest from `dir`, returning `None` on an
+   public_api_unchanged | warn | public function `load_blobs` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// Loads the full cached chunk corpus and its embeddin
+   public_api_unchanged | warn | public function `load_file_records` was added. Additions are not a compatibility break; list th || exp=None obs=/// Loads the cached chunk file list (`files.json`), if
+   public_api_unchanged | warn | public function `model_fingerprint` was added. Additions are not a compatibility break; list th || exp=None obs=/// The resolved identity of the embedding model, used 
+   public_api_unchanged | warn | public function `save` was added. Additions are not a compatibility break; list the path in `al || exp=None obs=/// Atomically writes the manifest to `dir`. pub fn sav
+   public_api_unchanged | warn | public function `save_blobs` was added. Additions are not a compatibility break; list the path  || exp=None obs=/// Persists the chunk corpus, embeddings, and file rec
+   public_api_unchanged | warn | public struct `SymbolIndex` was added. Additions are not a compatibility break; list the path i || exp=None obs=/// A symbol-name to its definitions and referencing ch
+   public_api_unchanged | warn | public struct `SymbolOccurrence` was added. Additions are not a compatibility break; list the p || exp=None obs=/// A definition occurrence of a symbol in the index. #
+   public_api_unchanged | warn | public function `build` was added. Additions are not a compatibility break; list the path in `a || exp=None obs=/// Builds the index from the corpus chunks. /// /// De
+   public_api_unchanged | warn | public function `contains` was added. Additions are not a compatibility break; list the path in || exp=None obs=/// True if the symbol name has any known definition or
+   public_api_unchanged | warn | public function `definitions` was added. Additions are not a compatibility break; list the path || exp=None obs=/// The definition occurrences of a lowered symbol name
+   public_api_unchanged | warn | public function `referencing_chunks` was added. Additions are not a compatibility break; list t || exp=None obs=/// The chunk indices that reference (but do not define
+   public_api_unchanged | warn | `src/model_install.rs` declared public API and was deleted || exp=12 (DEFAULT_MODEL_ID, DEFAULT_TOKENIZER_FILENAME, DEFAU obs=None
