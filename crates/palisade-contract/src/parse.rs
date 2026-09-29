@@ -16,7 +16,9 @@ use std::fmt;
 
 use serde::Deserialize;
 
-use crate::{Contract, Gate, GateId, JudgementSection, Primitive, Severity, Suppression};
+use crate::{
+    Contract, Gate, GateChange, GateId, JudgementSection, Primitive, Severity, Suppression,
+};
 
 pub use crate::ALL_PRIMITIVES;
 
@@ -120,7 +122,7 @@ impl std::error::Error for ContractError {}
 ///
 /// Never. This is the one function in the workspace that must not panic, since
 /// a panic here is a supervisor crash on a malformed file.
-pub fn parse(source: &str) -> Result<Contract, ContractError> {
+pub fn parse_contract(source: &str) -> Result<Contract, ContractError> {
     let raw: RawContract = toml::from_str(source).map_err(|e| {
         // `toml` hands back a byte offset, not a line. Converting here rather
         // than reporting "at byte 412" is the difference between an error a
@@ -156,6 +158,19 @@ struct RawContract {
     judgement: RawJudgement,
     #[serde(default)]
     suppressions: Vec<RawSuppression>,
+    /// Loosening records for this commit.
+    #[serde(default)]
+    changes: Vec<RawChange>,
+}
+
+/// A recorded loosening, in the same commit as the loosening.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawChange {
+    /// The gate that was loosened.
+    gate: String,
+    /// Why. Required, and must not be blank.
+    reason: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -187,6 +202,9 @@ struct RawGate {
     /// Ceiling on a Delegated gate's runtime, in seconds.
     #[serde(default)]
     timeout_seconds: Option<u64>,
+    /// The published measurement behind this severity.
+    #[serde(default)]
+    calibration: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -289,6 +307,30 @@ impl RawContract {
             })
             .collect::<Result<Vec<_>, ContractError>>()?;
 
+        let changes = self
+            .changes
+            .iter()
+            .map(|c| {
+                if c.reason.trim().is_empty() {
+                    return Err(ContractError::Validation(format!(
+                        "change record for gate `{}` has a blank reason. A \
+                         reason nobody wrote is not a reason.",
+                        c.gate
+                    )));
+                }
+                if !gates.iter().any(|g| g.id.as_str() == c.gate) {
+                    return Err(ContractError::Validation(format!(
+                        "change record names `{}`, which is not a declared gate",
+                        c.gate
+                    )));
+                }
+                Ok(GateChange {
+                    gate: c.gate.clone(),
+                    reason: c.reason.clone(),
+                })
+            })
+            .collect::<Result<Vec<_>, ContractError>>()?;
+
         Ok(Contract {
             version: self.version,
             gates,
@@ -299,6 +341,7 @@ impl RawContract {
             baseline_ref: self.baseline.and_then(|b| b.ref_),
             judgement,
             suppressions,
+            changes,
         })
     }
 }
@@ -314,6 +357,23 @@ impl RawGate {
                 found: self.check.clone(),
                 line: None,
             })?;
+        // The gates that audit the contract are part of the supervisor, not
+        // the project's configuration. A contract that declares one is
+        // mistaken, and a contract that could *remove* one would be a gate
+        // that can be switched off by the thing it guards — which is the
+        // Goodhart attack this whole milestone exists to stop, aimed at the
+        // defence itself.
+        if matches!(
+            primitive,
+            Primitive::ContractNotLoosened | Primitive::ContractReviewStale
+        ) {
+            return Err(ContractError::Validation(format!(
+                "gate `{id}` declares `{primitive}`, which is always on and \
+                 cannot be declared, given a severity, or removed. It is a \
+                 property of the supervisor, not of the contract."
+            )));
+        }
+
         let severity = match &self.severity {
             None => Severity::DEFAULT,
             Some(s) => parse_severity(s).ok_or_else(|| ContractError::InvalidValue {
@@ -343,6 +403,7 @@ impl RawGate {
             paths: self.paths.clone(),
             allow: self.allow.clone(),
             timeout_seconds: self.timeout_seconds,
+            calibration: self.calibration.clone(),
         })
     }
 }
@@ -444,7 +505,7 @@ not_covered = ["whether the design is the right one"]
 
     #[test]
     fn a_minimal_contract_parses() {
-        let c = parse(MINIMAL).expect("minimal contract");
+        let c = parse_contract(MINIMAL).expect("minimal contract");
         assert_eq!(c.version, 1);
         assert_eq!(c.gates.len(), 1);
         // PRD 5: new gates default to warn.
@@ -457,7 +518,7 @@ not_covered = ["whether the design is the right one"]
         // The single most important line in slop-gate's README, and the reason
         // a typo can never silently disable a gate.
         let src = MINIMAL.replace("check = ", "chek = ");
-        let err = parse(&src).unwrap_err();
+        let err = parse_contract(&src).unwrap_err();
         assert!(
             matches!(err, ContractError::Syntax { .. }),
             "expected a parse failure, got {err:?}"
@@ -468,14 +529,14 @@ not_covered = ["whether the design is the right one"]
     #[test]
     fn an_unknown_top_level_key_is_an_error() {
         let src = format!("{MINIMAL}\nbudgett = 1\n");
-        let err = parse(&src).unwrap_err();
+        let err = parse_contract(&src).unwrap_err();
         assert!(err.to_string().contains("budgett"), "got {err}");
     }
 
     #[test]
     fn an_unknown_check_name_is_an_error() {
         let src = MINIMAL.replace("dependency_surface_unchanged", "dependancy_surface");
-        let err = parse(&src).unwrap_err();
+        let err = parse_contract(&src).unwrap_err();
         assert!(matches!(err, ContractError::InvalidValue { .. }), "{err:?}");
         assert!(err.to_string().contains("dependancy_surface"));
     }
@@ -486,7 +547,7 @@ not_covered = ["whether the design is the right one"]
             "check = \"dependency_surface_unchanged\"",
             "check = \"dependency_surface_unchanged\"\nseverity = \"erorr\"",
         );
-        let err = parse(&src).unwrap_err();
+        let err = parse_contract(&src).unwrap_err();
         assert!(matches!(err, ContractError::InvalidValue { .. }), "{err:?}");
         assert!(err.to_string().contains("erorr"));
     }
@@ -494,7 +555,7 @@ not_covered = ["whether the design is the right one"]
     #[test]
     fn a_missing_review_date_is_an_error() {
         let src = "version = 1\n[judgement]\nnot_covered = []\n";
-        let err = parse(src).unwrap_err();
+        let err = parse_contract(src).unwrap_err();
         assert!(err.to_string().contains("reviewed"), "{err}");
     }
 
@@ -503,7 +564,7 @@ not_covered = ["whether the design is the right one"]
         let src = format!(
             "{MINIMAL}\n[[gates]]\nid = \"no_new_dependencies\"\ncheck = \"secret_absent\"\n"
         );
-        let err = parse(&src).unwrap_err();
+        let err = parse_contract(&src).unwrap_err();
         assert!(err.to_string().contains("duplicate"), "{err}");
     }
 
@@ -513,7 +574,7 @@ not_covered = ["whether the design is the right one"]
             "check = \"dependency_surface_unchanged\"",
             "check = \"dependency_surface_unchanged\"\nconsumes = [\"checks_green\"]",
         );
-        let err = parse(&src).unwrap_err();
+        let err = parse_contract(&src).unwrap_err();
         assert!(err.to_string().contains("not a declared gate"), "{err}");
     }
 
@@ -532,7 +593,7 @@ consumes = ["a"]
 [judgement]
 reviewed = "2026-09-28"
 "#;
-        let err = parse(src).unwrap_err();
+        let err = parse_contract(src).unwrap_err();
         assert!(err.to_string().contains("cycle"), "{err}");
     }
 
@@ -542,14 +603,14 @@ reviewed = "2026-09-28"
             "check = \"dependency_surface_unchanged\"",
             "check = \"dependency_surface_unchanged\"\npaths = [\"fixtures/\"]",
         );
-        let err = parse(&src).unwrap_err();
+        let err = parse_contract(&src).unwrap_err();
         assert!(err.to_string().contains("paths_unchanged"), "{err}");
     }
 
     #[test]
     fn an_unsupported_version_is_rejected() {
         let src = MINIMAL.replace("version = 1", "version = 2");
-        let err = parse(&src).unwrap_err();
+        let err = parse_contract(&src).unwrap_err();
         assert!(err.to_string().contains("version 2"), "{err}");
     }
 }

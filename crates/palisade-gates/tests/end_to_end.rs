@@ -14,6 +14,9 @@ use palisade_gates::{GateContext, GateResult, registry};
 use palisade_observe::{Budget, Observation};
 use palisade_testkit::{FixtureRepo, TempDir};
 
+/// A fixed instant, so a gate that reads the clock is still a pure function.
+const FIXED_NOW: i64 = 1_790_000_000;
+
 fn gate(primitive: Primitive) -> Gate {
     let mut g = Gate::new(GateId::new("g").unwrap(), primitive);
     g.severity = Severity::Error;
@@ -71,6 +74,7 @@ fn a_real_manifest_edit_is_seen_by_the_dependency_gate() {
         &GateContext {
             gate: &g,
             observation: &obs,
+            now_unix: FIXED_NOW,
         },
     ));
     assert!(
@@ -146,6 +150,7 @@ fn a_test_removed_after_being_committed_is_still_caught() {
         &GateContext {
             gate: &g,
             observation: &obs,
+            now_unix: FIXED_NOW,
         },
     ));
     // Both sides render the same way, so the pair is comparable: the removed
@@ -176,6 +181,7 @@ fn a_deleted_test_file_is_caught_on_a_real_tree() {
         &GateContext {
             gate: &g,
             observation: &obs,
+            now_unix: FIXED_NOW,
         },
     ));
     assert_eq!(f.len(), 1, "expected exactly one finding, got {f:?}");
@@ -221,6 +227,7 @@ fn an_unchanged_repository_produces_no_findings_from_any_m1_gate() {
             &GateContext {
                 gate: &g,
                 observation: &obs,
+                now_unix: FIXED_NOW,
             },
         );
         assert_eq!(r, GateResult::Clean, "{p} fired on an unchanged repository");
@@ -246,6 +253,7 @@ fn a_real_removed_public_function_is_caught() {
         &GateContext {
             gate: &g,
             observation: &obs,
+            now_unix: FIXED_NOW,
         },
     ));
     assert!(
@@ -270,6 +278,7 @@ fn a_real_wildcard_suppression_is_caught() {
         &GateContext {
             gate: &g,
             observation: &obs,
+            now_unix: FIXED_NOW,
         },
     ));
     assert!(f.iter().any(|x| x.message.contains("wildcard")), "{f:?}");
@@ -292,6 +301,7 @@ fn a_real_unsafe_block_is_caught() {
         &GateContext {
             gate: &g,
             observation: &obs,
+            now_unix: FIXED_NOW,
         },
     ));
     assert!(f.iter().any(|x| x.observed.render().contains('1')), "{f:?}");
@@ -321,6 +331,7 @@ fn an_unrelated_edit_produces_no_ast_findings() {
             &GateContext {
                 gate: &g,
                 observation: &obs,
+                now_unix: FIXED_NOW,
             },
         );
         match r {

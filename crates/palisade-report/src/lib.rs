@@ -272,6 +272,10 @@ impl Report<'_> {
                     "verdict": self.verdict.to_string(),
                     "notCovered": self.contract.judgement.not_covered,
                     "reviewed": self.contract.judgement.reviewed,
+                    // The gates that audit the contract are not in the
+                    // contract. Saying so in the artefact stops a reader
+                    // wondering where they were configured.
+                    "builtInGates": ["contract_not_loosened", "contract_review_stale"],
                 },
             }],
         })

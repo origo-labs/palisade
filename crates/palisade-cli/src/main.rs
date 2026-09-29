@@ -23,7 +23,7 @@ use clap::{Parser, Subcommand};
 
 use std::time::Duration;
 
-use palisade_contract::{Contract, Gate, Primitive, Severity};
+use palisade_contract::{Contract, Gate, GateId, Primitive, Severity};
 use palisade_gates::{GateContext, GateResult, registry};
 use palisade_git::Repo;
 use palisade_observe::{Budget, Observation};
@@ -154,11 +154,16 @@ fn run(cli: Cli) -> Result<Verdict, String> {
 
     let obs = capture(&repo, &base, budget, true)?;
     let (cargo_version, tool_version) = tool_versions();
-    let runs: Vec<GateRun> = contract
+    let mut runs: Vec<GateRun> = contract
         .gates
         .iter()
         .map(|g| run_gate(g, &obs, &base, &cargo_version, &tool_version))
         .collect();
+    // The gates that audit the contract are not in the contract. A gate that
+    // could be declared could also be deleted, and a gate that a worker can
+    // switch off is not a gate — so these are appended here, unconditionally,
+    // and `parse` refuses to accept a contract that tries to declare them.
+    runs.extend(built_in_gates(&obs, &cargo_version));
     let outcomes: Vec<palisade_orchestrate::GateOutcome> =
         runs.iter().map(|r| r.outcome.clone()).collect();
     let verdict = reduce(&ReductionInput {
@@ -222,7 +227,39 @@ fn load_contract(root: &Utf8PathBuf) -> Result<Contract, String> {
             path
         )
     })?;
-    palisade_contract::parse::parse(&source).map_err(|e| format!("{path}: {e}"))
+    palisade_contract::parse::parse_contract(&source).map_err(|e| format!("{path}: {e}"))
+}
+
+/// The gates the supervisor runs whether or not anybody asked for them.
+///
+/// Their severity is fixed in code and not configurable. That is a deliberate
+/// asymmetry: every other gate can be softened, because a project that
+/// disagrees can record why. These cannot be softened at all, because the
+/// thing they detect is a project softening its own gates.
+///
+/// Within them, a *justified* loosening is still reported, at `warn`. So the
+/// force is not "you may never change the contract" — it is "you may never
+/// change it silently".
+fn built_in_gates(obs: &Observation, cargo_version: &str) -> Vec<GateRun> {
+    [
+        Primitive::ContractNotLoosened,
+        Primitive::ContractReviewStale,
+    ]
+    .into_iter()
+    .map(|p| {
+        let mut g = Gate::new(
+            GateId::new(p.as_str()).expect("primitive name is a valid id"),
+            p,
+        );
+        g.severity = Severity::Error;
+        // The gate already decides per finding whether a recorded
+        // `[[changes]]` reason downgrades it, so there is no global
+        // downgrade here. An earlier version applied one if *any* finding
+        // was justified, which meant one recorded reason silently unblocked
+        // every other loosening in the same diff.
+        run_gate(&g, obs, "HEAD", cargo_version, "unused")
+    })
+    .collect()
 }
 
 /// Run one declared gate and collect everything it produced.
@@ -271,6 +308,10 @@ fn run_gate(
                 &GateContext {
                     gate,
                     observation: obs,
+                    // The only clock read in a gate, and it is here rather
+                    // than inside `contract_review_stale` so that gate stays a
+                    // pure function of its inputs.
+                    now_unix: unix_now(),
                 },
             );
             let origin = palisade_orchestrate::Origin::Analyzed { primitive: other };
@@ -285,6 +326,16 @@ fn run_gate(
             }
         }
     }
+}
+
+/// Unix seconds, once per invocation.
+///
+/// The only clock in the workspace. Every gate that needs the time is handed
+/// it, so that no gate's output depends on when it happened to run.
+fn unix_now() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs() as i64)
 }
 
 /// A gate's timeout, defaulting generously.

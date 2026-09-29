@@ -162,8 +162,10 @@ fn parse_line_findings(text: &str) -> Vec<Finding> {
                 external_subject("external"),
                 (!path.is_empty()).then(|| camino::Utf8PathBuf::from(path)),
                 line_no.map(|start| palisade_orchestrate::HunkRef { start, end: start }),
+                // A third-party tool's finding is not a comparison against a
+                // baseline we hold, so neither side carries a value.
                 Side::Absent,
-                Side::value(message),
+                Side::Absent,
                 format!("external tool: {message}"),
                 external_origin(),
             )
@@ -261,7 +263,7 @@ fn parse_sarif_findings(text: &str) -> Result<Vec<Finding>, UntrustworthyReason>
                 path,
                 line.map(|start| palisade_orchestrate::HunkRef { start, end: start }),
                 Side::Absent,
-                Side::value(message.clone()),
+                Side::Absent,
                 format!("external tool `{rule_id}`: {message}"),
                 external_origin(),
             ));
@@ -392,7 +394,7 @@ mod tests {
             f[0].hunk,
             Some(palisade_orchestrate::HunkRef { start: 10, end: 10 })
         );
-        assert!(f[1].observed.render().contains("other"));
+        assert!(f[1].message.contains("other"));
     }
 
     #[test]

@@ -243,6 +243,8 @@ pub struct Contract {
     pub judgement: JudgementSection,
     /// Rule waivers, each with a gate, a path, and a reason.
     pub suppressions: Vec<Suppression>,
+    /// Loosening records for this commit. Empty in most diffs.
+    pub changes: Vec<GateChange>,
 }
 
 /// One declared gate: an id, a primitive, and what a finding from it does.
@@ -273,6 +275,26 @@ pub struct Gate {
     /// Ceiling on a `Delegated` gate's runtime, in seconds. A ceiling on a
     /// runaway, not a target: `cargo test` on a large repository is minutes.
     pub timeout_seconds: Option<u64>,
+    /// The published measurement that justifies this gate's severity.
+    ///
+    /// Required to *promote* a gate to `error` in a diff; a gate written as
+    /// `error` in a fresh contract is the author making a claim, not a
+    /// promotion. See `contract_not_loosened`.
+    pub calibration: Option<String>,
+}
+
+/// A recorded, justified change to a gate, in the same commit as the change.
+///
+/// PRD 5: "A gate may not be loosened without a reason in the same commit."
+/// This is where the reason lives, and it is a separate record rather than a
+/// field on the gate because a *removed* gate has no gate left to hold one.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GateChange {
+    /// The gate that was loosened.
+    pub gate: String,
+    /// Why. Required and non-empty: a blank reason is not a reason, and a
+    /// reason nobody wrote is indistinguishable from a gate nobody reviewed.
+    pub reason: String,
 }
 
 impl Gate {
@@ -289,6 +311,7 @@ impl Gate {
             paths: Vec::new(),
             allow: Vec::new(),
             timeout_seconds: None,
+            calibration: None,
         }
     }
 }

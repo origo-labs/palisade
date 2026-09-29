@@ -25,8 +25,15 @@ use palisade_observe::{Budget, Observation};
 /// without a repository. The point of the crate boundary is that this is
 /// possible.
 fn ctx<'a>(gate: &'a Gate, observation: &'a Observation) -> GateContext<'a> {
-    GateContext { gate, observation }
+    GateContext {
+        gate,
+        observation,
+        now_unix: FIXED_NOW,
+    }
 }
+
+/// A fixed instant, so a gate that reads the clock is still a pure function.
+const FIXED_NOW: i64 = 1_790_000_000;
 
 fn gate(primitive: Primitive) -> Gate {
     let mut g = Gate::new(GateId::new("g").unwrap(), primitive);
@@ -424,8 +431,6 @@ fn an_unimplemented_primitive_is_untrustworthy_not_clean() {
         Primitive::ChecksGreen,
         Primitive::ExternalTool,
         Primitive::Judged,
-        Primitive::ContractNotLoosened,
-        Primitive::ContractReviewStale,
     ] {
         let g = gate(p);
         let obs = two_tree(&[("src/a.rs", Some("a"), Some("b"))]);

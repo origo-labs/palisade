@@ -396,6 +396,16 @@ pub enum ChangeKind {
     Removed,
     /// Present on both sides, with different values.
     Changed,
+    /// Neither side has a value, because there is nothing to compare: a
+    /// delegated check reported that it failed.
+    ///
+    /// A failed check is not a diff. `cargo fmt` failing does not mean the
+    /// formatting changed relative to a baseline — there is no baseline
+    /// formatting — it means a third party said no. Faking that into
+    /// `expected: "clean"` / `observed: "<a diff>"` made a correct report read
+    /// "check changed: cargo fmt", which is both awkward and slightly wrong.
+    /// The diagnostic lives in the message, where prose belongs.
+    Failed,
 }
 
 impl ChangeKind {
@@ -405,6 +415,7 @@ impl ChangeKind {
             Self::Added => "added",
             Self::Removed => "removed",
             Self::Changed => "changed",
+            Self::Failed => "failed",
         }
     }
 }
@@ -489,10 +500,9 @@ impl Finding {
             (Side::Absent, Side::Value(_)) => ChangeKind::Added,
             (Side::Value(_), Side::Absent) => ChangeKind::Removed,
             (Side::Value(_), Side::Value(_)) => ChangeKind::Changed,
-            // A subject that is on neither side is a check that fired without
-            // a comparison, e.g. a policy gate. Reported as `Changed` because
-            // something about it is not as declared.
-            (Side::Absent, Side::Absent) => ChangeKind::Changed,
+            // Neither side has a value, so nothing was compared. See
+            // `ChangeKind::Failed`.
+            (Side::Absent, Side::Absent) => ChangeKind::Failed,
         }
     }
 

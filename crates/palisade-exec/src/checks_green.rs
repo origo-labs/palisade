@@ -100,6 +100,9 @@ fn apply(builder: &mut GateRunBuilder, check: Check, completed: Completed, origi
             } else {
                 diagnostics.join(" | ")
             };
+            // No value on either side: there is no baseline formatting to
+            // compare against, so inventing one and calling the result a
+            // "change" would be a fiction. The diagnostic is the message.
             builder.finding(Finding::new(
                 palisade_contract::GateId::new(format!("checks_green_{}", check.as_str()))
                     .expect("suffix is valid"),
@@ -108,9 +111,9 @@ fn apply(builder: &mut GateRunBuilder, check: Check, completed: Completed, origi
                 Subject::new(SubjectKind::Check, format!("cargo {}", check.as_str())),
                 None,
                 None,
-                Side::value("clean"),
-                Side::value(observed),
-                format!("`cargo {}` failed", check.as_str()),
+                Side::Absent,
+                Side::Absent,
+                format!("`cargo {}` failed: {observed}", check.as_str()),
                 origin.clone(),
             ));
         }
@@ -174,10 +177,16 @@ mod tests {
         assert_eq!(run.findings.len(), 1);
         assert!(run.findings[0].message.contains("clippy"));
         assert!(
-            run.findings[0]
-                .observed
-                .render()
-                .contains("unused variable")
+            run.findings[0].message.contains("unused variable"),
+            "the diagnostic must survive: {:?}",
+            run.findings[0].message
+        );
+        // A failed check is not a comparison, so neither side carries a value.
+        // Faking a baseline would make the report say "check changed", which
+        // is a fiction: there is no baseline formatting to have changed from.
+        assert_eq!(
+            run.findings[0].change(),
+            palisade_orchestrate::ChangeKind::Failed
         );
     }
 
@@ -244,6 +253,11 @@ mod tests {
             palisade_contract::Primitive::ChecksGreen,
             crate::origin("cargo", "1.98.0"),
         );
-        assert!(run.findings[0].observed.render().contains("no diagnostic"));
+        assert!(run.findings[0].message.contains("no diagnostic"));
+        // A failed check is not a diff, so neither side carries a value.
+        assert_eq!(
+            run.findings[0].change(),
+            palisade_orchestrate::ChangeKind::Failed
+        );
     }
 }

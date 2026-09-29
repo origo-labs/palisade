@@ -24,6 +24,7 @@ fn contract(gates: Vec<Gate>, not_covered: Vec<&str>) -> palisade_contract::Cont
             reviewed: Some("2026-09-28".to_string()),
         },
         suppressions: Vec::new(),
+        changes: Vec::new(),
     }
 }
 

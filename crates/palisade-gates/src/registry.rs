@@ -25,7 +25,8 @@ pub fn analyzed(p: Primitive) -> Option<AnalyzedGate> {
         Primitive::SecretAbsent => None, // M1.5
         Primitive::ChecksGreen | Primitive::ExternalTool => None, // M3, Delegated
         Primitive::Judged => None,       // M6, escalate-only
-        Primitive::ContractNotLoosened | Primitive::ContractReviewStale => None, // M4
+        Primitive::ContractNotLoosened => Some(crate::contract_not_loosened::run),
+        Primitive::ContractReviewStale => Some(crate::contract_review_stale::run),
     }
 }
 

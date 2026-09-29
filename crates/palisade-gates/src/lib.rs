@@ -19,6 +19,8 @@
 //! This crate has no `std::process` in its dependency graph, and CI fails the
 //! build if it ever does.
 
+pub mod contract_not_loosened;
+pub mod contract_review_stale;
 pub mod dependency_surface;
 pub mod paths_unchanged;
 pub mod public_api;
@@ -65,6 +67,13 @@ pub struct GateContext<'a> {
     pub gate: &'a Gate,
     /// The bounded, two-tree observation.
     pub observation: &'a Observation,
+    /// Unix seconds, supplied by the caller.
+    ///
+    /// Not read from the clock inside a gate: a gate whose output depends on
+    /// when it ran has no reproducible result, and `contract_review_stale` is
+    /// the one gate that legitimately needs the time. Passing it in keeps the
+    /// gate a pure function and the test deterministic.
+    pub now_unix: i64,
 }
 
 impl<'a> GateContext<'a> {

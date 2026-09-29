@@ -832,17 +832,68 @@ including passes, and `not_covered` appears in the human report, the JSON and
 the SARIF — so a consumer reading only the code-scanning artefact still learns
 what was not checked.
 
-### M4 — The gates about gates
-- `contract_not_loosened`, `contract_review_stale` (§1.3).
-- Suppression records: `{gate_id, path, reason}` required, emitted in the
-  output artefact, counted in a report.
-- Severity-promotion guard: promoting a gate `warn`→`error` without a
-  `calibration` reference is a validation error (§4).
-- SARIF upload path, documented for GitHub Actions and GitLab CI.
+### M4 — The gates about gates — **shipped**
+`contract_not_loosened` and `contract_review_stale`, the `[[changes]]` record,
+the `calibration` field, and the promotion guard. 23 fixtures.
 
-**Exit:** a commit that disables a gate without a reason blocks; with a reason
-it is a warning. A gate cannot be promoted to `error` without a named
-calibration corpus.
+**The finding that mattered most, and it was in the design rather than the
+code.** Both gates were originally declared in `palisade.toml` like any other.
+A worker that deleted the declaration silenced the gate that would have
+noticed — and the demo proved it: a diff that turned `no_unsafe_added` off,
+promoted another gate, and dropped a `not_covered` entry came back **`accept`**.
+
+A gate that can be switched off by the thing it guards is not a gate, and the
+Goodhart attack aimed at the defence is the one that matters. So:
+
+- The two gates are **not declarable**. `parse` rejects a contract that tries,
+  naming what they are. They are appended by the orchestrator,
+  unconditionally.
+- Their severity is **fixed in code**. Every other gate can be softened,
+  because a project that disagrees can record why. These cannot be softened at
+  all, because what they detect is a project softening its own gates.
+- Within them, a **justified** loosening — one with a `[[changes]]` record
+  naming the gate and giving a non-blank reason — is still reported, at
+  `warn`. So the rule is not "you may never change the contract". It is **"you
+  may never change it silently"**.
+
+`the_contract_hygiene_gates_cannot_be_declared` pins it. A one-time migration
+is needed by any contract that declared them, and the error says so.
+
+**What counts as a loosening**, enumerated so the gate cannot quietly grow: a
+gate deleted; a severity downgraded; a primitive swapped out from under an id;
+an `allow` entry added; frozen paths narrowed; a suppression added; a
+`not_covered` entry removed. Each has a fixture. The `not_covered` one is the
+most corrosive, because nothing about the *code* changed — the contract just
+stopped admitting to a gap.
+
+**The promotion guard is a two-tree check, not a static one.** Writing
+`severity = "error"` in a new contract is an author making a claim; *promoting*
+a gate from `warn` to `error` in a diff is a claim that must arrive with the
+measurement behind it. A static rule would reject every contract until M5
+exists, and would be switched off before then.
+
+**Two bugs of my own, both caught by looking at the output:**
+
+1. The CLI downgraded findings **globally** if any one was justified, so a
+   single `[[changes]]` record silently unblocked every other loosening in the
+   same diff. The gate already decides per finding; the global pass is gone.
+2. The promotion finding was pinned to `warn` on the reasoning that
+   `contract_not_loosened` is usually advisory. It no longer is declarable, so
+   it never is — and a promotion to `error` without a measurement must be able
+   to block. It now uses the gate's own severity.
+
+**A division of labour worth stating.** A *missing* `reviewed` date is rejected
+when the contract loads, so the whole run is `error` and no gate runs.
+`contract_review_stale` only catches the two cases a load-time check cannot: a
+date that is too old, and a date that is present but not a date. The second
+matters — a gate that only checked the interval would let `reviewed = "soon"`
+pass forever.
+
+**Exit — met.** 212 tests. Every loosening above has a firing fixture; the
+must-not-fires cover an ordinary strengthening edit, covering *more* frozen
+paths, an unchanged contract, a contract absent from the observation, a new gate
+at `error`, and a calibrated promotion. Unjustified loosenings block; justified
+ones are reported at `warn` with the reason attached.
 
 ### M5 — Validation on repositories we did not write
 PRD §9. Not optional and not parallelisable with anything else.

@@ -16,10 +16,14 @@ fn gate(primitive: Primitive) -> Gate {
     g
 }
 
+/// A fixed instant, so a gate that reads the clock is still a pure function.
+const FIXED_NOW: i64 = 1_790_000_000;
+
 fn ctx<'a>(gate: &'a Gate, obs: &'a palisade_observe::Observation) -> GateContext<'a> {
     GateContext {
         gate,
         observation: obs,
+        now_unix: FIXED_NOW,
     }
 }
 
