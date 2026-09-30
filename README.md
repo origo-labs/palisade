@@ -5,7 +5,7 @@ contract** and escalates only what that contract could not cover.
 
 **Status: beta.** Ten of the twelve gates run — eight you declare, plus two
 that audit the contract itself. The other two report `error` rather than
-passing. It has run against 253 real merges in ten repositories. It has *not*
+passing. It has run against 240 real merges in nine repositories. It has *not*
 been reviewed by anyone who did not write it — see
 [What we have not measured](#what-we-have-not-measured), which is the most
 important section here.
@@ -123,7 +123,7 @@ prior measurement programme.
 
 This is the part to read twice.
 
-**We measured 253 merges across ten repositories, generated contracts, zero
+**We measured 240 merges across nine repositories, generated contracts, zero
 `Untrustworthy`, zero blocking-severity false positives.** Every finding was
 `warn`.
 

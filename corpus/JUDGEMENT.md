@@ -1,6 +1,6 @@
 # Findings judgement, M5
 
-Judged 2026-09-29, from `results/*.txt`. 253 merges replayed across four
+Judged 2026-09-29, from `results/*.txt`. 240 merges replayed across nine
 repositories, generated contracts, eight analyzed gates.
 
 ## Read this before the numbers
@@ -25,7 +25,7 @@ cause. That is what this pass produced, and it is worth having.
 
 | | |
 | --- | --- |
-| Merges replayed | 253 |
+| Merges replayed | 240 |
 | Errors (`Untrustworthy`) | **0** |
 | Branch syncs skipped | 23 (not changes under review) |
 | Findings | 924 |

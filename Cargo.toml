@@ -18,8 +18,8 @@ version = "0.2.0-beta.1"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/mrorigo/palisade"
-homepage = "https://github.com/mrorigo/palisade"
+repository = "https://github.com/origo-labs/palisade"
+homepage = "https://github.com/origo-labs/palisade"
 description = "A supervisor for coding agents: runs a project's declared quality contract."
 publish = false
 

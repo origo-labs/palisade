@@ -260,7 +260,7 @@
     border-inline-start: 2px solid var(--teal);
     padding-inline-start: 0.7rem;
   }
-  .marginal b { color: var(--teal); font-weight: 600; display: block; letter-spacing: 0.1em; text-transform: uppercase; font-size: 0.6rem; margin-block-end: 0.35rem; }
+  .marginal b { color: var(--teal); font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; font-size: 0.6rem; margin-block-end: 0.35rem; }
   .marginal--lead { border-inline-start-color: var(--lead); }
   .marginal--lead b { color: var(--lead); }
 
@@ -270,7 +270,7 @@
     align-items: start;
   }
   @media (min-width: 62rem) {
-    .split { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 3.5rem; }
+    .split { grid-template-columns: minmax(0, 3.55fr) minmax(0, 1fr); gap: 3.5rem; }
     .split--note-right { direction: rtl; }
     .split--note-right > * { direction: ltr; }
   }
@@ -301,7 +301,7 @@
     font-size: clamp(1.5rem, 1.1rem + 1.7vw, 2.4rem);
     line-height: 1.14;
     letter-spacing: -0.018em;
-    max-inline-size: 20ch;
+    max-inline-size: 24ch;
     margin-block-end: clamp(1.4rem, 3vw, 2.2rem);
   }
 
@@ -592,30 +592,27 @@
     <section class="thesis">
       <div class="split">
         <div>
-          <p class="thesis-line">It refuses to report a gate as <em>passed</em> when the gate did not run.</p>
-          <p class="thesis-line">The usual fix for an agent that will not stop is a model above the model. We tried that.</p>
+          <p class="thesis-line">The usual fix for an agent that will not stop is a model above the model. <em>We tried that.</em></p>
 
           <div class="thesis-support">
             <p>
-              A 400M span classifier and a frontier LLM both saturated on the
-              same head, and the classifier flagged rule violations on states
-              where the diff was <strong>empty</strong>. The rules in question
-              were "standard library only" and "never delete a test" — trivially
-              machine-checkable. So the quality bar became an executable
-              contract, and the instrument runs the contract instead of forming
-              an opinion.
+              Every supervisor built so far returns a binary result. A binary
+              result cannot distinguish <em>the work is wrong</em> from
+              <em>the check could not run</em>. That distinction was learned the
+              expensive way: a predecessor verifier that failed to start, and
+              one whose tests failed, were indistinguishable to its caller —
+              which confounded every measurement made through it.
             </p>
           </div>
         </div>
 
         <aside class="marginal marginal--lead">
-          <b>Why this is the headline</b>
-          Every supervisor built so far returns a binary result. A binary result
-          cannot distinguish <em>the work is wrong</em> from
-          <em>the check could not run</em>. That distinction was learned the
-          expensive way: a predecessor verifier that failed to start, and one
-          whose tests failed, were indistinguishable to its caller — which
-          confounded every measurement made through it.
+          A 400M span classifier and a frontier LLM <em>both saturated on the
+          same head</em>, and the classifier flagged rule violations on states
+          where the diff was <strong>empty</strong>. The rules in question were
+          "standard library only" and "never delete a test" — trivially
+          machine-checkable. So the quality bar became an executable contract,
+          and the instrument runs the contract instead of forming an opinion.
         </aside>
       </div>
     </section>
@@ -623,6 +620,7 @@
     <!-- ================= 02 · results ================= -->
     <section class="clause">
       <p class="clause-label">02 — results of inspection</p>
+      <h2>Palisade refuses to report a gate as <em>passed</em> when the gate did not run.</h2>
       <div class="split split--note-right">
         <div>
           <h2>Four possible results, and one of them is not a stricter no.</h2>
@@ -664,7 +662,7 @@
           Exit 2 is <em>not</em> a stricter exit 1. A gate that could not run
           has not passed, and a contract that could not be read has not been
           violated.<br><br>
-          Across 253 replays, <b>0</b> returned ERROR — not because the code is
+          Across 240 replays, <b>0</b> returned ERROR — not because the code is
           sound, but because the two failure modes are no longer the same
           event.
         </aside>
@@ -906,9 +904,9 @@
           <div class="limitations rise">
             <h3>Stated on the record, not in a footnote</h3>
             <ul>
-              <li><b>No independent review exists.</b> The findings were judged by the people who wrote the gates. Whether a maintainer finds them tolerable is the one question a self-run corpus cannot answer.</li>
-              <li><b>The corpus has one author</b> — who is also the person choosing the gates and reading the output.</li>
-              <li><b>253 merges across ten repositories, generated contracts.</b> Zero ERROR. Zero blocking-severity false positives. Every finding was advisory.</li>
+              <li><b>No independent review exists.</b> Every finding was judged by the person who wrote the gate that produced it. Whether a maintainer finds them tolerable is the one question a self-run corpus cannot answer.</li>
+              <li><b>Nobody outside the author has run this.</b> 103 of the 240 merges are other people's code and the one substantive defect was external — but unfamiliar code is not an independent opinion, and no third party has adopted the contract.</li>
+              <li><b>240 merges across nine repositories with merge history</b> (a tenth contributes rules but has no merge commits), generated contracts. Zero ERROR. Zero blocking-severity false positives. Every finding was advisory.</li>
               <li><b>One substantive defect found:</b> a merge that silently dropped four tests, in a repository whose own contribution guide says every PR must pass its checks.</li>
               <li><b><code>checks_green</code> is unmeasured on anything large.</b> It runs <code>cargo test --workspace</code>; on a 38-member crate that is minutes per merge.</li>
             </ul>
@@ -939,7 +937,7 @@
           <dl class="fields">
             <div class="field">
               <dt>install</dt>
-              <dd><span class="ps1">$ </span>cargo install --git https://github.com/mrorigo/palisade palisade-cli</dd>
+              <dd><span class="ps1">$ </span>cargo install --git https://github.com/origo-labs/palisade palisade-cli</dd>
             </div>
             <div class="field">
               <dt>issue form</dt>
@@ -972,7 +970,7 @@
       <dl class="signoff">
         <div class="sign-cell">
           <dt>Inspector</dt>
-          <dd><div class="sign-line"></div><small>Unsigned. One reviewer, who also wrote the gates.</small></dd>
+          <dd><div class="sign-line"></div><small>Unsigned. One reviewer, who also wrote the gates — across a corpus that is 43% other people's code.</small></dd>
         </div>
         <div class="sign-cell">
           <dt>Independent review</dt>
@@ -993,9 +991,9 @@
       <span>Palisade — quality inspection for agent-written Rust</span>
       <span>MIT OR Apache-2.0</span>
       <span>3.5 MB single binary · no model · no network at analysis time</span>
-      <a href="https://github.com/mrorigo/palisade">repository</a>
-      <a href="https://github.com/mrorigo/palisade/blob/main/corpus/JUDGEMENT.md">corpus &amp; nonconformities</a>
-      <a href="https://github.com/mrorigo/palisade/blob/main/PLAN.md">how it is built</a>
+      <a href="https://github.com/origo-labs/palisade">repository</a>
+      <a href="https://github.com/origo-labs/palisade/blob/main/corpus/JUDGEMENT.md">corpus &amp; nonconformities</a>
+      <a href="https://github.com/origo-labs/palisade/blob/main/PLAN.md">how it is built</a>
     </p>
   </div>
 </footer>
