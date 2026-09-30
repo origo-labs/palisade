@@ -3,7 +3,8 @@
 A supervisor for coding agents. It runs a project's **declared quality
 contract** and escalates only what that contract could not cover.
 
-**Status: beta.** Nine of eleven gates work; two report `error` rather than
+**Status: beta.** Ten of the twelve gates run — eight you declare, plus two
+that audit the contract itself. The other two report `error` rather than
 passing. It has run against 253 real merges in ten repositories. It has *not*
 been reviewed by anyone who did not write it — see
 [What we have not measured](#what-we-have-not-measured), which is the most
