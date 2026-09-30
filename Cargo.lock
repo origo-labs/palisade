@@ -229,7 +229,7 @@ checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
 name = "palisade-ast"
-version = "0.1.0"
+version = "0.2.0-beta.1"
 dependencies = [
  "blake3",
  "tree-sitter",
@@ -238,7 +238,7 @@ dependencies = [
 
 [[package]]
 name = "palisade-cli"
-version = "0.1.0"
+version = "0.2.0-beta.1"
 dependencies = [
  "camino",
  "clap",
@@ -254,7 +254,7 @@ dependencies = [
 
 [[package]]
 name = "palisade-contract"
-version = "0.1.0"
+version = "0.2.0-beta.1"
 dependencies = [
  "serde",
  "toml",
@@ -262,7 +262,7 @@ dependencies = [
 
 [[package]]
 name = "palisade-exec"
-version = "0.1.0"
+version = "0.2.0-beta.1"
 dependencies = [
  "camino",
  "palisade-contract",
@@ -272,7 +272,7 @@ dependencies = [
 
 [[package]]
 name = "palisade-gates"
-version = "0.1.0"
+version = "0.2.0-beta.1"
 dependencies = [
  "palisade-ast",
  "palisade-contract",
@@ -286,14 +286,14 @@ dependencies = [
 
 [[package]]
 name = "palisade-git"
-version = "0.1.0"
+version = "0.2.0-beta.1"
 dependencies = [
  "camino",
 ]
 
 [[package]]
 name = "palisade-observe"
-version = "0.1.0"
+version = "0.2.0-beta.1"
 dependencies = [
  "palisade-git",
  "palisade-testkit",
@@ -301,7 +301,7 @@ dependencies = [
 
 [[package]]
 name = "palisade-orchestrate"
-version = "0.1.0"
+version = "0.2.0-beta.1"
 dependencies = [
  "blake3",
  "camino",
@@ -311,7 +311,7 @@ dependencies = [
 
 [[package]]
 name = "palisade-report"
-version = "0.1.0"
+version = "0.2.0-beta.1"
 dependencies = [
  "palisade-contract",
  "palisade-orchestrate",
@@ -321,7 +321,7 @@ dependencies = [
 
 [[package]]
 name = "palisade-testkit"
-version = "0.1.0"
+version = "0.2.0-beta.1"
 dependencies = [
  "camino",
  "palisade-git",

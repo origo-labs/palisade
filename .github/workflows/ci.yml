@@ -52,3 +52,21 @@ jobs:
         run: |
           cargo install cargo-deny --locked
           cargo deny check licenses advisories
+
+  # The product run on itself. Not decoration: a contract that this repository
+  # does not pass is a contract we have no business asking anyone else to write,
+  # and this is the only place that gets caught before a beta user finds it.
+  self:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0        # the gates are two-tree; a shallow clone has no base
+      - uses: dtolnay/rust-toolchain@stable
+      - name: install
+        run: cargo install --path crates/palisade-cli --locked
+      - name: run the contract on this repository
+        run: |
+          palisade init --force
+          palisade check --format sarif > results.sarif || true
+          palisade check || exit $?

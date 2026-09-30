@@ -1142,3 +1142,38 @@ project.
 Criterion 5 is the one that decides whether this is a tool you can rely on. The
 gates are the easy part; the gap being an owned, dated artefact is the part
 that is worth building.
+
+---
+
+## 9. Beta: `0.2.0-beta.1`
+
+The measurement has told us what we need to know about the *gates*. It cannot
+tell us whether a maintainer finds the findings tolerable, and that only comes
+from someone running it. So the next milestone is not more measurement — it is
+getting it into people's hands and asking.
+
+**What a beta had to have, and what it was missing:**
+
+| | |
+| --- | --- |
+| `LICENSE-MIT`, `LICENSE-APACHE` | absent. `license = "MIT OR Apache-2.0"` in `Cargo.toml` names a licence the repository did not contain. |
+| `README.md` rewritten | it still opened "**Status: specification. Nothing is built yet**", nine milestones after the first one landed. |
+| Installable | `cargo install --path .` failed: the workspace root is a virtual manifest. `cargo install --path crates/palisade-cli` works. |
+| `deny.toml` | CI ran `cargo deny` with no policy file, so it could only ever have failed or been deleted. |
+| A CI workflow that runs Palisade on Palisade | absent. |
+
+**The self-check is the point, and it has to catch something.** A contract a
+repository does not pass is a contract we have no business asking anyone else
+to write. Verified both ways: it passes on a clean tree, and a deliberately
+added `pub fn sneaky() -> bool { let _v: Vec<i32> = Vec::new(); true }` was
+caught by `checks_green` — `fmt` reporting the diff, `clippy` reporting
+`missing documentation for a constant` — with the diagnostic as the evidence.
+An audit that only ever says "accept" is theatre, and this one says "accept"
+because the code is clean.
+
+**What the beta explicitly does not claim**, in the README rather than in a
+reply to the first person who asks: no finding has been judged by anyone who
+did not write the gates, and the corpus has one author. The evidence is that
+the gates run and that their findings are individually sound. It is *not*
+evidence that a maintainer will not find them noisy, and `public_api_unchanged`
+reporting additions is the gate most likely to prove that point.

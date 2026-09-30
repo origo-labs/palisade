@@ -1,0 +1,39 @@
+# Licence and advisory policy.
+#
+# `cargo deny` runs in CI. This file is the policy it enforces, and it is
+# short on purpose: a policy nobody reads is a policy nobody maintains.
+#
+# The one non-obvious entry is `unicode-ident`. It arrives via `idna` and is
+# dual-licensed MIT/Apache-2.0-with-Unicode-exception, which `cargo deny`
+# classifies separately. It is allowed explicitly rather than by suppressing
+# the whole check, so a genuinely new licence has to be argued for.
+
+[licenses]
+version = 2
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+    "Zlib",
+    "0BSD",
+    "BSL-1.0",
+    "MPL-2.0",
+]
+confidence-threshold = 0.8
+
+[bans]
+# Multiple versions of a crate are normal in a dependency tree and are not
+# themselves a risk; what matters is the *unified* feature set, which is
+# duplicated rather than additive.
+multiple-versions = "allow"
+wildcards = "deny"
+
+[advisories]
+version = 2
+yanked = "deny"
+ignore = []

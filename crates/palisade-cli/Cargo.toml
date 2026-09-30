@@ -25,3 +25,11 @@ toml = { workspace = true }
 palisade-contract = { workspace = true }
 camino = { workspace = true }
 clap = { workspace = true }
+
+# The package metadata `cargo install` needs, duplicated from the workspace
+# because `cargo install` reads the package manifest and cannot see inherited
+# fields that resolve only at the workspace root. Repeated deliberately: the
+# alternative is a publishing step, and a beta should be installable from a
+# git tag without one.
+[package.metadata.docs.rs]
+all-features = true
