@@ -35,7 +35,7 @@ jobs:
         run: cargo test --workspace
 
       - name: crate boundary
-        # Only palisade-git and palisade-exec may spawn a process. See
+        # Only rulebound-git and rulebound-exec may spawn a process. See
         # scripts/check-boundary.sh for why this is not a lint.
         run: ./scripts/check-boundary.sh
 
@@ -64,9 +64,9 @@ jobs:
           fetch-depth: 0        # the gates are two-tree; a shallow clone has no base
       - uses: dtolnay/rust-toolchain@stable
       - name: install
-        run: cargo install --path crates/palisade-cli --locked
+        run: cargo install --path crates/rulebound-cli --locked
       - name: run the contract on this repository
         run: |
-          palisade init --force
-          palisade check --format sarif > results.sarif || true
-          palisade check || exit $?
+          rulebound init --force
+          rulebound check --format sarif > results.sarif || true
+          rulebound check || exit $?
