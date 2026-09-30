@@ -1,0 +1,17 @@
+[package]
+name = "rulebound-observe"
+description = "Bounded observation capture on a dirty tree."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+rulebound-git = { workspace = true }
+
+[dev-dependencies]
+rulebound-testkit = { workspace = true }

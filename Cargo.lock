@@ -228,106 +228,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
-name = "palisade-ast"
-version = "0.2.0-beta.1"
-dependencies = [
- "blake3",
- "tree-sitter",
- "tree-sitter-rust-orchard",
-]
-
-[[package]]
-name = "palisade-cli"
-version = "0.2.0-beta.1"
-dependencies = [
- "camino",
- "clap",
- "palisade-contract",
- "palisade-exec",
- "palisade-gates",
- "palisade-git",
- "palisade-observe",
- "palisade-orchestrate",
- "palisade-report",
- "toml",
-]
-
-[[package]]
-name = "palisade-contract"
-version = "0.2.0-beta.1"
-dependencies = [
- "serde",
- "toml",
-]
-
-[[package]]
-name = "palisade-exec"
-version = "0.2.0-beta.1"
-dependencies = [
- "camino",
- "palisade-contract",
- "palisade-orchestrate",
- "serde_json",
-]
-
-[[package]]
-name = "palisade-gates"
-version = "0.2.0-beta.1"
-dependencies = [
- "palisade-ast",
- "palisade-contract",
- "palisade-exec",
- "palisade-git",
- "palisade-observe",
- "palisade-orchestrate",
- "palisade-testkit",
- "toml",
-]
-
-[[package]]
-name = "palisade-git"
-version = "0.2.0-beta.1"
-dependencies = [
- "camino",
-]
-
-[[package]]
-name = "palisade-observe"
-version = "0.2.0-beta.1"
-dependencies = [
- "palisade-git",
- "palisade-testkit",
-]
-
-[[package]]
-name = "palisade-orchestrate"
-version = "0.2.0-beta.1"
-dependencies = [
- "blake3",
- "camino",
- "palisade-contract",
- "serde",
-]
-
-[[package]]
-name = "palisade-report"
-version = "0.2.0-beta.1"
-dependencies = [
- "palisade-contract",
- "palisade-orchestrate",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "palisade-testkit"
-version = "0.2.0-beta.1"
-dependencies = [
- "camino",
- "palisade-git",
-]
-
-[[package]]
 name = "proc-macro2"
 version = "1.0.107"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -373,6 +273,106 @@ name = "regex-syntax"
 version = "0.8.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
+
+[[package]]
+name = "rulebound-ast"
+version = "0.2.0-beta.1"
+dependencies = [
+ "blake3",
+ "tree-sitter",
+ "tree-sitter-rust-orchard",
+]
+
+[[package]]
+name = "rulebound-cli"
+version = "0.2.0-beta.1"
+dependencies = [
+ "camino",
+ "clap",
+ "rulebound-contract",
+ "rulebound-exec",
+ "rulebound-gates",
+ "rulebound-git",
+ "rulebound-observe",
+ "rulebound-orchestrate",
+ "rulebound-report",
+ "toml",
+]
+
+[[package]]
+name = "rulebound-contract"
+version = "0.2.0-beta.1"
+dependencies = [
+ "serde",
+ "toml",
+]
+
+[[package]]
+name = "rulebound-exec"
+version = "0.2.0-beta.1"
+dependencies = [
+ "camino",
+ "rulebound-contract",
+ "rulebound-orchestrate",
+ "serde_json",
+]
+
+[[package]]
+name = "rulebound-gates"
+version = "0.2.0-beta.1"
+dependencies = [
+ "rulebound-ast",
+ "rulebound-contract",
+ "rulebound-exec",
+ "rulebound-git",
+ "rulebound-observe",
+ "rulebound-orchestrate",
+ "rulebound-testkit",
+ "toml",
+]
+
+[[package]]
+name = "rulebound-git"
+version = "0.2.0-beta.1"
+dependencies = [
+ "camino",
+]
+
+[[package]]
+name = "rulebound-observe"
+version = "0.2.0-beta.1"
+dependencies = [
+ "rulebound-git",
+ "rulebound-testkit",
+]
+
+[[package]]
+name = "rulebound-orchestrate"
+version = "0.2.0-beta.1"
+dependencies = [
+ "blake3",
+ "camino",
+ "rulebound-contract",
+ "serde",
+]
+
+[[package]]
+name = "rulebound-report"
+version = "0.2.0-beta.1"
+dependencies = [
+ "rulebound-contract",
+ "rulebound-orchestrate",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "rulebound-testkit"
+version = "0.2.0-beta.1"
+dependencies = [
+ "camino",
+ "rulebound-git",
+]
 
 [[package]]
 name = "serde"

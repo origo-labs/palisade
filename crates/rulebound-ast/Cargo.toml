@@ -1,0 +1,19 @@
+[package]
+name = "rulebound-ast"
+description = "tree-sitter-rust-orchard wrapper and parse cache (M2)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+tree-sitter = { workspace = true }
+tree-sitter-rust-orchard = { workspace = true }
+blake3 = { workspace = true }
+
+
+[dev-dependencies]

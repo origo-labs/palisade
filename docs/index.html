@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Palisade — quality inspection report for agent-written Rust</title>
+<title>Rulebound — quality inspection report for agent-written Rust</title>
 <meta name="description" content="A supervisor for coding agents that runs your project's declared quality contract. Deterministic, no model in the loop, and it refuses to report a gate as passed when the gate did not run.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23f2f3f2'/%3E%3Cpath d='M9 5v22M9 16l8-11M9 16l8 11' stroke='%23a8341f' stroke-width='2.5' fill='none'/%3E%3C/svg%3E">
 
@@ -13,9 +13,9 @@
 
 <style>
 /* ===========================================================================
-   PALISADE — presented as a quality inspection report.
+   RULEBOUND — presented as a quality inspection report.
 
-   The concept is taken from the product, not from a page template. Palisade is
+   The concept is taken from the product, not from a page template. Rulebound is
    a quality-control instrument, so the document is a QC report: a form header,
    a checklist, nonconformity records, a scope-exclusion clause, a statement of
    limitations, and a sign-off block.
@@ -620,7 +620,7 @@
     <!-- ================= 02 · results ================= -->
     <section class="clause">
       <p class="clause-label">02 — results of inspection</p>
-      <h2>Palisade refuses to report a gate as <em>passed</em> when the gate did not run.</h2>
+      <h2>Rulebound refuses to report a gate as <em>passed</em> when the gate did not run.</h2>
       <div class="split split--note-right">
         <div>
           <h2>Four possible results, and one of them is not a stricter no.</h2>
@@ -937,15 +937,15 @@
           <dl class="fields">
             <div class="field">
               <dt>install</dt>
-              <dd><span class="ps1">$ </span>cargo install --git https://github.com/origo-labs/palisade palisade-cli</dd>
+              <dd><span class="ps1">$ </span>cargo install --git https://github.com/origo-labs/rulebound rulebound-cli</dd>
             </div>
             <div class="field">
               <dt>issue form</dt>
-              <dd><span class="ps1">$ </span>palisade init</dd>
+              <dd><span class="ps1">$ </span>rulebound init</dd>
             </div>
             <div class="field">
               <dt>inspect</dt>
-              <dd><span class="ps1">$ </span>palisade check</dd>
+              <dd><span class="ps1">$ </span>rulebound check</dd>
             </div>
             <div class="field field--note">
               <dt>note</dt>
@@ -957,8 +957,8 @@
         <div>
           <h2>In continuous integration.</h2>
           <div class="cfg"><span class="c"># upload findings even when the run blocks</span>
-<span class="k">- run</span>: cargo install --git https://…/palisade palisade-cli
-<span class="k">- run</span>: <span class="w">palisade check --format sarif</span> &gt; results.sarif
+<span class="k">- run</span>: cargo install --git https://…/rulebound rulebound-cli
+<span class="k">- run</span>: <span class="w">rulebound check --format sarif</span> &gt; results.sarif
   <span class="k">continue-on-error</span>: <span class="s">true</span>
 <span class="k">- uses</span>: github/codeql-action/upload-sarif@v3
   <span class="k">if</span>: <span class="s">always()</span>
@@ -988,12 +988,12 @@
 <footer>
   <div class="form">
     <p class="colophon">
-      <span>Palisade — quality inspection for agent-written Rust</span>
+      <span>Rulebound — quality inspection for agent-written Rust</span>
       <span>MIT OR Apache-2.0</span>
       <span>3.5 MB single binary · no model · no network at analysis time</span>
-      <a href="https://github.com/origo-labs/palisade">repository</a>
-      <a href="https://github.com/origo-labs/palisade/blob/main/corpus/JUDGEMENT.md">corpus &amp; nonconformities</a>
-      <a href="https://github.com/origo-labs/palisade/blob/main/PLAN.md">how it is built</a>
+      <a href="https://github.com/origo-labs/rulebound">repository</a>
+      <a href="https://github.com/origo-labs/rulebound/blob/main/corpus/JUDGEMENT.md">corpus &amp; nonconformities</a>
+      <a href="https://github.com/origo-labs/rulebound/blob/main/PLAN.md">how it is built</a>
     </p>
   </div>
 </footer>

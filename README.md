@@ -1,4 +1,4 @@
-# Palisade
+# Rulebound
 
 A supervisor for coding agents. It runs a project's **declared quality
 contract** and escalates only what that contract could not cover.
@@ -13,10 +13,10 @@ important section here.
 ## Try it
 
 ```sh
-cargo install --git https://github.com/origo-labs/palisade palisade-cli
+cargo install --git https://github.com/origo-labs/rulebound rulebound-cli
 cd your-rust-project
-palisade init          # writes a starting palisade.toml
-palisade check         # runs it
+rulebound init          # writes a starting rulebound.toml
+rulebound check         # runs it
 ```
 
 `init` writes every gate at `warn`: it proposes, it does not judge. Nothing
@@ -51,7 +51,7 @@ than an absence nobody notices.
 
 Verbatim from the PRD, and still true:
 
-- Palisade does **not** judge whether code is good. It runs what the project
+- Rulebound does **not** judge whether code is good. It runs what the project
   declared.
 - It does **not** prove semantic equivalence, assess security, or replace a
   linter — no more than `slop-gate` does, which says so in its own README.
@@ -105,8 +105,8 @@ a worker deleted the declaration and got `accept`.
 ## CI
 
 ```yaml
-- run: cargo install --git https://github.com/origo-labs/palisade palisade-cli
-- run: palisade check --format sarif > results.sarif
+- run: cargo install --git https://github.com/origo-labs/rulebound rulebound-cli
+- run: rulebound check --format sarif > results.sarif
   continue-on-error: true      # upload the SARIF even on a block
 - uses: github/codeql-action/upload-sarif@v3
   if: always()

@@ -1,4 +1,4 @@
-# Palisade — build plan
+# Rulebound — build plan
 
 Derived from `PRD.md` (what), `EVIDENCE.md` (what we know and what failed),
 `REFERENCE-slop-gate.md` (prior art worth copying). This document is *how*:
@@ -89,7 +89,7 @@ further: git already *is* the cache.
 
 This makes most v1 gates **two-tree diff gates** (compare base tree to worktree
 tree) rather than single-tree checks, which is both more correct and one less
-moving part. A bespoke `palisade index` artifact is deferred until a
+moving part. A bespoke `rulebound index` artifact is deferred until a
 measurement shows `git show` is the bottleneck — not before. We do not build
 reproducibility machinery for a performance problem we have not measured.
 
@@ -117,7 +117,7 @@ whole point.
 Both are `warn` in v1. Promotion to `error` is a *project's* decision after
 calibration, per the contract language rules.
 
-### 1.4 Naming: `Palisade` stands for v1 **[decision]**
+### 1.4 Naming: `Rulebound` stands for v1 **[decision]**
 
 Renaming costs a spec rewrite and buys nothing measurable. Revisit at first
 external release.
@@ -141,35 +141,35 @@ append marker. Total never exceeds N.
 ## 2. Repository layout
 
 ```
-palisade/
+rulebound/
   Cargo.toml                    # workspace
   .github/workflows/ci.yml      # fmt, clippy, test, boundary, no-network, deny
   scripts/check-boundary.sh     # "only git and exec may spawn", enforced
   crates/
-    palisade-contract/          # palisade.toml: parse, validate, deny-unknown
-    palisade-git/               # the only crate that shells out to git
-    palisade-observe/           # bounded observation capture (dirty tree!)
-    palisade-ast/               # tree-sitter-rust-orchard wrapper, cached parse
-    palisade-gates/             # Analyzed gates: one module per primitive, no I/O
-    palisade-exec/              # Delegated gates: the only crate that spawns
+    rulebound-contract/          # rulebound.toml: parse, validate, deny-unknown
+    rulebound-git/               # the only crate that shells out to git
+    rulebound-observe/           # bounded observation capture (dirty tree!)
+    rulebound-ast/               # tree-sitter-rust-orchard wrapper, cached parse
+    rulebound-gates/             # Analyzed gates: one module per primitive, no I/O
+    rulebound-exec/              # Delegated gates: the only crate that spawns
                                 #   non-git processes. Sole constructor of
                                 #   Origin::Delegated.
-    palisade-orchestrate/       # verdict algebra, precedence, exit codes — pure
-    palisade-report/            # human | json | sarif 2.1.0
-    palisade-cli/               # binary: `palisade check`, `palisade observe`
-    palisade-testkit/           # fixture repo builder. Dev-dependency only.
+    rulebound-orchestrate/       # verdict algebra, precedence, exit codes — pure
+    rulebound-report/            # human | json | sarif 2.1.0
+    rulebound-cli/               # binary: `rulebound check`, `rulebound observe`
+    rulebound-testkit/           # fixture repo builder. Dev-dependency only.
   docs/
     CONTRACT.md                 # generated from the schema, checked in CI
 ```
 
 Integration tests live in the crate that owns the behaviour, not in a
-top-level `tests/`: `crates/palisade-orchestrate/tests/verdict_algebra.rs`,
-`crates/palisade-observe/tests/dirty_tree_regression.rs` and `.../budget.rs`.
+top-level `tests/`: `crates/rulebound-orchestrate/tests/verdict_algebra.rs`,
+`crates/rulebound-observe/tests/dirty_tree_regression.rs` and `.../budget.rs`.
 A single top-level directory would mean the tests could not see the crates'
 private internals, and more importantly it would blur which boundary each test
 is exercising.
 
-`palisade-testkit` is a tenth crate rather than a `tests/fixtures/` directory
+`rulebound-testkit` is a tenth crate rather than a `tests/fixtures/` directory
 of committed repositories. It builds fixtures deterministically, which means
 "here is how to make a dirty tree" is written down exactly once — and that
 particular knowledge is the thing the predecessor programme got wrong, so it
@@ -178,28 +178,28 @@ gets one home rather than a copy per test file.
 Six boundaries that matter, each enforced by a lint or a test rather than
 convention:
 
-- **`palisade-git` and `palisade-exec` are the only crates that spawn
+- **`rulebound-git` and `rulebound-exec` are the only crates that spawn
   processes.** Everything else takes data. This is what makes gates
   unit-testable against fixtures with no repo and no subprocess.
 - **Gates come in two kinds, and the type says whose verdict it is.**
-  `Analyzed` gates are Palisade's own AST and diff analysis and perform no I/O:
+  `Analyzed` gates are Rulebound's own AST and diff analysis and perform no I/O:
   `fn(&Observation) -> Vec<Finding>`. `Delegated` gates are a trusted external
-  process's verdict plus its evidence, constructed only by `palisade-exec`:
+  process's verdict plus its evidence, constructed only by `rulebound-exec`:
   `checks_green` (`cargo fmt`/`clippy`/`test`) and `external_tool`. The
   distinction is epistemic — "we diffed it" versus "cargo said so" — and it
   belongs in the type rather than in a field someone has to remember to fill
   in. Both flow into the same reduction, which stays pure.
-- **`palisade-gates` has no `std::process` in its dependency graph.** Enforced
+- **`rulebound-gates` has no `std::process` in its dependency graph.** Enforced
   by a `cargo-deny`/`cargo-machete` style check in CI, not by review. This
   invariant is what keeps analyzed gates deterministic and calibratable, and
   it is the reason the crate split exists.
-- **`palisade-ast` caches parses per file content hash.** Gates re-parse
+- **`rulebound-ast` caches parses per file content hash.** Gates re-parse
   otherwise, and the per-commit budget dies.
-- **`palisade-orchestrate` knows nothing about TOML, tree-sitter, or
+- **`rulebound-orchestrate` knows nothing about TOML, tree-sitter, or
   processes.** It consumes a validated `Contract` and a `Vec<Finding>` and
   returns a `Verdict`. Pure function, fully property-testable, and it stays
-  that way *because* process execution lives in `palisade-exec`.
-- **`palisade-report` is the only place SARIF is produced.** One serialiser, no
+  that way *because* process execution lives in `rulebound-exec`.
+- **`rulebound-report` is the only place SARIF is produced.** One serialiser, no
   ad-hoc JSON in gates.
 - **No model client crate exists in v1.** Not stubbed, not feature-gated —
   absent. Adding it in M6 is a visible diff.
@@ -231,7 +231,7 @@ This is the heart, and it is small enough to prove correct by exhaustion.
 // at escalate severity, so "a model said this is fine" is not expressible as
 // a pass. That is the type system, not a convention.
 enum Origin {
-    Analyzed { primitive: Primitive },            // Palisade's own analysis
+    Analyzed { primitive: Primitive },            // Rulebound's own analysis
     Delegated { tool: ToolId, version: String }, // a trusted process said so
 }
 
@@ -250,7 +250,7 @@ enum Verdict { Accept, Block, Escalate, Error }
 
 A `Finding`'s `origin` is not a free field to be filled in — it is
 constructed from the `Origin` on the `GateOutcome` that produced it, by
-`Analyzed` gates carrying `Primitive` and by `palisade-exec` carrying
+`Analyzed` gates carrying `Primitive` and by `rulebound-exec` carrying
 `ToolId`+`version`. There is no constructor that lets a gate claim a
 provenance it did not earn.
 
@@ -274,7 +274,7 @@ is the opposite of the rule.
 `checks_green` and `external_tool` are not the same kind of thing as
 `dependency_surface_unchanged`. The first two are "run this and read the exit
 code"; their trustworthiness is inherited from a third party. The rest are
-Palisade's own AST and diff analysis; their trustworthiness is ours. Folding
+Rulebound's own AST and diff analysis; their trustworthiness is ours. Folding
 them into one shape would mean either a `Vec<Finding>` nested inside a
 `GateOutcome` with a second flattening path, or a fake "one gate, three
 sub-results" abstraction that both primitive kinds have to distort themselves
@@ -282,7 +282,7 @@ to fit.
 
 Instead the two kinds have separate shapes — `Analyzed` returns
 `Vec<Finding>` from a pure function, `Delegated` is constructed only by
-`palisade-exec` — and both reduce through the same pure function. The payoff
+`rulebound-exec` — and both reduce through the same pure function. The payoff
 is that the exit-code-2 → `Untrustworthy` rule, the single most
 safety-critical piece of code in the tool, gets its own crate and its own
 exhaustive test table. `EVIDENCE.md` §5 is that exact rule's failure mode: a
@@ -320,7 +320,7 @@ Two properties this buys, both tested in `verdict_algebra.rs`:
   `severity: escalate` and a forced `provenance: Judged` marker; the property
   test asserts no input containing that marker yields `Accept`.
 - **Provenance is total.** Every `Finding` and every `Pass` has an `Origin`,
-  `Origin::Delegated` is constructible only by `palisade-exec`, and `Origin`
+  `Origin::Delegated` is constructible only by `rulebound-exec`, and `Origin`
   has no `Judged` variant at all. A test asserts the JSON and SARIF outputs
   both carry it, because a report that cannot say whose verdict it is cannot be
   audited.
@@ -341,7 +341,7 @@ project and it is the one thing in this design most likely to be "simplified"
 away by a future contributor. It gets a comment, a test, and a line in
 `docs/CONTRACT.md`.
 
-`palisade-exec` owns the whole table, and it is the reason the crate exists:
+`rulebound-exec` owns the whole table, and it is the reason the crate exists:
 
 | Process outcome | `GateOutcome` |
 | --- | --- |
@@ -355,7 +355,7 @@ away by a future contributor. It gets a comment, a test, and a line in
 | any other non-zero code | `Untrustworthy`, not `Fail` |
 
 The last row is the belt-and-braces version of the same lesson: an exit code
-Palisade does not recognise is not a verdict it is entitled to interpret.
+Rulebound does not recognise is not a verdict it is entitled to interpret.
 Only 0 and 1 mean anything, and only because the tools we invoke document
 that; everything else is "no trustworthy verdict", which is `Error`.
 
@@ -454,7 +454,7 @@ code scanning with no extra work). SARIF `partialFingerprints` carries
 
 ## 4. The contract
 
-`palisade.toml` at repo root. Strict `toml` with `deny_unknown_fields`
+`rulebound.toml` at repo root. Strict `toml` with `deny_unknown_fields`
 everywhere, custom `Deserialize` for every enum (so `"erorr"` is a parse error
 naming the field, not a default), and span-carrying errors.
 
@@ -494,20 +494,20 @@ the previous one exits, and M0's regression test is written before any gate
 code exists.
 
 ### M0 — Skeleton and the apparatus bug — **shipped**
-- Workspace, all ten crates, stubbed boundaries. `palisade-exec` ships empty
+- Workspace, all ten crates, stubbed boundaries. `rulebound-exec` ships empty
   in M0 and is first populated in M3; its existence from the start is what
   keeps the boundary from being retrofitted later.
-- `palisade-git` with exactly the operations gates need: `rev_parse`, `status
+- `rulebound-git` with exactly the operations gates need: `rev_parse`, `status
   --porcelain -z`, `diff` (unstaged **and** staged, and untracked file
   contents), `show`, `merge_base`.
-- `palisade-observe` with a hard byte budget and the marker-inside-the-budget
+- `rulebound-observe` with a hard byte budget and the marker-inside-the-budget
   rule.
-- **`crates/palisade-observe/tests/dirty_tree_regression.rs`**: a fixture repo
+- **`crates/rulebound-observe/tests/dirty_tree_regression.rs`**: a fixture repo
   with one unstaged edit. Asserts the observation is non-empty and contains
   the edit, and that the same fixture *committed* yields an explicitly-flagged
   empty diff rather than a silent success. This is the `EVIDENCE.md` bug,
   frozen as a test, before it can recur.
-- `palisade-orchestrate` verdict algebra with no gates registered.
+- `rulebound-orchestrate` verdict algebra with no gates registered.
 - CI: fmt, clippy `-D warnings`, test, boundary check, no-network-in-tree,
   `cargo deny`.
 
@@ -549,7 +549,7 @@ gates may not spawn. M0's `Observation` carried only diff *text*, so no
 two-tree gate could run at all. The fix: **the two-tree view is materialised
 into the observation** during capture. `FileView` carries `path`, `orig_path`,
 `base`, `head` and a `truncated` flag, capped per file. The fetch happens once,
-in `palisade-git`; the *result* is what a gate receives. This is why the
+in `rulebound-git`; the *result* is what a gate receives. This is why the
 boundary holds and why gates stay testable against a hand-built view.
 
 The second consequence: a gate that needs an uncapped file must return
@@ -629,14 +629,14 @@ repository. **Zero false positives across 36 gate fixtures.** The registry
 returns `Untrustworthy` for all nine unimplemented primitives, tested
 individually.
 
-### M5.2 — `palisade init`: the contract generator — **shipped**
+### M5.2 — `rulebound init`: the contract generator — **shipped**
 
 The product's main act, and the thing criterion 3 cannot be measured without: a
 hand-written contract would be me choosing gates I already know work, which is
 the circularity the PRD amendment just removed.
 
-`palisade init` reads a repository and writes a complete, opinionated
-`palisade.toml`. Seven tests, including a round-trip: the generated file is
+`rulebound init` reads a repository and writes a complete, opinionated
+`rulebound.toml`. Seven tests, including a round-trip: the generated file is
 parsed back before it is written, because a generator emitting plausible TOML
 the parser rejects is worse than no generator, and the failure would land on
 whoever ran it.
@@ -702,7 +702,7 @@ limitation belongs in `judgement.not_covered` rather than in a README.
 pattern's worst known false positive named.
 
 ### M2 — AST and API surface — **shipped**
-- `palisade-ast`: the `tree-sitter-rust-orchard` wrapper, the content-hash
+- `rulebound-ast`: the `tree-sitter-rust-orchard` wrapper, the content-hash
   parse cache, and the refusal to guess on parser error nodes. 14 tests, and
   they pin the properties the gates rest on.
 - `public_api_unchanged`, `unsafe_surface_unchanged`,
@@ -805,16 +805,16 @@ pinned by a test per gate, because a gate that skips what it cannot read and
 returns "nothing found" has silently downgraded a check while still reporting
 a number.
 
-### M3 — `palisade-exec`, the delegated gates, and the report — **shipped**
-- `palisade-exec`: process execution, argv templating, timeouts, and the
+### M3 — `rulebound-exec`, the delegated gates, and the report — **shipped**
+- `rulebound-exec`: process execution, argv templating, timeouts, and the
   §3.1 exit-code table. **One test per row**, plus the rows that were not in
   the table and should have been.
 - `checks_green` and `external_tool`, both `Delegated`.
-- `palisade-report`: `human`, `json` and SARIF 2.1.0, with determinism as a
+- `rulebound-report`: `human`, `json` and SARIF 2.1.0, with determinism as a
   tested property rather than an aspiration.
-- `GateRun` in `palisade-orchestrate`: one declared gate's whole run, every
+- `GateRun` in `rulebound-orchestrate`: one declared gate's whole run, every
   outcome and every finding. It lives there because both the CLI and
-  `palisade-exec` build one, and a shape duplicated across two crates is a
+  `rulebound-exec` build one, and a shape duplicated across two crates is a
   shape that drifts.
 
 **The exit-code table, in code rather than in prose.** Only 0 and 1 carry a
@@ -841,7 +841,7 @@ covers 2, 3, 101, 127 and 250.
    (`{bases}`, `{Base}`, `{base_sha}`) is an error, anything else is the
    caller's own literal.
 3. **The boundary check caught the CLI shelling out.** `cargo --version` in the
-   CLI is process execution. It moved into `palisade-exec` as
+   CLI is process execution. It moved into `rulebound-exec` as
    `tool_version`, which is where a "who produced this verdict" question belongs.
    The check has now caught a real violation twice.
 4. **Build output was entering the observation.** `checks_green` runs cargo;
@@ -884,7 +884,7 @@ what was not checked.
 the `calibration` field, and the promotion guard. 23 fixtures.
 
 **The finding that mattered most, and it was in the design rather than the
-code.** Both gates were originally declared in `palisade.toml` like any other.
+code.** Both gates were originally declared in `rulebound.toml` like any other.
 A worker that deleted the declaration silenced the gate that would have
 noticed — and the demo proved it: a diff that turned `no_unsafe_added` off,
 promoted another gate, and dropped a `not_covered` entry came back **`accept`**.
@@ -1084,8 +1084,8 @@ tests do not exist in v1 (no model).
 | Layer | What | How |
 | --- | --- | --- |
 | Verdict algebra | rules 1, 2, 5, and the three-target separation | Exhaustive enumeration: every vector of length ≤3 over a nine-element alphabet, plus a characterisation test. A random sweep would be a strictly weaker claim for more code, and this state space is small enough to be closed |
-| `palisade-exec` | the §3.1 exit-code table, one row one test | A recording fake process; asserts timeout, missing binary, signal, and unknown exit code all yield `Untrustworthy` and `provenance: Delegated` naming the tool |
-| Provenance | "whose verdict is this" survives to the artefact | Test that `Origin::Delegated` is unconstructible outside `palisade-exec`, plus `scripts/check-boundary.sh` in CI |
+| `rulebound-exec` | the §3.1 exit-code table, one row one test | A recording fake process; asserts timeout, missing binary, signal, and unknown exit code all yield `Untrustworthy` and `provenance: Delegated` naming the tool |
+| Provenance | "whose verdict is this" survives to the artefact | Test that `Origin::Delegated` is unconstructible outside `rulebound-exec`, plus `scripts/check-boundary.sh` in CI |
 | `is_adverse` vs `rules_out_accept` | conflating them asserts a gate can un-accept a verdict | Both properties tested separately over the whole state space |
 | Gates | each fires, each stays silent | Two fixture repos, planted violations, committed; each gate gets a firing and a **must-not-fire** fixture |
 | Diff machinery | `EVIDENCE.md` apparatus bugs | Named regression tests, one per recorded bug (§1 of `EVIDENCE.md`, §4, §6) |
@@ -1097,7 +1097,7 @@ tests do not exist in v1 (no model).
 
 **Corpus discipline.** The predecessor's headline number (0/5 false positives
 for the LLM) is real but was framed on the same 16 states it was measured
-against (`EVIDENCE.md` §9). Therefore: any number Palisade publishes is
+against (`EVIDENCE.md` §9). Therefore: any number Rulebound publishes is
 tagged with the corpus it came from, the corpus is committed, and **no
 threshold is fitted on the same corpus it is reported against.** This is
 `slop-gate` decision 7 and the single most transferable habit in this
@@ -1111,7 +1111,7 @@ project.
 | --- | --- | --- |
 | Criterion 1 fails — real rules do not transcribe into gates | The thesis is wrong | M5 is early and blocking. It is the reason the plan stops and reopens the PRD rather than shipping M6 |
 | Per-commit budget blown by `cargo test` | Teams disable the tool | `checks_green` is a declared `Delegated` gate, so its cost is visible in the contract and disableable without touching code. The cost is the project's own CI cost, and the budget is measured and published from the start (criterion 2) |
-| Exit code collapsed into "failure" | The predecessor's most expensive bug returns | The §3.1 table is a crate of its own with one test per row; unknown codes are `Untrustworthy`; a CI check forbids process execution outside `palisade-exec` |
+| Exit code collapsed into "failure" | The predecessor's most expensive bug returns | The §3.1 table is a crate of its own with one test per row; unknown codes are `Untrustworthy`; a CI check forbids process execution outside `rulebound-exec` |
 | `secret_absent` cries wolf | Gate gets switched off, and everything with it | Every pattern ships with a documented false-positive example; `warn` default; FP counted in the M5 corpus like any other gate |
 | Contract becomes a ritual document | Manufactures confidence — the exact failure the PRD names | `contract_review_stale` + `contract_not_loosened`; both `warn` until a project has measured them |
 | Gate-gaming, Goodhart-style | Gates get loosened to pass work | `contract_not_loosened` is a diff-visible check, not a policy. Plus `slop-gate`'s suppression-growth gate as a second, independent witness |
@@ -1123,14 +1123,14 @@ project.
 
 ## 8. Definition of done for v1
 
-1. `palisade check` runs a declared contract on a Rust repository and returns
+1. `rulebound check` runs a declared contract on a Rust repository and returns
    exactly one of `accept | block | escalate | error`, with exit code 0/1/3/2.
 2. Every primitive in PRD §6 is implemented, or is `NotImplemented` and forces
    `Error`. No primitive silently passes.
 3. Every finding and every `Pass` carries an `Origin`, present in the JSON and
-   SARIF output. `Origin::Delegated` is constructible only by `palisade-exec`,
+   SARIF output. `Origin::Delegated` is constructible only by `rulebound-exec`,
    `Origin` has no `Judged` variant, and CI fails if any crate outside
-   `palisade-git`/`palisade-exec` spawns a process.
+   `rulebound-git`/`rulebound-exec` spawns a process.
 4. Zero false positives across the negative fixture suite, published with the
    count.
 5. Every artefact states what it did not cover, from `judgement.not_covered`.
@@ -1158,9 +1158,9 @@ getting it into people's hands and asking.
 | --- | --- |
 | `LICENSE-MIT`, `LICENSE-APACHE` | absent. `license = "MIT OR Apache-2.0"` in `Cargo.toml` names a licence the repository did not contain. |
 | `README.md` rewritten | it still opened "**Status: specification. Nothing is built yet**", nine milestones after the first one landed. |
-| Installable | `cargo install --path .` failed: the workspace root is a virtual manifest. `cargo install --path crates/palisade-cli` works. |
+| Installable | `cargo install --path .` failed: the workspace root is a virtual manifest. `cargo install --path crates/rulebound-cli` works. |
 | `deny.toml` | CI ran `cargo deny` with no policy file, so it could only ever have failed or been deleted. |
-| A CI workflow that runs Palisade on Palisade | absent. |
+| A CI workflow that runs Rulebound on Rulebound | absent. |
 
 **The self-check is the point, and it has to catch something.** A contract a
 repository does not pass is a contract we have no business asking anyone else

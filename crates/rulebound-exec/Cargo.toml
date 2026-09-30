@@ -1,0 +1,17 @@
+[package]
+name = "rulebound-exec"
+description = "Delegated gates: the only crate permitted to spawn a process."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+rulebound-orchestrate = { workspace = true }
+rulebound-contract = { workspace = true }
+serde_json = { workspace = true }
+camino = { workspace = true }

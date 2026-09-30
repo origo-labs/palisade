@@ -1,16 +1,16 @@
 [workspace]
 resolver = "3"
 members = [
-    "crates/palisade-contract",
-    "crates/palisade-git",
-    "crates/palisade-observe",
-    "crates/palisade-ast",
-    "crates/palisade-gates",
-    "crates/palisade-exec",
-    "crates/palisade-orchestrate",
-    "crates/palisade-report",
-    "crates/palisade-cli",
-    "crates/palisade-testkit",
+    "crates/rulebound-contract",
+    "crates/rulebound-git",
+    "crates/rulebound-observe",
+    "crates/rulebound-ast",
+    "crates/rulebound-gates",
+    "crates/rulebound-exec",
+    "crates/rulebound-orchestrate",
+    "crates/rulebound-report",
+    "crates/rulebound-cli",
+    "crates/rulebound-testkit",
 ]
 
 [workspace.package]
@@ -18,8 +18,8 @@ version = "0.2.0-beta.1"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/origo-labs/palisade"
-homepage = "https://github.com/origo-labs/palisade"
+repository = "https://github.com/origo-labs/rulebound"
+homepage = "https://github.com/origo-labs/rulebound"
 description = "A supervisor for coding agents: runs a project's declared quality contract."
 publish = false
 
@@ -27,15 +27,15 @@ publish = false
 # agree. See PLAN.md 2.1: a dependency that starts needing the network is a
 # PRD amendment, not a Cargo change.
 [workspace.dependencies]
-palisade-contract = { path = "crates/palisade-contract" }
-palisade-git = { path = "crates/palisade-git" }
-palisade-observe = { path = "crates/palisade-observe" }
-palisade-ast = { path = "crates/palisade-ast" }
-palisade-gates = { path = "crates/palisade-gates" }
-palisade-exec = { path = "crates/palisade-exec" }
-palisade-orchestrate = { path = "crates/palisade-orchestrate" }
-palisade-report = { path = "crates/palisade-report" }
-palisade-testkit = { path = "crates/palisade-testkit" }
+rulebound-contract = { path = "crates/rulebound-contract" }
+rulebound-git = { path = "crates/rulebound-git" }
+rulebound-observe = { path = "crates/rulebound-observe" }
+rulebound-ast = { path = "crates/rulebound-ast" }
+rulebound-gates = { path = "crates/rulebound-gates" }
+rulebound-exec = { path = "crates/rulebound-exec" }
+rulebound-orchestrate = { path = "crates/rulebound-orchestrate" }
+rulebound-report = { path = "crates/rulebound-report" }
+rulebound-testkit = { path = "crates/rulebound-testkit" }
 
 tree-sitter = "0.27"
 tree-sitter-rust-orchard = "0.16"

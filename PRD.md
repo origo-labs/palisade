@@ -1,4 +1,4 @@
-# Palisade — PRD
+# Rulebound — PRD
 
 **A supervisor for coding agents that runs a project's declared quality
 contract, and escalates only what the contract could not cover.**
@@ -60,7 +60,7 @@ curves, SARIF output, a calibration protocol, and a baseline-artifact scheme
 keyed to commit, policy, tool version and build fingerprint. Rebuilding that in
 another language would be a strictly worse version of a solved problem.
 
-**3.2 Rust is cheap to check, precisely.** Every check Palisade needs in v1 is an
+**3.2 Rust is cheap to check, precisely.** Every check Rulebound needs in v1 is an
 AST or a build-graph question: unsafe blocks, attribute widening, `mod` and
 visibility changes, feature and dependency surface, public API signatures,
 generic bounds, trait implementations. `tree-sitter-rust` parses it, and
@@ -219,7 +219,7 @@ plus structured evidence; none of them returns a bare boolean.
 
 `checks_green` is the adoption escape hatch and the reason v1 is not blocked on
 adapter completeness: a repository that already runs `cargo clippy` in CI gets
-that coverage on day one with no Palisade-specific configuration at all.
+that coverage on day one with no Rulebound-specific configuration at all.
 Everything else is the delta above that floor.
 
 ## 7. Orchestration
@@ -260,7 +260,7 @@ Rules, each one a lesson from the predecessor project:
 Carried forward, because every component of the predecessor project overstated
 what it could do:
 
-- Palisade does **not** judge whether code is good. It runs what the project
+- Rulebound does **not** judge whether code is good. It runs what the project
   declared.
 - It does **not** prove semantic equivalence, assess security, or replace a
   linter — no more than `slop-gate` does, which says so in its own README.
@@ -286,7 +286,7 @@ what it could do:
 > The product is unchanged. The *question* is different, and the question is
 > the one the evidence can actually answer.
 
-The amended claim: **Palisade is a standard for building Rust projects with
+The amended claim: **Rulebound is a standard for building Rust projects with
 agents, and its contract is the artefact.** The gates are commodity — `cargo
 test`, `clippy` and `fmt` are everywhere, and `slop-gate` already exists. What
 does not exist in any repository we examined is a single dated, owned artefact
@@ -297,7 +297,7 @@ Validated when all of these hold:
 
 1. **A generated contract finds real problems in real agent-authored changes,
    at an acceptable false-positive rate.** This replaces transcription rate,
-   which is tautological when Palisade writes the contract. The experiment:
+   which is tautological when Rulebound writes the contract. The experiment:
    generate a contract for a repository the tool has never seen, apply it to
    real merges, and have a human judge each finding. A finding is a false
    positive only if a human says the code was fine; no ground-truth labels are
@@ -336,7 +336,7 @@ quietly dropped.
 - **Who owns the contract?** A file nobody reviews is worse than no file,
   because it manufactures confidence. The `reviewed` date is the only forcing
   function in the design; it may not be enough.
-- **Naming.** `Palisade` is a placeholder. `foreman` is taken. Other candidates:
+- **Naming.** `Rulebound` is a placeholder. `foreman` is taken. Other candidates:
   `Attest`, `Warden`, `Cordon`, `Rampart`.
 
 ## 11. Inputs for whoever builds this

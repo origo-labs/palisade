@@ -24,20 +24,20 @@ Two lessons are baked in here rather than in a comment:
     the human-readable output, which is how three false "errors" were reported
     once.
 
-The contract is *generated* by `palisade init`, not hand-written: a contract
+The contract is *generated* by `rulebound init`, not hand-written: a contract
 chosen by the person running the measurement would measure the gates they
 already know work, which is the circularity this whole milestone exists to
 avoid.
 """
 import json, os, re, subprocess, sys, tempfile, collections, shutil
 
-BIN = "/Users/origo/src/palisade/target/debug/palisade"
+BIN = "/Users/origo/src/rulebound/target/debug/rulebound"
 
-GENERATED_AT = "2026-09-29"  # the review date `palisade init` would write
+GENERATED_AT = "2026-09-29"  # the review date `rulebound init` would write
 
 
 def generate_contract(root: str, repo: str) -> str:
-    """Ask `palisade init` for a contract, rather than writing one here.
+    """Ask `rulebound init` for a contract, rather than writing one here.
 
     The whole point of the exercise. A hand-written contract in this file
     would be the person running the measurement choosing gates they already
@@ -49,7 +49,7 @@ def generate_contract(root: str, repo: str) -> str:
         [BIN, "init", "--path", root, "--dry-run"],
         capture_output=True, text=True)
     if out.returncode != 0:
-        raise RuntimeError(f"palisade init failed: {out.stderr[:300]}")
+        raise RuntimeError(f"rulebound init failed: {out.stderr[:300]}")
     contract = out.stdout
     if "--no-delegated" in sys.argv:
         # `checks_green` runs `cargo test --workspace`, which on a 38-member,
@@ -160,7 +160,7 @@ def main():
                         fp = os.path.join(clone, path)
                         if os.path.isfile(fp):
                             os.remove(fp)
-                with open(os.path.join(clone, "palisade.toml"), "w") as f:
+                with open(os.path.join(clone, "rulebound.toml"), "w") as f:
                     f.write(contract)
 
                 r = subprocess.run([BIN, "check", "--base", p, "--format", "json"],

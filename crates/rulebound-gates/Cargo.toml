@@ -1,0 +1,24 @@
+[package]
+name = "rulebound-gates"
+description = "Analyzed gates: pure functions of an Observation."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+rulebound-observe = { workspace = true }
+rulebound-orchestrate = { workspace = true }
+rulebound-contract = { workspace = true }
+toml = { workspace = true }
+rulebound-ast = { workspace = true }
+rulebound-exec = { workspace = true }
+
+[dev-dependencies]
+rulebound-git = { workspace = true }
+rulebound-testkit = { workspace = true }
+rulebound-exec = { workspace = true }
