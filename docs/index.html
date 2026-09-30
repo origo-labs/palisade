@@ -3,30 +3,41 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Palisade — a supervisor for coding agents</title>
-<meta name="description" content="A supervisor for coding agents that runs your project's declared quality contract, and escalates only what the contract could not cover. Deterministic. No model in the loop.">
-<meta property="og:title" content="Palisade — a supervisor for coding agents">
-<meta property="og:description" content="The quality bar becomes an executable contract. Deterministic, no model, and the gap is a required artefact somebody owns.">
-<meta property="og:type" content="website">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23f4f0e8'/%3E%3Cpath d='M8 6v20M8 16l9-10M8 16l9 10' stroke='%23c8341a' stroke-width='3' fill='none'/%3E%3C/svg%3E">
+<title>Palisade — quality inspection report for agent-written Rust</title>
+<meta name="description" content="A supervisor for coding agents that runs your project's declared quality contract. Deterministic, no model in the loop, and it refuses to report a gate as passed when the gate did not run.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23f2f3f2'/%3E%3Cpath d='M9 5v22M9 16l8-11M9 16l8 11' stroke='%23a8341f' stroke-width='2.5' fill='none'/%3E%3C/svg%3E">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..600&family=Martian+Mono:wght@300;400;600;700&family=Familjen+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
-/* ==========================================================================
-   PALISADE — an evidence dossier, not a brochure.
+/* ===========================================================================
+   PALISADE — presented as a quality inspection report.
 
-   The concept: most landing pages sell a tool by implying it is complete.
-   This one is built around the fact that it is not, and that the incompleteness
-   is a required, dated, owned artefact. So the page is styled as institutional
-   paper with a red pen on it — an audit file, not a product shot.
+   The concept is taken from the product, not from a page template. Palisade is
+   a quality-control instrument, so the document is a QC report: a form header,
+   a checklist, nonconformity records, a scope-exclusion clause, a statement of
+   limitations, and a sign-off block.
 
-   Palette is OKLCH throughout so the shade steps stay perceptually even.
-   ========================================================================== */
+   That vocabulary is not decoration. Every section of the product maps onto it:
 
-@layer reset, base, components, utilities;
+     the four verdicts        -> results of inspection
+     the eleven gates         -> inspection checklist, with tick states
+     judgement.not_covered   -> scope exclusions (every real form has these)
+     the four silent bugs     -> nonconformity records, with corrective action
+     what we have not shown  -> limitations of this inspection
+
+   Type carries the argument. The form itself speaks in Martian Mono, because a
+   form is a machine's voice; the only place a human voice is allowed is the
+   thesis, and that is set in Newsreader. Nothing else is allowed an italic.
+
+   Colour: form stock, a cold institutional ink, and red-lead — the pigment
+   actually used to mark up engineering drawings — reserved for nonconformities
+   and stamps. Red-lead is not a "danger red"; it is the colour of a correction.
+   =========================================================================== */
+
+@layer reset, tokens, base, components, utilities;
 
 @layer reset {
   *, *::before, *::after { box-sizing: border-box; }
@@ -34,1084 +45,948 @@
   html { -webkit-text-size-adjust: 100%; }
   body { min-height: 100svh; }
   img, svg { display: block; max-inline-size: 100%; }
-  button, input { font: inherit; color: inherit; }
+}
+
+@layer tokens {
+  :root {
+    /* Form stock: cool, faintly blue, the paper a QC department uses. */
+    --stock:      oklch(97.2% 0.005 235);
+    --stock-2:    oklch(94.8% 0.007 235);
+    --stock-3:    oklch(91.5% 0.009 235);
+
+    --ink:        oklch(23% 0.012 250);
+    --ink-2:      oklch(40% 0.012 250);
+    --ink-3:      oklch(55% 0.010 250);
+
+    /* Institutional ink, for structure that is not a judgement. */
+    --teal:       oklch(42% 0.075 215);
+    --teal-2:     oklch(52% 0.065 215);
+    --teal-wash:  oklch(42% 0.075 215 / 0.07);
+
+    /* Red-lead. The correction pigment. Nonconformities only. */
+    --lead:       oklch(48% 0.16 30);
+    --lead-deep:  oklch(38% 0.15 30);
+    --lead-wash:  oklch(48% 0.16 30 / 0.08);
+    --lead-line:  oklch(48% 0.16 30 / 0.32);
+
+    --pass:       oklch(42% 0.11 155);
+    --refer:      oklch(46% 0.12 75);
+    --void:       oklch(45% 0.02 250);
+
+    --rule:       oklch(23% 0.012 250 / 0.18);
+    --rule-soft:  oklch(23% 0.012 250 / 0.09);
+    --rule-hard:  oklch(23% 0.012 250 / 0.42);
+
+    --mono: "Martian Mono", ui-monospace, monospace;
+    --serif: "Newsreader", ui-serif, Georgia, serif;
+    --grot: "Familjen Grotesk", var(--sans), system-ui, sans-serif;
+    --sans: ui-sans-serif, system-ui, sans-serif;
+
+    --gutter: clamp(1.1rem, 3.2vw, 3.2rem);
+    --rail: 2.6rem;          /* the tick rail down the left edge */
+    --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+  }
 }
 
 @layer base {
-  :root {
-    /* Paper and ink. Warm, slightly aged, never white. */
-    --paper:      oklch(96.5% 0.012 85);
-    --paper-2:    oklch(93.5% 0.018 82);
-    --paper-sunk: oklch(90% 0.022 80);
-    --ink:        oklch(21% 0.015 60);
-    --ink-2:      oklch(38% 0.014 60);
-    --ink-3:      oklch(52% 0.013 62);
-    --rule:       oklch(21% 0.015 60 / 0.16);
-    --rule-soft:  oklch(21% 0.015 60 / 0.08);
-
-    /* One sharp accent. A red pen on a document. */
-    --mark:       oklch(53% 0.19 28);
-    --mark-deep:  oklch(42% 0.18 28);
-    --mark-wash:  oklch(53% 0.19 28 / 0.09);
-    /* The accent as it reads on a dark surface. Measured against `--ink`, not
-       chosen by eye: the light-mode mark fails AA there at 3.05:1. */
-    --mark-on-dark: oklch(78% 0.15 42);
-    --mark-line:  oklch(53% 0.19 28 / 0.34);
-
-    /* Verdict semantics. Read as instrument states, not as buttons. */
-    --accept:     oklch(48% 0.12 155);
-    --block:      oklch(50% 0.19 28);
-    --escalate:   oklch(58% 0.13 70);
-    --error:      oklch(38% 0.03 265);
-    --error-wash: oklch(38% 0.03 265 / 0.07);
-
-    --sans: "Archivo", ui-sans-serif, sans-serif;
-    --serif: "Instrument Serif", ui-serif, Georgia, serif;
-    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
-
-    --gutter: clamp(1.25rem, 4vw, 4.5rem);
-    --measure: 68ch;
-    --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
-  }
-
   html { scroll-behavior: smooth; }
   @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 
   body {
-    background: var(--paper);
+    background: var(--stock);
     color: var(--ink);
-    font-family: var(--sans);
-    font-size: clamp(1rem, 0.96rem + 0.2vw, 1.075rem);
-    line-height: 1.6;
-    font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+    font-family: var(--grot);
+    font-size: clamp(0.95rem, 0.92rem + 0.16vw, 1.03rem);
+    line-height: 1.62;
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
   }
 
-  /* Paper grain. Generated, not imaged — an inline SVG turbulence so the page
-     ships with no texture assets at all. */
+  /* Stock texture: a fine laid grain, generated. No image assets. */
   body::before {
     content: "";
-    position: fixed;
-    inset: 0;
-    z-index: 9999;
-    pointer-events: none;
-    opacity: 0.5;
-    mix-blend-mode: multiply;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)' opacity='0.24'/%3E%3C/svg%3E");
+    position: fixed; inset: 0; z-index: 400;
+    pointer-events: none; opacity: 0.42; mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23g)' opacity='0.2'/%3E%3C/svg%3E");
   }
 
-  /* A ruled margin, like a document that has been annotated. */
-  .sheet {
+  /* The form is printed on a sheet. This is the sheet. */
+  .form {
     position: relative;
-    max-inline-size: 82rem;
+    max-inline-size: 78rem;
     margin-inline: auto;
     padding-inline: var(--gutter);
+    padding-inline-start: calc(var(--gutter) + var(--rail));
   }
-  @media (min-width: 60rem) {
-    .sheet::before {
-      content: "";
-      position: absolute;
-      inset-block: 0;
-      inset-inline-start: calc(var(--gutter) * 0.42);
-      inline-size: 1px;
-      background: var(--mark-line);
-      opacity: 0.4;
-    }
+  @media (max-width: 46rem) { :root { --rail: 0rem; } }
+
+  /* Perforation rail: the torn edge of a fanfold sheet. */
+  .form::before {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: calc(var(--gutter) + var(--rail) * 0.42);
+    inline-size: 1px;
+    background: repeating-linear-gradient(
+      to bottom,
+      var(--rule-soft) 0 4px,
+      transparent 4px 10px
+    );
   }
 
-  h1, h2, h3 { font-family: var(--serif); font-weight: 400; line-height: 1.04; text-wrap: balance; letter-spacing: -0.012em; }
+  h1, h2, h3, h4 { font-weight: 400; text-wrap: balance; }
   p { text-wrap: pretty; }
   a { color: inherit; }
-  code, kbd, samp { font-family: var(--mono); font-size: 0.88em; }
-  :focus-visible {
-    outline: 2px solid var(--mark);
-    outline-offset: 3px;
-    border-radius: 2px;
-  }
+  code, samp { font-family: var(--mono); font-size: 0.85em; font-variant-ligatures: none; }
+  :focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
 }
 
 @layer components {
 
-  /* ---- masthead ------------------------------------------------------- */
+  /* ==== form header ==================================================== */
 
   .masthead {
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    background: color-mix(in oklch, var(--paper) 88%, transparent);
-    backdrop-filter: blur(14px) saturate(1.3);
-    border-block-end: 1px solid var(--rule);
+    padding-block: clamp(1.5rem, 4vw, 2.6rem) 0;
+    border-block-end: 2px solid var(--ink);
   }
-  .masthead .sheet {
+  .mast-top {
     display: flex;
-    align-items: center;
-    gap: 1.5rem;
-    padding-block: 0.8rem;
-  }
-  .wordmark {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.6rem;
-    font-family: var(--serif);
-    font-size: 1.35rem;
-    letter-spacing: 0.01em;
-    text-decoration: none;
-  }
-  /* The mark: a palisade — the stake, and the two lines it defends. */
-  .wordmark svg { inline-size: 1.15rem; color: var(--mark); }
-  .tagline {
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.6rem 1.5rem;
     font-family: var(--mono);
-    font-size: 0.72rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--ink-3);
-    margin-inline-start: auto;
-  }
-  @media (max-width: 34rem) { .tagline { display: none; } }
-
-  .status {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-family: var(--mono);
-    font-size: 0.68rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--mark-deep);
-    border: 1px solid var(--mark-line);
-    background: var(--mark-wash);
-    padding: 0.22rem 0.5rem;
-    border-radius: 2px;
-  }
-  .status::before {
-    content: "";
-    inline-size: 0.4rem;
-    block-size: 0.4rem;
-    border-radius: 50%;
-    background: var(--mark);
-    animation: pulse 2.6s var(--ease) infinite;
-  }
-  @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: 0.28 } }
-
-  /* ---- hero ----------------------------------------------------------- */
-
-  .hero { padding-block: clamp(4rem, 11vw, 9rem) clamp(3rem, 7vw, 6rem); }
-  .hero .sheet { display: grid; gap: clamp(2rem, 5vw, 4rem); }
-  @media (min-width: 68rem) {
-    .hero .sheet { grid-template-columns: 1.32fr 1fr; align-items: end; }
-  }
-
-  .eyebrow {
-    font-family: var(--mono);
-    font-size: 0.72rem;
+    font-size: 0.62rem;
     letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--ink-3);
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem 1.25rem;
-    padding-block-end: 1.75rem;
-    border-block-end: 1px solid var(--rule-soft);
   }
-  .eyebrow b { color: var(--mark); font-weight: 500; }
-
-  h1 {
-    font-size: clamp(2.9rem, 1.4rem + 6.4vw, 6.2rem);
-    margin-block: 1.5rem 0;
-  }
-  /* The one italic in the page. It is the argument, so it gets the emphasis. */
-  h1 em {
-    font-style: italic;
-    color: var(--mark);
-    position: relative;
-  }
-  .lede {
-    max-inline-size: 46ch;
-    font-size: clamp(1.06rem, 1rem + 0.4vw, 1.28rem);
-    color: var(--ink-2);
-    line-height: 1.55;
-  }
-  .lede strong { color: var(--ink); font-weight: 600; }
-
-  /* ---- terminal: real output, verbatim --------------------------------- */
-
-  .terminal {
-    border: 1px solid var(--rule);
-    border-radius: 3px;
-    background: var(--paper-2);
-    box-shadow:
-      0 1px 0 oklch(100% 0 0 / 0.6) inset,
-      0 18px 40px -28px oklch(21% 0.015 60 / 0.5);
-    overflow: hidden;
-    font-family: var(--mono);
-    font-size: clamp(0.68rem, 0.6rem + 0.28vw, 0.78rem);
-    line-height: 1.65;
-  }
-  .terminal-bar {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    background: var(--paper-sunk);
-    border-block-end: 1px solid var(--rule-soft);
-    color: var(--ink-3);
-    font-size: 0.68rem;
-    letter-spacing: 0.06em;
-  }
-  .terminal-bar b { color: var(--ink-2); font-weight: 500; }
-  .terminal-bar .dot { inline-size: 0.45rem; block-size: 0.45rem; border-radius: 50%; background: var(--rule); }
-  .terminal-bar .dot:first-child { background: var(--mark-line); }
-  .terminal pre {
-    margin: 0;
-    padding: 0.9rem 1rem 1.1rem;
-    overflow-x: auto;
-    white-space: pre;
-    tab-size: 2;
-  }
-  .v-verdict { color: var(--ink); font-weight: 600; }
-  .v-block  { color: var(--block); font-weight: 600; }
-  .v-warn   { color: var(--escalate); }
-  .v-pass   { color: var(--accept); }
-  .v-error  { color: var(--error); font-weight: 600; }
-  .v-dim    { color: var(--ink-3); }
-  .v-rule   { color: var(--mark); }
-
-  /* ---- figures -------------------------------------------------------- */
-
-  .figures { border-block: 1px solid var(--rule); background: var(--paper-2); }
-  .figures .sheet {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
-  }
-  .figure {
-    padding: clamp(1.5rem, 3vw, 2.4rem) clamp(1rem, 2vw, 1.6rem);
-    border-inline-start: 1px solid var(--rule-soft);
-  }
-  .figure:first-child { border-inline-start: 0; }
-  .figure dt {
-    font-family: var(--serif);
-    font-size: clamp(2.2rem, 1.6rem + 2.4vw, 3.5rem);
-    line-height: 1;
-    letter-spacing: -0.02em;
-    font-variant-numeric: tabular-nums;
-  }
-  .figure dd {
-    margin: 0.55rem 0 0;
-    font-family: var(--mono);
-    font-size: 0.7rem;
-    line-height: 1.5;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    color: var(--ink-3);
-  }
-  .figure dd b { color: var(--ink-2); font-weight: 500; }
-
-  /* ---- sections ------------------------------------------------------- */
-
-  section { padding-block: clamp(3.5rem, 8vw, 7rem); }
-  .sec-head { display: grid; gap: 1.25rem; margin-block-end: clamp(2rem, 4vw, 3.25rem); }
-  @media (min-width: 62rem) {
-    .sec-head { grid-template-columns: 8.5rem 1fr; gap: 3rem; align-items: baseline; }
-  }
-  .sec-num {
-    font-family: var(--mono);
-    font-size: 0.72rem;
-    letter-spacing: 0.12em;
-    color: var(--mark);
-    padding-block-start: 0.5rem;
-  }
-  h2 { font-size: clamp(1.9rem, 1.3rem + 2.4vw, 3.1rem); }
-  .sec-sub { max-inline-size: var(--measure); color: var(--ink-2); font-size: 1.05em; }
-  .sec-sub strong { color: var(--ink); }
-
-  /* ---- the four verdicts: the signature component ---------------------- */
-
-  .verdicts { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
-  @media (min-width: 60rem) { .verdicts { grid-template-columns: repeat(4, 1fr); } }
-  .verdict {
-    background: var(--paper);
-    padding: 1.5rem 1.35rem 1.65rem;
-    display: grid;
-    gap: 0.7rem;
-    align-content: start;
-  }
-  .verdict-top { display: flex; align-items: baseline; gap: 0.6rem; }
-  .verdict code { font-size: 0.95rem; font-weight: 600; letter-spacing: 0.02em; }
-  .verdict-exit {
-    font-family: var(--mono);
-    font-size: 1.5rem;
-    font-family: var(--serif);
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
+  .mast-top b { color: var(--ink-2); font-weight: 500; }
+  .mast-ref {
     margin-inline-start: auto;
-    color: var(--ink-3);
-  }
-  .verdict p { font-size: 0.9rem; color: var(--ink-2); line-height: 1.5; }
-  .verdict--accept  code { color: var(--accept); }
-  .verdict--block   code { color: var(--block); }
-  .verdict--escalate code { color: var(--escalate); }
-  .verdict--error   code { color: var(--error); }
-  .verdict--error { background: var(--error-wash); }
-  .verdict-note {
-    border-block-start: 1px solid var(--rule-soft);
-    margin-block-start: 2.5rem;
-    padding-block-start: 1.5rem;
-    max-inline-size: 62ch;
-    font-size: 0.98rem;
-    color: var(--ink-2);
-  }
-  .verdict-note b { color: var(--ink); }
-
-  /* ---- instrument table ----------------------------------------------- */
-
-  .ledger { border: 1px solid var(--rule); border-radius: 3px; overflow: hidden; }
-  .ledger-row {
-    display: grid;
-    grid-template-columns: 1.1fr 1fr auto;
-    gap: 0.6rem 1.25rem;
-    padding: 0.9rem 1.1rem;
-    border-block-start: 1px solid var(--rule-soft);
-    align-items: baseline;
-  }
-  .ledger-row:first-child { border-block-start: 0; }
-  .ledger-row--head {
-    background: var(--paper-sunk);
-    font-family: var(--mono);
-    font-size: 0.66rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--ink-3);
-  }
-  .ledger-name { font-family: var(--mono); font-size: 0.82rem; }
-  .ledger-what { font-size: 0.9rem; color: var(--ink-2); }
-  .ledger-lamp {
-    font-family: var(--mono);
-    font-size: 0.64rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    border: 1px solid currentColor;
-    padding: 0.1rem 0.42rem;
-    border-radius: 2px;
-    white-space: nowrap;
-  }
-  .lamp--on   { color: var(--accept); }
-  .lamp--off  { color: var(--error); }
-  .lamp--lock { color: var(--mark); }
-  @media (max-width: 46rem) {
-    .ledger-row { grid-template-columns: 1fr auto; }
-    .ledger-what { grid-column: 1 / -1; }
-    .ledger-row--head { display: none; }
-  }
-
-  /* ---- the gap: the section that makes this project different --------- */
-
-  .gap {
-    display: grid;
-    gap: clamp(1.5rem, 4vw, 3.5rem);
-    align-items: start;
-  }
-  @media (min-width: 66rem) { .gap { grid-template-columns: 1fr 1.05fr; } }
-  .gap-copy { max-inline-size: 44ch; }
-  .gap-copy p { color: var(--ink-2); }
-  .gap-copy p + p { margin-block-start: 1rem; }
-  .gap-copy strong { color: var(--ink); }
-
-  /* A contract excerpt, set like a document under review. The declared gap is
-     rendered as redaction — the thing it actually is. */
-  .excerpt {
-    border: 1px solid var(--rule);
-    border-radius: 3px;
-    background: var(--paper-2);
-    font-family: var(--mono);
-    font-size: clamp(0.66rem, 0.58rem + 0.3vw, 0.78rem);
-    line-height: 1.75;
-    overflow-x: auto;
-  }
-  .excerpt-head {
     display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 0.55rem 0.9rem;
-    background: var(--paper-sunk);
-    border-block-end: 1px solid var(--rule-soft);
-    color: var(--ink-3);
-    font-size: 0.68rem;
-    letter-spacing: 0.06em;
+    gap: 1.4rem;
   }
-  .excerpt pre { margin: 0; padding: 1rem 0.9rem 1.2rem; }
-  .c-key { color: var(--ink-3); }
-  .c-str { color: var(--ink-2); }
-  .c-com { color: var(--ink-3); font-style: italic; }
-  .c-sec { color: var(--mark); font-weight: 600; }
-  .c-cmt { color: var(--accept); }
-  /* Redaction bars: the gap, marked as withheld rather than as a feature. */
-  .gapline {
-    display: block;
-    background: var(--mark-wash);
-    border-inline-start: 2px solid var(--mark);
-    color: var(--mark-deep);
-    padding: 0.12rem 0.5rem;
-    margin: 0.25rem 0;
+  .mast-ref span { white-space: nowrap; }
+
+  .mast-main {
+    display: grid;
+    gap: 0.4rem 2.5rem;
+    padding-block: clamp(1.5rem, 4vw, 2.6rem) clamp(1.5rem, 3vw, 2.2rem);
+  }
+  @media (min-width: 60rem) {
+    .mast-main { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); align-items: end; }
   }
 
-  /* ---- narrative: the failure that motivated the design ---------------- */
-
-  .narrative { display: grid; gap: clamp(2rem, 5vw, 3.5rem); }
-  @media (min-width: 64rem) { .narrative { grid-template-columns: 1fr 1fr; } }
-  .findings { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
-  .finding { background: var(--paper); padding: 1.35rem 1.25rem; }
-  .finding h3 { font-family: var(--mono); font-size: 0.82rem; font-weight: 600; margin-block-end: 0.5rem; }
-  .finding p { font-size: 0.9rem; color: var(--ink-2); }
-  .finding code { color: var(--mark-deep); background: var(--mark-wash); padding: 0.08rem 0.3rem; border-radius: 2px; }
-
-  .verdict-fixed {
-    display: flex;
-    align-items: baseline;
-    gap: 0.7rem;
-    font-family: var(--mono);
-    font-size: 0.72rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    margin-block-end: 1.25rem;
+  .nameplate {
+    font-family: var(--serif);
+    font-size: clamp(3.4rem, 1.2rem + 8vw, 8.5rem);
+    line-height: 0.86;
+    letter-spacing: -0.045em;
+    font-optical-sizing: auto;
   }
-  .verdict-fixed s { text-decoration: none; color: var(--ink-3); }
-  .verdict-fixed span { color: var(--mark); }
-  .verdict-fixed::after {
-    content: "";
-    flex: 1;
-    height: 1px;
-    background: var(--rule-soft);
-  }
+  .nameplate span { color: var(--teal); }
 
-  /* ---- the honest section ---------------------------------------------- */
-
-  .disclosure {
-    border: 1px solid var(--rule);
-    border-inline-start: 3px solid var(--mark);
-    background: var(--paper-2);
-    padding: clamp(1.5rem, 3vw, 2.4rem);
-  }
-  .disclosure h3 {
+  /* The one-line description of what the instrument is. */
+  .subject {
     font-family: var(--mono);
     font-size: 0.74rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--mark-deep);
-    margin-block-end: 1.25rem;
-  }
-  .disclosure ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.9rem; }
-  .disclosure li {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 0.8rem;
-    align-items: baseline;
-    font-size: 0.96rem;
+    line-height: 1.8;
+    letter-spacing: 0.02em;
     color: var(--ink-2);
+    border-inline-start: 1px solid var(--rule-hard);
+    padding-inline-start: 1rem;
   }
-  .disclosure li::before {
-    content: "—";
-    color: var(--mark);
-    font-family: var(--mono);
-  }
-  .disclosure li b { color: var(--ink); font-weight: 600; }
-  .disclosure-foot {
-    margin-block-start: 1.5rem;
-    padding-block-start: 1.25rem;
-    border-block-start: 1px solid var(--rule-soft);
-    font-size: 0.95rem;
-    max-inline-size: 58ch;
-  }
+  .subject b { color: var(--ink); font-weight: 600; display: block; margin-block-end: 0.5rem; letter-spacing: 0.1em; text-transform: uppercase; font-size: 0.64rem; color: var(--teal); }
 
-  /* ---- install --------------------------------------------------------- */
-
-  .install { background: var(--ink); color: var(--paper); }
-  .install h2 { color: var(--paper); }
-  .install .sec-sub { color: oklch(85% 0.01 85); }
-  .install .sec-num { color: var(--mark-on-dark); }
-  .install-grid { display: grid; gap: clamp(1.5rem, 3vw, 2.5rem); }
-  @media (min-width: 62rem) { .install-grid { grid-template-columns: 1fr 1fr; } }
-
-  .cmd {
-    display: flex;
-    align-items: center;
-    gap: 0.85rem;
-    padding: 1rem 1.1rem;
-    border: 1px solid oklch(100% 0 0 / 0.18);
-    border-radius: 3px;
-    background: oklch(100% 0 0 / 0.05);
-    font-family: var(--mono);
-    font-size: 0.85rem;
-    overflow-x: auto;
-  }
-  .cmd .prompt { color: var(--mark-on-dark); user-select: none; }
-  .cmd code { color: var(--paper); }
-  .steps { display: grid; gap: 0.85rem; margin: 0; padding: 0; list-style: none; counter-reset: step; }
-  .steps li {
-    display: grid;
-    grid-template-columns: 1.6rem 1fr;
-    gap: 0.75rem;
-    font-size: 0.95rem;
-    color: oklch(85% 0.01 85);
-    align-items: baseline;
-  }
-  .steps li::before {
-    counter-increment: step;
-    content: counter(step);
-    font-family: var(--mono);
-    font-size: 0.72rem;
-    color: var(--mark-on-dark);
-    border: 1px solid color-mix(in oklch, var(--mark-on-dark) 45%, transparent);
-    border-radius: 50%;
-    inline-size: 1.4rem;
-    block-size: 1.4rem;
+  /* A stamp, overprinted. Approval ink, slightly off-square. */
+  .stamp {
+    position: absolute;
+    inset-block-start: clamp(3rem, 7vw, 5.5rem);
+    inset-inline-end: clamp(1rem, 4vw, 3rem);
+    inline-size: 8.2rem;
+    aspect-ratio: 1;
     display: grid;
     place-items: center;
-  }
-  .steps b { color: var(--paper); font-family: var(--mono); font-weight: 500; }
-
-  .yaml {
+    border: 2px solid var(--lead-line);
+    border-radius: 50%;
+    color: var(--lead);
     font-family: var(--mono);
-    font-size: 0.74rem;
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    text-align: center;
+    line-height: 1.5;
+    transform: rotate(-11deg);
+    opacity: 0.82;
+    pointer-events: none;
+  }
+  .stamp::after {
+    content: "";
+    position: absolute; inset: 4px;
+    border: 1px solid var(--lead-line);
+    border-radius: 50%;
+  }
+  @media (max-width: 58rem) { .stamp { display: none; } }
+
+  /* ==== 01 · thesis — the one human voice ============================== */
+
+  .thesis { padding-block: clamp(3.5rem, 9vw, 8rem); }
+  .thesis-line {
+    font-family: var(--serif);
+    font-size: clamp(1.9rem, 1.1rem + 3.1vw, 3.6rem);
+    line-height: 1.16;
+    letter-spacing: -0.02em;
+    max-inline-size: 30ch;
+  }
+  .thesis-line em { font-style: italic; color: var(--lead); }
+  /* Break the measure on the last line so the block is not a tidy rectangle. */
+  .thesis-line:last-of-type { max-inline-size: 22ch; margin-block-start: 0.35em; }
+  .thesis-support {
+    margin-block-start: clamp(2rem, 4vw, 3rem);
+    max-inline-size: 58ch;
+    color: var(--ink-2);
+    font-size: 1.04rem;
+  }
+  .thesis-support strong { color: var(--ink); font-weight: 600; }
+
+  /* A marginal note in the gutter — the form annotating itself. */
+  .marginal {
+    font-family: var(--mono);
+    font-size: 0.66rem;
     line-height: 1.7;
-    padding: 1rem 1.1rem;
-    border: 1px solid oklch(100% 0 0 / 0.18);
-    border-radius: 3px;
-    background: oklch(100% 0 0 / 0.05);
-    overflow-x: auto;
-    white-space: pre;
-    margin-block-start: 0.5rem;
+    color: var(--ink-3);
+    letter-spacing: 0.01em;
+    border-inline-start: 2px solid var(--teal);
+    padding-inline-start: 0.7rem;
   }
-  .y-key { color: oklch(78% 0.12 200); }
-  .y-str { color: oklch(80% 0.12 130); }
-  .y-flag { color: oklch(72% 0.13 60); }
-  .y-com { color: oklch(65% 0.01 85); }
+  .marginal b { color: var(--teal); font-weight: 600; display: block; letter-spacing: 0.1em; text-transform: uppercase; font-size: 0.6rem; margin-block-end: 0.35rem; }
+  .marginal--lead { border-inline-start-color: var(--lead); }
+  .marginal--lead b { color: var(--lead); }
 
-  /* ---- footer ---------------------------------------------------------- */
+  .split {
+    display: grid;
+    gap: clamp(1.4rem, 3.5vw, 3rem);
+    align-items: start;
+  }
+  @media (min-width: 62rem) {
+    .split { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 3.5rem; }
+    .split--note-right { direction: rtl; }
+    .split--note-right > * { direction: ltr; }
+  }
 
-  footer {
+  /* ==== section furniture ============================================== */
+
+  .clause {
+    padding-block: clamp(2.75rem, 6vw, 5rem);
     border-block-start: 1px solid var(--rule);
-    padding-block: clamp(3rem, 6vw, 5rem) 2.5rem;
-    background: var(--paper-2);
+    position: relative;
   }
-  .foot-grid { display: grid; gap: 2.5rem; }
-  @media (min-width: 56rem) { .foot-grid { grid-template-columns: 1.4fr 1fr 1fr; } }
-  footer p { font-size: 0.92rem; color: var(--ink-2); max-inline-size: 34ch; }
-  .foot-col h3 {
+  /* A cut line and a label tab, the way a boxed clause is marked on a form. */
+  .clause-label {
+    position: absolute;
+    inset-block-start: -0.72rem;
+    inset-inline-start: 0;
+    background: var(--stock);
+    padding-inline-end: 0.9rem;
     font-family: var(--mono);
-    font-size: 0.68rem;
-    letter-spacing: 0.12em;
+    font-size: 0.64rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--teal);
+  }
+  .clause h2 {
+    font-family: var(--serif);
+    font-size: clamp(1.5rem, 1.1rem + 1.7vw, 2.4rem);
+    line-height: 1.14;
+    letter-spacing: -0.018em;
+    max-inline-size: 20ch;
+    margin-block-end: clamp(1.4rem, 3vw, 2.2rem);
+  }
+
+  /* ==== 02 · results table — not cards ================================= */
+
+  .results { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 0.76rem; }
+  .results th {
+    text-align: start;
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.13em;
     text-transform: uppercase;
     color: var(--ink-3);
-    margin-block-end: 0.9rem;
+    padding-block-end: 0.6rem;
+    border-block-end: 1px solid var(--rule-hard);
+    vertical-align: bottom;
   }
-  .foot-col ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.5rem; }
-  .foot-col a {
-    font-size: 0.92rem;
-    color: var(--ink-2);
-    text-decoration: none;
-    border-block-end: 1px solid transparent;
-    transition: color 0.15s var(--ease), border-color 0.15s var(--ease);
+  .results td { padding-block: 0.85rem; border-block-end: 1px solid var(--rule-soft); vertical-align: top; }
+  .results tbody tr:last-child td { border-block-end: 1px solid var(--rule-hard); }
+  .results .ref { color: var(--ink-3); font-size: 0.66rem; white-space: nowrap; padding-inline-end: 1.4rem; }
+  .results .result { font-weight: 700; letter-spacing: 0.06em; white-space: nowrap; padding-inline-end: 1.4rem; }
+  .results .exit { font-variant-numeric: tabular-nums; font-size: 0.9rem; text-align: end; padding-inline-end: 1.4rem; }
+  .results .what { color: var(--ink-2); font-family: var(--grot); font-size: 0.92rem; }
+  .r-pass  { color: var(--pass); }
+  .r-fail  { color: var(--lead); }
+  .r-refer { color: var(--refer); }
+  .r-void  { color: var(--void); }
+  .results tbody tr[data-void] .what { color: var(--ink-3); }
+  @media (max-width: 44rem) {
+    .results, .results tbody, .results tr, .results td { display: block; }
+    .results thead { display: none; }
+    .results tr { padding-block: 0.9rem; border-block-end: 1px solid var(--rule-soft); display: grid; grid-template-columns: 1fr auto; gap: 0.2rem 1rem; }
+    .results td { border: 0; padding: 0; }
+    .results .ref { grid-column: 1 / -1; }
+    .results .what { grid-column: 1 / -1; margin-block-start: 0.35rem; }
+    .results .exit { grid-column: 2; grid-row: 1; }
   }
-  .foot-col a:hover { color: var(--mark); border-block-end-color: var(--mark-line); }
-  .colophon {
-    margin-block-start: 3rem;
-    padding-block-start: 1.5rem;
-    border-block-start: 1px solid var(--rule-soft);
-    font-family: var(--mono);
-    font-size: 0.7rem;
-    color: var(--ink-3);
-    display: flex;
-    flex-wrap: wrap;
+
+  /* ==== 03 · checklist — tick states =================================== */
+
+  .checklist { border-block-start: 1px solid var(--rule-hard); }
+  .check {
+    display: grid;
+    grid-template-columns: 1.4rem minmax(0, 1.1fr) minmax(0, 1.5fr) auto;
+    gap: 0.3rem 1rem;
+    align-items: baseline;
+    padding-block: 0.72rem;
+    border-block-end: 1px solid var(--rule-soft);
+  }
+  .check:last-child { border-block-end: 1px solid var(--rule-hard); }
+  /* The tick glyphs live in Dingbats (U+2611) and Miscellaneous Symbols
+     (U+25C8, U+2298), which are absent from a bare Latin font stack and will
+     render as tofu on a minimal Linux box. They carry the state of every
+     checklist row, so the fallback is named rather than left to chance. */
+  .check-tick {
+    font-family: var(--mono), "Apple Symbols", "Segoe UI Symbol", "Noto Sans Symbols 2", "DejaVu Sans", sans-serif;
+    font-size: 0.95rem; line-height: 1; text-align: center;
+  }
+  .t-run  { color: var(--pass); }
+  .t-lock { color: var(--teal); }
+  .t-out  { color: var(--lead); }
+  .check-name { font-family: var(--mono); font-size: 0.76rem; }
+  .check-ask { font-size: 0.9rem; color: var(--ink-2); }
+  .check-state {
+    font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.11em;
+    text-transform: uppercase; white-space: nowrap; color: var(--ink-3);
+  }
+  .check-state .t-run { color: var(--pass); }
+  .check-state .t-lock { color: var(--teal); }
+  .check-state .t-out { color: var(--lead); }
+  @media (max-width: 52rem) {
+    .check { grid-template-columns: 1.4rem 1fr auto; }
+    .check-ask { grid-column: 2 / -1; }
+  }
+
+  /* ==== 04 · scope exclusions — the redaction =========================== */
+
+  .exclusions {
+    border: 1px solid var(--rule-hard);
+    background: var(--stock-2);
+  }
+  .exclusions-head {
+    display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; align-items: baseline;
+    padding: 0.7rem 1rem;
+    background: var(--stock-3);
+    border-block-end: 1px solid var(--rule);
+    font-family: var(--mono); font-size: 0.62rem;
+    letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-2);
+  }
+  .exclusions-head b { color: var(--lead); }
+  .exclusions ol { margin: 0; padding: 0; list-style: none; counter-reset: x; }
+  .exclusions li {
+    counter-increment: x;
+    display: grid;
+    grid-template-columns: 2.2rem 1fr;
+    gap: 0 0.9rem;
+    align-items: baseline;
+    padding: 0.72rem 1rem;
+    border-block-end: 1px solid var(--rule-soft);
+  }
+  .exclusions li:last-child { border-block-end: 0; }
+  .exclusions li::before {
+    content: counter(x, decimal-leading-zero);
+    font-family: var(--mono); font-size: 0.7rem; color: var(--ink-3);
+  }
+  /* A withheld item: the text is present and marked, not silently gone. */
+  .withheld {
+    background: var(--lead-wash);
+    border-inline-start: 2px solid var(--lead);
+    padding: 0.1rem 0.6rem;
+    color: var(--lead-deep);
+  }
+
+  .clause-text { max-inline-size: 62ch; color: var(--ink-2); }
+  .clause-text strong { color: var(--ink); font-weight: 600; }
+  .clause-text p + p { margin-block-start: 0.9rem; }
+
+  /* ==== 05 · nonconformities =========================================== */
+
+  .ncr { display: grid; gap: 0; border-block-start: 1px solid var(--rule-hard); }
+  .ncr-item {
+    display: grid;
     gap: 0.5rem 1.5rem;
+    padding-block: clamp(1.1rem, 2.4vw, 1.7rem);
+    border-block-end: 1px solid var(--rule-soft);
   }
+  @media (min-width: 58rem) {
+    .ncr-item { grid-template-columns: 7.5rem minmax(0, 1fr) minmax(0, 1.1fr); }
+  }
+  .ncr-ref { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.1em; color: var(--ink-3); }
+  .ncr-ref b { display: block; color: var(--lead); font-weight: 600; letter-spacing: 0.08em; }
+  .ncr-body h3 { font-family: var(--mono); font-size: 0.86rem; font-weight: 600; letter-spacing: 0.005em; }
+  .ncr-body p { margin-block-start: 0.45rem; font-size: 0.92rem; color: var(--ink-2); }
+  .ncr-body code { color: var(--lead-deep); background: var(--lead-wash); padding: 0.05rem 0.28rem; border-radius: 1px; }
+  /* Corrective action, in the margin, in the institutional ink. */
+  .ncr-fix {
+    font-family: var(--mono); font-size: 0.7rem; line-height: 1.7; color: var(--ink-2);
+    border-inline-start: 2px solid var(--teal); padding-inline-start: 0.8rem;
+  }
+  .ncr-fix b { display: block; color: var(--teal); font-size: 0.58rem; letter-spacing: 0.13em; text-transform: uppercase; margin-block-end: 0.35rem; }
+
+  /* ==== 06 · limitations =============================================== */
+
+  .limitations {
+    border: 1px solid var(--lead-line);
+    background: var(--lead-wash);
+    padding: clamp(1.4rem, 3vw, 2.2rem);
+  }
+  .limitations h3 {
+    font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.15em;
+    text-transform: uppercase; color: var(--lead-deep); margin-block-end: 1.1rem;
+  }
+  .limitations ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.75rem; }
+  .limitations li {
+    display: grid; grid-template-columns: 1.1rem 1fr; gap: 0.7rem;
+    font-size: 0.94rem; color: var(--ink-2);
+  }
+  .limitations li::before {
+    content: "✗";
+    font-family: var(--mono), "Apple Symbols", "Segoe UI Symbol", "Noto Sans Symbols 2", sans-serif;
+    font-size: 0.7rem; color: var(--lead);
+  }
+  .limitations b { color: var(--ink); font-weight: 600; }
+  .limitations-foot {
+    margin-block-start: 1.3rem; padding-block-start: 1.1rem;
+    border-block-start: 1px solid var(--lead-line);
+    font-family: var(--serif); font-size: 1.1rem; line-height: 1.5; max-inline-size: 52ch;
+  }
+
+  /* ==== 07 · request an inspection ==================================== */
+
+  .issue { display: grid; gap: clamp(1.5rem, 3.5vw, 2.75rem); }
+  @media (min-width: 60rem) { .issue { grid-template-columns: 1fr 1fr; } }
+  .fields { display: grid; gap: 0; }
+  .field {
+    display: grid;
+    grid-template-columns: 8.5rem 1fr;
+    gap: 1rem;
+    align-items: baseline;
+    padding-block: 0.8rem;
+    border-block-end: 1px solid var(--rule-soft);
+  }
+  .field:first-child { border-block-start: 1px solid var(--rule-hard); }
+  .field dt { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.11em; text-transform: uppercase; color: var(--teal); }
+  .field dd { font-family: var(--mono); font-size: 0.78rem; overflow-x: auto; }
+  .field dd .ps1 { color: var(--teal); user-select: none; }
+  .field--note dt { color: var(--ink-3); }
+  .field--note dd { font-family: var(--grot); font-size: 0.92rem; color: var(--ink-2); }
+
+  .cfg {
+    font-family: var(--mono); font-size: 0.7rem; line-height: 1.75;
+    padding: 0.9rem 1rem; background: var(--ink); color: var(--stock);
+    border-radius: 2px; overflow-x: auto; white-space: pre; margin-block-start: 0.9rem;
+  }
+  .cfg .k { color: oklch(82% 0.1 200); }
+  .cfg .s { color: oklch(84% 0.1 145); }
+  .cfg .c { color: oklch(66% 0.01 250); }
+  .cfg .w { color: oklch(84% 0.12 60); }
+
+  /* Sign-off: what a signed report would mean here. */
+  .signoff {
+    display: grid;
+    gap: 1.5rem 3rem;
+    margin-block-start: clamp(2.5rem, 5vw, 4rem);
+    padding-block-start: 1.5rem;
+    border-block-start: 2px solid var(--ink);
+  }
+  @media (min-width: 54rem) { .signoff { grid-template-columns: repeat(3, 1fr); } }
+  .sign-cell { display: grid; gap: 0.4rem; align-content: start; }
+  .sign-cell dt { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.13em; text-transform: uppercase; color: var(--ink-3); }
+  .sign-cell dd { font-family: var(--mono); font-size: 0.82rem; }
+  /* An unsigned field. The point. */
+  .sign-line { block-size: 2.1rem; border-block-end: 1px solid var(--rule-hard); }
+  .sign-cell dd small { font-family: var(--grot); font-size: 0.8rem; color: var(--ink-3); }
+
+  /* ==== colophon ====================================================== */
+
+  footer { margin-block-start: clamp(3rem, 6vw, 5rem); border-block-start: 1px solid var(--rule); padding-block: 1.5rem 3rem; }
+  .colophon {
+    display: flex; flex-wrap: wrap; gap: 0.4rem 1.6rem;
+    font-family: var(--mono); font-size: 0.62rem;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3);
+  }
+  .colophon a { text-decoration: none; border-block-end: 1px solid var(--rule-soft); }
+  .colophon a:hover { color: var(--lead); border-block-end-color: var(--lead-line); }
 }
 
 @layer utilities {
   .skip {
-    position: absolute;
-    inset-inline-start: -9999px;
-    top: 0.5rem;
-    z-index: 10000;
-    background: var(--ink);
-    color: var(--paper);
-    padding: 0.6rem 1rem;
-    font-family: var(--mono);
-    font-size: 0.8rem;
-    border-radius: 2px;
+    position: absolute; inset-inline-start: -9999px; top: 0.4rem; z-index: 999;
+    background: var(--ink); color: var(--stock);
+    padding: 0.55rem 0.9rem; font-family: var(--mono); font-size: 0.75rem;
   }
-  .skip:focus { inset-inline-start: 0.5rem; }
+  .skip:focus { inset-inline-start: 0.4rem; }
 
-  /* One orchestrated load sequence, then scroll-driven reveals. Both are
-     progressive enhancement: without animation-timeline support the content
-     is simply visible, which is the correct no-JS/no-support experience. */
-  @keyframes rise {
-    from { opacity: 0; transform: translateY(1.6rem); }
-    to   { opacity: 1; transform: none; }
-  }
-  .enter { animation: rise 0.85s var(--ease) both; }
-  .enter:nth-child(2) { animation-delay: 0.08s; }
-  .enter:nth-child(3) { animation-delay: 0.16s; }
-
-  @keyframes settle {
-    from { opacity: 0; transform: translateY(-0.4rem) scale(0.985); }
-    to   { opacity: 1; transform: none; }
-  }
-  .reveal {
-    animation: settle linear both;
-    animation-timeline: view();
-    animation-range: entry 5% cover 22%;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .enter, .reveal { animation: none; opacity: 1; transform: none; }
-    .status::before { animation: none; }
-  }
-
-  .prose-col { max-inline-size: var(--measure); }
+  /* One load sequence, then scroll-driven reveals. Both degrade to "visible". */
+  @keyframes ink-in { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes rise { from { opacity: 0; transform: translateY(1.1rem); } to { opacity: 1; transform: none; } }
+  .load { animation: ink-in 0.5s var(--ease) both; }
+  .rise { animation: rise 0.8s var(--ease) both; }
+  .rise:nth-of-type(2) { animation-delay: 0.07s; }
+  .rise:nth-of-type(3) { animation-delay: 0.14s; }
+  @media (prefers-reduced-motion: reduce) { .load, .rise { animation: none; } }
 }
 </style>
 </head>
 
 <body>
-<a class="skip" href="#main">Skip to content</a>
+<a class="skip" href="#body">Skip to content</a>
 
-<header class="masthead">
-  <div class="sheet">
-    <a class="wordmark" href="#top">
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="M4 3v18M4 12l9-9M4 12l9 9" stroke="currentColor" stroke-width="2" stroke-linecap="square"/>
-      </svg>
-      Palisade
-    </a>
-    <span class="tagline">deterministic · no model · rust</span>
-  </div>
-</header>
+<div class="form">
 
-<main id="main">
-<span id="top"></span>
-
-<!-- ================= HERO ================= -->
-<div class="hero">
-  <div class="sheet">
-    <div class="enter">
-      <p class="eyebrow">
-        <span>for coding agents</span>
-        <span><b>beta</b> · 0.2.0-beta.1</span>
-        <span>253 merges measured</span>
-      </p>
-      <h1>A supervisor that runs your <em>contract</em>, not its own opinion.</h1>
-      <p class="lede">
-        Coding agents don't know when to stop. The usual fix is a model above
-        the model. We tried that — a 400M span classifier and a frontier LLM
-        both saturated on the same head, and the classifier flagged rule
-        violations on states where the diff was <strong>empty</strong>.
-      </p>
+  <!-- ================= form header ================= -->
+  <header class="masthead load">
+    <div class="mast-top">
+      <span><b>Quality Inspection Report</b> — deterministic, agent-written Rust</span>
+      <span class="mast-ref">
+        <span>form <b>PAL-QIR-001</b></span>
+        <span>rev <b>0.2.0-beta.1</b></span>
+        <span>issued <b>2026-09-30</b></span>
+      </span>
     </div>
 
-    <div class="terminal enter" role="img" aria-label="Terminal showing palisade check output: an error finding for a new production dependency, a warn finding for nine public items added, and verdict block with exit code 1.">
-      <div class="terminal-bar">
-        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-        <b>palisade check</b>
-        <span style="margin-inline-start:auto">exit 1</span>
+    <div class="mast-main">
+      <h1 class="nameplate">Pali<span>sade</span></h1>
+      <div class="subject">
+        <b>Subject of inspection</b>
+        A coding agent's change, measured against the quality bar the project
+        declared in advance.
       </div>
-<pre><span class="v-verdict">contract: 7 gate(s), version 1</span>
-
-  <span class="v-block">error  </span>[no_new_dependencies] production dependency `tokio` was added
-            <span class="v-dim">(absent)</span> -&gt; 1 <span class="v-dim">(default features) features=[full]</span>
-  <span class="v-pass">pass   </span><span class="v-dim">unsafe_surface_unchanged</span>
-  <span class="v-warn">warn   </span>[api_unchanged] 9 public items were added, including
-            `WebhookFormat`, `verify_signature`, `CallbackPayload`
-  <span class="v-warn">warn   </span>[fixtures_frozen] frozen path <span class="v-dim">`fixtures/`</span> was touched
-
-<span class="v-rule">──────────────────────────────────────────</span>
-verdict: <span class="v-block">block</span>
-not_covered:
-  <span class="v-dim">-</span> whether the chosen design is the right one
-  <span class="v-dim">-</span> whether error messages are good enough</pre>
     </div>
-  </div>
+
+    <div class="stamp" aria-hidden="true">beta<br>not certified<br>re-issued weekly</div>
+  </header>
+
+  <main id="body">
+
+    <!-- ================= 01 · thesis ================= -->
+    <section class="thesis">
+      <div class="split">
+        <div>
+          <p class="thesis-line">It refuses to report a gate as <em>passed</em> when the gate did not run.</p>
+          <p class="thesis-line">The usual fix for an agent that will not stop is a model above the model. We tried that.</p>
+
+          <div class="thesis-support">
+            <p>
+              A 400M span classifier and a frontier LLM both saturated on the
+              same head, and the classifier flagged rule violations on states
+              where the diff was <strong>empty</strong>. The rules in question
+              were "standard library only" and "never delete a test" — trivially
+              machine-checkable. So the quality bar became an executable
+              contract, and the instrument runs the contract instead of forming
+              an opinion.
+            </p>
+          </div>
+        </div>
+
+        <aside class="marginal marginal--lead">
+          <b>Why this is the headline</b>
+          Every supervisor built so far returns a binary result. A binary result
+          cannot distinguish <em>the work is wrong</em> from
+          <em>the check could not run</em>. That distinction was learned the
+          expensive way: a predecessor verifier that failed to start, and one
+          whose tests failed, were indistinguishable to its caller — which
+          confounded every measurement made through it.
+        </aside>
+      </div>
+    </section>
+
+    <!-- ================= 02 · results ================= -->
+    <section class="clause">
+      <p class="clause-label">02 — results of inspection</p>
+      <div class="split split--note-right">
+        <div>
+          <h2>Four possible results, and one of them is not a stricter no.</h2>
+          <table class="results">
+            <thead>
+              <tr><th>Ref</th><th>Result</th><th>Exit</th><th>Meaning</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="ref">R-01</td>
+                <td class="result r-pass">ACCEPT</td>
+                <td class="exit">0</td>
+                <td class="what">Every enabled gate ran, and passed.</td>
+              </tr>
+              <tr>
+                <td class="ref">R-02</td>
+                <td class="result r-fail">BLOCK</td>
+                <td class="exit">1</td>
+                <td class="what">One or more error-severity findings, each carrying its evidence.</td>
+              </tr>
+              <tr>
+                <td class="ref">R-03</td>
+                <td class="result r-refer">ESCALATE</td>
+                <td class="exit">3</td>
+                <td class="what">Something wants a human. Nothing is blocking.</td>
+              </tr>
+              <tr data-void>
+                <td class="ref">R-04</td>
+                <td class="result r-void">ERROR</td>
+                <td class="exit">2</td>
+                <td class="what"><strong>No verdict was reached.</strong> A gate could not run.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <aside class="marginal">
+          <b>Note on R-04</b>
+          Exit 2 is <em>not</em> a stricter exit 1. A gate that could not run
+          has not passed, and a contract that could not be read has not been
+          violated.<br><br>
+          Across 253 replays, <b>0</b> returned ERROR — not because the code is
+          sound, but because the two failure modes are no longer the same
+          event.
+        </aside>
+      </div>
+    </section>
+
+    <!-- ================= 03 · checklist ================= -->
+    <section class="clause">
+      <p class="clause-label">03 — inspection checklist</p>
+      <h2>What can be checked, and what will not pretend to.</h2>
+
+      <div class="checklist rise">
+        <div class="check">
+          <span class="check-tick t-run" aria-hidden="true">☑</span>
+          <span class="check-name">dependency_surface_unchanged</span>
+          <span class="check-ask">Did a production dependency, feature, or <code>default-features</code> change?</span>
+          <span class="check-state"><span class="t-run">inspect</span></span>
+        </div>
+        <div class="check">
+          <span class="check-tick t-run" aria-hidden="true">☑</span>
+          <span class="check-name">tests_not_deleted</span>
+          <span class="check-ask">Did a test disappear, or gain <code>#[ignore]</code>?</span>
+          <span class="check-state"><span class="t-run">inspect</span></span>
+        </div>
+        <div class="check">
+          <span class="check-tick t-run" aria-hidden="true">☑</span>
+          <span class="check-name">public_api_unchanged</span>
+          <span class="check-ask">Did a public item's signature change or vanish?</span>
+          <span class="check-state"><span class="t-run">inspect</span></span>
+        </div>
+        <div class="check">
+          <span class="check-tick t-run" aria-hidden="true">☑</span>
+          <span class="check-name">unsafe_surface_unchanged</span>
+          <span class="check-ask">Was <code>unsafe</code> surface <em>added</em>?</span>
+          <span class="check-state"><span class="t-run">inspect</span></span>
+        </div>
+        <div class="check">
+          <span class="check-tick t-run" aria-hidden="true">☑</span>
+          <span class="check-name">suppressions_not_widened</span>
+          <span class="check-ask">Was an <code>#[allow]</code> added, or broadened to a whole tool?</span>
+          <span class="check-state"><span class="t-run">inspect</span></span>
+        </div>
+        <div class="check">
+          <span class="check-tick t-run" aria-hidden="true">☑</span>
+          <span class="check-name">paths_unchanged</span>
+          <span class="check-ask">Was a frozen path touched?</span>
+          <span class="check-state"><span class="t-run">inspect</span></span>
+        </div>
+        <div class="check">
+          <span class="check-tick t-run" aria-hidden="true">☑</span>
+          <span class="check-name">checks_green</span>
+          <span class="check-ask">Do <code>fmt</code>, <code>clippy</code> and <code>test</code> pass?</span>
+          <span class="check-state"><span class="t-run">inspect</span></span>
+        </div>
+        <div class="check">
+          <span class="check-tick t-run" aria-hidden="true">☑</span>
+          <span class="check-name">external_tool</span>
+          <span class="check-ask">What did a third-party gate say? <em>slop-gate verified</em></span>
+          <span class="check-state"><span class="t-run">inspect</span></span>
+        </div>
+        <div class="check">
+          <span class="check-tick t-lock" aria-hidden="true">◈</span>
+          <span class="check-name">contract_not_loosened</span>
+          <span class="check-ask">Did this diff weaken the contract without saying why?</span>
+          <span class="check-state"><span class="t-lock">locked</span></span>
+        </div>
+        <div class="check">
+          <span class="check-tick t-lock" aria-hidden="true">◈</span>
+          <span class="check-name">contract_review_stale</span>
+          <span class="check-ask">Is the review date still fresh?</span>
+          <span class="check-state"><span class="t-lock">locked</span></span>
+        </div>
+        <div class="check">
+          <span class="check-tick t-out" aria-hidden="true">⊘</span>
+          <span class="check-name">secret_absent</span>
+          <span class="check-ask">Credential-shaped strings in the diff?</span>
+          <span class="check-state"><span class="t-out">refuses</span></span>
+        </div>
+        <div class="check">
+          <span class="check-tick t-out" aria-hidden="true">⊘</span>
+          <span class="check-name">judged</span>
+          <span class="check-ask">Is this change on-topic for the job? <em>escalate-only</em></span>
+          <span class="check-state"><span class="t-out">refuses</span></span>
+        </div>
+      </div>
+
+      <div class="split" style="margin-block-start:2.5rem">
+        <aside class="marginal">
+          <b>On the two locked items</b>
+          They cannot be declared and they cannot be removed. Both were
+          originally declarable — and a worker deleted the declaration, and got
+          <b>ACCEPT</b>.<br><br>
+          A gate that can be switched off by the thing it guards is not a gate.
+        </aside>
+        <aside class="marginal">
+          <b>On the two that refuse</b>
+          A contract that asks for an unavailable check <em>fails loudly</em>.
+          The alternative — silently reporting nothing found — is the exact
+          failure this whole design exists to prevent.
+        </aside>
+      </div>
+    </section>
+
+    <!-- ================= 04 · scope exclusions ================= -->
+    <section class="clause">
+      <p class="clause-label">04 — scope exclusions</p>
+      <div class="split">
+        <div>
+          <h2>The part most tools leave out is the part worth owning.</h2>
+          <div class="exclusions rise">
+            <div class="exclusions-head">
+              <span>Excluded from the scope of this inspection</span>
+              <b>mandatory · may not be empty</b>
+            </div>
+            <ol>
+              <li><span class="withheld">whether the chosen design is the right one</span></li>
+              <li><span class="withheld">whether error messages are good enough for an end user</span></li>
+              <li><span class="withheld">whether an added benchmark is a fair one</span></li>
+              <li><span class="withheld">whether the code is understandable to someone who did not write it</span></li>
+              <li><span class="withheld">whether a test asserts the behaviour it claims to assert</span></li>
+            </ol>
+          </div>
+        </div>
+
+        <div class="clause-text">
+          <p>
+            A contract that checks dependencies and green tests will pass a
+            change that is <strong>compliant and strategically wrong</strong>.
+            That is not a defect in the gates. It is what deterministic means.
+          </p>
+          <p>
+            So the gap is not an absence — it is a required, dated, owned
+            artefact, and every run prints it. An empty list is a warning,
+            because an empty list is a contract claiming more than it delivers.
+          </p>
+          <p>
+            This is the difference between a tool you run and a tool you rely
+            on, and it is the one a product page has no incentive to advertise.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 05 · nonconformities ================= -->
+    <section class="clause">
+      <p class="clause-label">05 — nonconformity record</p>
+      <h2>Four defects, all found by running the instrument on real work.</h2>
+
+      <div class="clause-text" style="max-inline-size:66ch;margin-block-end:2rem">
+        <p>
+          In every case a correct-looking value produced a confidently wrong
+          answer. <strong>A failing gate is noticed. A gate that reports
+          <em>no change</em> because it could not read anything looks exactly
+          like a pass.</strong> None of the four was found by reading the code.
+        </p>
+      </div>
+
+      <div class="ncr rise">
+        <article class="ncr-item">
+          <p class="ncr-ref">NCR-001<b>silent</b></p>
+          <div class="ncr-body">
+            <h3>Documented items read as unchanged</h3>
+            <p>
+              A comment stripper matched <code>//</code> inside <code>///</code>,
+              then hunted for a block-comment close in a line comment, swallowing
+              every documented declaration in the file. The API gate reported
+              <em>no change</em> — correctly, given what it was handed, and
+              completely silently.
+            </p>
+          </div>
+          <p class="ncr-fix">
+            <b>Corrective action</b>
+            An empty signature is now unconstructible: the parser refuses
+            outright, so the value cannot exist. One enforcement point is a
+            convention; a second independent one is a defence.
+          </p>
+        </article>
+
+        <article class="ncr-item">
+          <p class="ncr-ref">NCR-002<b>silent</b></p>
+          <div class="ncr-body">
+            <h3>A file split read as mass test deletion</h3>
+            <p>
+              A merge where one file became a module moved 17 tests between
+              files. The gate saw one file lose its tests and reported all 17
+              deleted. Verified: 17 before, 17 after, none deleted.
+            </p>
+          </div>
+          <p class="ncr-fix">
+            <b>Corrective action</b>
+            A test's identity is its module path, and not its file. A test that
+            moved has not been deleted; a test that exists nowhere has.
+          </p>
+        </article>
+
+        <article class="ncr-item">
+          <p class="ncr-ref">NCR-003<b>silent</b></p>
+          <div class="ncr-body">
+            <h3>A third-party tool's findings were discarded</h3>
+            <p>
+              <code>slop-gate</code> reports its findings and exits 0 at warning
+              level. Branching on the exit code alone dropped every one. The
+              first live run absorbed <em>zero</em> findings from a tool that had
+              one, and printed ACCEPT.
+            </p>
+          </div>
+          <p class="ncr-fix">
+            <b>Corrective action</b>
+            A tool's exit code is a statement about the tool, never about the
+            code it inspected. Output is now parsed on both paths.
+          </p>
+        </article>
+
+        <article class="ncr-item">
+          <p class="ncr-ref">NCR-004<b>silent</b></p>
+          <div class="ncr-body">
+            <h3>A gate vanished from its own report</h3>
+            <p>
+              The delegated gate was stamped with a hard-coded id rather than
+              the one the contract declared, so the report's ordering pass
+              dropped it. No error, no finding, a verdict that looked earned.
+            </p>
+          </div>
+          <p class="ncr-fix">
+            <b>Corrective action</b>
+            Runs now carry the declared id, and the report fails loudly if a
+            declared gate produces no run.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <!-- ================= 06 · limitations ================= -->
+    <section class="clause">
+      <p class="clause-label">06 — limitations of this report</p>
+      <div class="split">
+        <div>
+          <h2>What this inspection does not establish.</h2>
+          <div class="limitations rise">
+            <h3>Stated on the record, not in a footnote</h3>
+            <ul>
+              <li><b>No independent review exists.</b> The findings were judged by the people who wrote the gates. Whether a maintainer finds them tolerable is the one question a self-run corpus cannot answer.</li>
+              <li><b>The corpus has one author</b> — who is also the person choosing the gates and reading the output.</li>
+              <li><b>253 merges across ten repositories, generated contracts.</b> Zero ERROR. Zero blocking-severity false positives. Every finding was advisory.</li>
+              <li><b>One substantive defect found:</b> a merge that silently dropped four tests, in a repository whose own contribution guide says every PR must pass its checks.</li>
+              <li><b><code>checks_green</code> is unmeasured on anything large.</b> It runs <code>cargo test --workspace</code>; on a 38-member crate that is minutes per merge.</li>
+            </ul>
+            <p class="limitations-foot">
+              The most valuable thing a trial can report is a gate somebody
+              switched off. Silence is the failure mode this instrument is most
+              vulnerable to, and it looks exactly like success.
+            </p>
+          </div>
+        </div>
+
+        <aside class="marginal">
+          <b>Why this section exists</b>
+          A product page has every incentive to bury this. An inspection report
+          has none — a report that claims to be complete, without stating what
+          it did not cover, is the defect the whole instrument was built to
+          catch.
+        </aside>
+      </div>
+    </section>
+
+    <!-- ================= 07 · issue an inspection ================= -->
+    <section class="clause" style="border-block-end:0">
+      <p class="clause-label">07 — requesting an inspection</p>
+      <div class="issue">
+        <div>
+          <h2>Three fields.</h2>
+          <dl class="fields">
+            <div class="field">
+              <dt>install</dt>
+              <dd><span class="ps1">$ </span>cargo install --git https://github.com/mrorigo/palisade palisade-cli</dd>
+            </div>
+            <div class="field">
+              <dt>issue form</dt>
+              <dd><span class="ps1">$ </span>palisade init</dd>
+            </div>
+            <div class="field">
+              <dt>inspect</dt>
+              <dd><span class="ps1">$ </span>palisade check</dd>
+            </div>
+            <div class="field field--note">
+              <dt>note</dt>
+              <dd>Every gate is written at <code>warn</code>. The form proposes; it does not judge. Nothing blocks until a gate is promoted to <code>error</code> and the reason is recorded.</dd>
+            </div>
+          </dl>
+        </div>
+
+        <div>
+          <h2>In continuous integration.</h2>
+          <div class="cfg"><span class="c"># upload findings even when the run blocks</span>
+<span class="k">- run</span>: cargo install --git https://…/palisade palisade-cli
+<span class="k">- run</span>: <span class="w">palisade check --format sarif</span> &gt; results.sarif
+  <span class="k">continue-on-error</span>: <span class="s">true</span>
+<span class="k">- uses</span>: github/codeql-action/upload-sarif@v3
+  <span class="k">if</span>: <span class="s">always()</span>
+  <span class="k">with</span>:
+    <span class="k">sarif_file</span>: results.sarif</div>
+        </div>
+      </div>
+
+      <dl class="signoff">
+        <div class="sign-cell">
+          <dt>Inspector</dt>
+          <dd><div class="sign-line"></div><small>Unsigned. One reviewer, who also wrote the gates.</small></dd>
+        </div>
+        <div class="sign-cell">
+          <dt>Independent review</dt>
+          <dd><div class="sign-line"></div><small>None obtained. See clause 06.</small></dd>
+        </div>
+        <div class="sign-cell">
+          <dt>Date of issue</dt>
+          <dd>2026-09-30<small>Re-issued weekly. Not a certification.</small></dd>
+        </div>
+      </dl>
+    </section>
+  </main>
 </div>
 
-<!-- ================= FIGURES ================= -->
-<dl class="figures">
-  <div class="sheet">
-    <div class="figure">
-      <dt>253</dt>
-      <dd><b>real merges</b><br>replayed</dd>
-    </div>
-    <div class="figure">
-      <dt>10</dt>
-      <dd><b>repositories</b><br>agent-written</dd>
-    </div>
-    <div class="figure">
-      <dt>0</dt>
-      <dd><b>blocking</b><br>false positives</dd>
-    </div>
-    <div class="figure">
-      <dt>271</dt>
-      <dd><b>tests</b><br>passing</dd>
-    </div>
-    <div class="figure">
-      <dt>3.5<small style="font-size:0.4em"> MB</small></dt>
-      <dd><b>single binary</b><br>no network</dd>
-    </div>
-  </div>
-</dl>
-
-<!-- ================= THE FOUR VERDICTS ================= -->
-<section>
-  <div class="sheet">
-    <div class="sec-head reveal">
-      <p class="sec-num">01 — verdicts</p>
-      <div>
-        <h2>Four answers, and one of them is not a stricter no.</h2>
-        <p class="sec-sub">
-          A supervisor that returns a binary result cannot tell you the
-          difference between <strong>the work is wrong</strong> and
-          <strong>the check could not run</strong>. That distinction was
-          learned the expensive way: a predecessor verifier that failed to
-          start, and one whose tests failed, were indistinguishable to its
-          caller — which confounded every measurement made through it.
-        </p>
-      </div>
-    </div>
-
-    <div class="verdicts reveal">
-      <div class="verdict verdict--accept">
-        <div class="verdict-top"><code>accept</code><span class="verdict-exit">0</span></div>
-        <p>Every enabled gate ran and passed.</p>
-      </div>
-      <div class="verdict verdict--block">
-        <div class="verdict-top"><code>block</code><span class="verdict-exit">1</span></div>
-        <p>At least one error-severity finding, each with evidence.</p>
-      </div>
-      <div class="verdict verdict--escalate">
-        <div class="verdict-top"><code>escalate</code><span class="verdict-exit">3</span></div>
-        <p>Something wants a human, and nothing is blocking.</p>
-      </div>
-      <div class="verdict verdict--error">
-        <div class="verdict-top"><code>error</code><span class="verdict-exit">2</span></div>
-        <p><strong>No verdict was reached.</strong> A gate could not run.</p>
-      </div>
-    </div>
-
-    <p class="verdict-note reveal">
-      Code 2 is not a stricter code 1. <b>A gate that could not run has not
-      passed</b>, and a contract that cannot be read has not been violated.
-      Every one of the two hundred and fifty-three replays returned
-      <code>error</code> zero times — not because the code is perfect, but
-      because the two failure modes are no longer the same thing.
-    </p>
-  </div>
-</section>
-
-<!-- ================= THE GATES ================= -->
-<section style="background:var(--paper-2); border-block:1px solid var(--rule)">
-  <div class="sheet">
-    <div class="sec-head reveal">
-      <p class="sec-num">02 — gates</p>
-      <div>
-        <h2>What it can check, and what it will not pretend to.</h2>
-        <p class="sec-sub">
-          Ten gates run. Two are in the vocabulary and deliberately refuse to
-          run, so a contract that asks for them <strong>fails loudly</strong>
-          instead of going quietly green — which is the failure mode this
-          whole design exists to prevent.
-        </p>
-      </div>
-    </div>
-
-    <div class="ledger reveal">
-      <div class="ledger-row ledger-row--head">
-        <span>gate</span><span>asks</span><span>state</span>
-      </div>
-      <div class="ledger-row">
-        <span class="ledger-name">dependency_surface_unchanged</span>
-        <span class="ledger-what">did a production dependency, feature, or <code>default-features</code> change?</span>
-        <span class="ledger-lamp lamp--on">runs</span>
-      </div>
-      <div class="ledger-row">
-        <span class="ledger-name">tests_not_deleted</span>
-        <span class="ledger-what">did a test disappear, or gain <code>#[ignore]</code>?</span>
-        <span class="ledger-lamp lamp--on">runs</span>
-      </div>
-      <div class="ledger-row">
-        <span class="ledger-name">public_api_unchanged</span>
-        <span class="ledger-what">did a public item's signature change or vanish?</span>
-        <span class="ledger-lamp lamp--on">runs</span>
-      </div>
-      <div class="ledger-row">
-        <span class="ledger-name">unsafe_surface_unchanged</span>
-        <span class="ledger-what">was <code>unsafe</code> surface <em>added</em>?</span>
-        <span class="ledger-lamp lamp--on">runs</span>
-      </div>
-      <div class="ledger-row">
-        <span class="ledger-name">suppressions_not_widened</span>
-        <span class="ledger-what">was an <code>#[allow]</code> added, or broadened to a wildcard?</span>
-        <span class="ledger-lamp lamp--on">runs</span>
-      </div>
-      <div class="ledger-row">
-        <span class="ledger-name">paths_unchanged</span>
-        <span class="ledger-what">was a frozen path touched?</span>
-        <span class="ledger-lamp lamp--on">runs</span>
-      </div>
-      <div class="ledger-row">
-        <span class="ledger-name">checks_green</span>
-        <span class="ledger-what">do <code>fmt</code>, <code>clippy</code> and <code>test</code> pass?</span>
-        <span class="ledger-lamp lamp--on">runs</span>
-      </div>
-      <div class="ledger-row">
-        <span class="ledger-name">external_tool</span>
-        <span class="ledger-what">what did a third-party gate say? <em>(slop-gate verified)</em></span>
-        <span class="ledger-lamp lamp--on">runs</span>
-      </div>
-      <div class="ledger-row">
-        <span class="ledger-name">contract_not_loosened</span>
-        <span class="ledger-what">did this diff weaken the contract without saying why?</span>
-        <span class="ledger-lamp lamp--lock">locked</span>
-      </div>
-      <div class="ledger-row">
-        <span class="ledger-name">contract_review_stale</span>
-        <span class="ledger-what">is the review date still fresh?</span>
-        <span class="ledger-lamp lamp--lock">locked</span>
-      </div>
-      <div class="ledger-row">
-        <span class="ledger-name">secret_absent</span>
-        <span class="ledger-what">credential-shaped strings in the diff?</span>
-        <span class="ledger-lamp lamp--off">refuses</span>
-      </div>
-      <div class="ledger-row">
-        <span class="ledger-name">judged</span>
-        <span class="ledger-what">is this change on-topic for the job? <em>(escalate-only)</em></span>
-        <span class="ledger-lamp lamp--off">refuses</span>
-      </div>
-    </div>
-
-    <p class="verdict-note reveal">
-      <b>Locked</b> means you cannot declare them, and cannot remove them. Both
-      were originally declarable — and a worker deleted the declaration and got
-      <code>accept</code>. A gate that can be switched off by the thing it
-      guards is not a gate.
-    </p>
-  </div>
-</section>
-
-<!-- ================= THE GAP ================= -->
-<section>
-  <div class="sheet">
-    <div class="sec-head reveal">
-      <p class="sec-num">03 — the gap</p>
-      <div>
-        <h2>The part most tools leave out is the part worth owning.</h2>
-      </div>
-    </div>
-
-    <div class="gap">
-      <div class="gap-copy reveal">
-        <p>
-          A contract that checks dependencies and green tests will happily pass
-          a change that is <strong>compliant and strategically wrong</strong>.
-          That is not a bug in the gates. It is what deterministic means.
-        </p>
-        <p>
-          So the gap is not an absence — it is a required, dated, owned
-          artefact. Every run prints it. An empty list is a warning, because
-          an empty list is a contract claiming more than it delivers.
-        </p>
-        <p>
-          This is the difference between a tool you run and a tool you rely on,
-          and it is the one a marketing page has no incentive to advertise.
-        </p>
-      </div>
-
-      <div class="excerpt reveal" role="img" aria-label="A palisade.toml excerpt. The judgement section is mandatory and its not_covered list contains five declared gaps.">
-        <div class="excerpt-head">
-          <span>palisade.toml</span>
-          <span>[judgement] — required</span>
-        </div>
-<pre><span class="c-com"># The gap. Mandatory, and deliberately not empty.</span>
-<span class="c-com"># These are real things this suite cannot check,</span>
-<span class="c-com"># and a human still has to look at them.</span>
-<span class="c-sec">[judgement]</span>
-<span class="c-key">reviewed</span> = <span class="c-str">"2026-09-30"</span>
-<span class="c-key">not_covered</span> = [
-<span class="gapline">"whether the chosen design is the right one",</span>
-<span class="gapline">"whether error messages are good enough",</span>
-<span class="gapline">"whether an added benchmark is a fair one",</span>
-<span class="gapline">"whether the code is understandable to someone",</span>
-<span class="gapline">  who did not write it",</span>
-<span class="gapline">"whether a test asserts what it claims to assert",</span>
-]
-
-<span class="c-com"># Gates are seeded at <span class="c-cmt">warn</span>: this proposes,</span>
-<span class="c-com"># it does not judge.</span>
-<span class="c-sec">[[gates]]</span>
-<span class="c-key">id</span> = <span class="c-str">"no_new_dependencies"</span>
-<span class="c-key">check</span> = <span class="c-str">"dependency_surface_unchanged"</span>
-<span class="c-key">severity</span> = <span class="c-str">"warn"</span></pre>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ================= THE NARRATIVE ================= -->
-<section style="background:var(--paper-2); border-block:1px solid var(--rule)">
-  <div class="sheet">
-    <div class="sec-head reveal">
-      <p class="sec-num">04 — the measurement</p>
-      <div>
-        <h2>The bugs we found by running it, not by reading it.</h2>
-        <p class="sec-sub">
-          Four times a correct-looking value produced a confidently wrong
-          answer. A failing gate is noticed. A gate that reports
-          <strong>no change because it could not read anything</strong> looks
-          exactly like a pass. Every one of these was caught by running the
-          suite against real repositories, and none by reading the code.
-        </p>
-      </div>
-    </div>
-
-    <div class="narrative">
-      <div class="findings reveal">
-        <article class="finding">
-          <p class="verdict-fixed"><s>accepted</s><span>→</span> caught</p>
-          <h3>documented items looked unchanged</h3>
-          <p>
-            A comment stripper matched <code>//</code> inside <code>///</code>
-            and then hunted for a block-comment close in a line comment,
-            swallowing every documented declaration in a file. The API gate
-            reported <em>no change</em> — correctly, given what it was handed,
-            and completely silently. An empty signature now makes the parser
-            refuse, so the value cannot be constructed at all.
-          </p>
-        </article>
-        <article class="finding">
-          <p class="verdict-fixed"><s>accepted</s><span>→</span> caught</p>
-          <h3>a file split looked like mass deletion</h3>
-          <p>
-            A merge where one file became a module moved 17 tests between
-            files. The gate saw one file lose its tests and reported all 17
-            deleted. Verified: 17 before, 17 after, none deleted. A test's
-            identity is now its module path, and <em>not</em> its file.
-          </p>
-        </article>
-        <article class="finding">
-          <p class="verdict-fixed"><s>accepted</s><span>→</span> caught</p>
-          <h3>a third-party tool's findings were discarded</h3>
-          <p>
-            <code>slop-gate</code> reports its findings and exits 0 at warning
-            level. Branching on the exit code alone dropped every one. The
-            first live run absorbed <em>zero</em> findings from a tool that had
-            one, and printed <code>pass</code>.
-          </p>
-        </article>
-      </div>
-
-      <div class="disclosure reveal">
-        <h3>What the corpus did and did not show</h3>
-        <ul>
-          <li><b>253 merges, ten repositories, generated contracts.</b> Zero <code>Untrustworthy</code>. Zero blocking-severity false positives.</li>
-          <li><b>One real substantive finding:</b> a merge that silently dropped four tests — in a repository whose <code>CONTRIBUTING.md</code> says every PR must pass its checks.</li>
-          <li><b>We judged our own findings.</b> The corpus has one author, who is also the person choosing the gates.</li>
-          <li><b><code>checks_green</code> is unmeasured on anything large.</b> It runs <code>cargo test --workspace</code>; on a 38-member crate that is minutes per merge.</li>
-          <li><b>No independent false-positive review exists.</b> Whether a maintainer finds these findings tolerable is the one question a corpus cannot answer.</li>
-        </ul>
-        <p class="disclosure-foot">
-          The most valuable thing this beta can report is a gate you switched
-          off. Silence is the failure mode this product is most vulnerable to,
-          and it looks exactly like success.
-        </p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ================= INSTALL ================= -->
-<section class="install">
-  <div class="sheet">
-    <div class="sec-head reveal">
-      <p class="sec-num">05 — install</p>
-      <div>
-        <h2>Three commands to a first verdict.</h2>
-      </div>
-    </div>
-
-    <div class="install-grid">
-      <div class="reveal">
-        <div class="cmd">
-          <span class="prompt">$</span>
-          <code>cargo install --git https://github.com/mrorigo/palisade palisade-cli</code>
-        </div>
-        <ol class="steps" style="margin-block-start:1.5rem">
-          <li><b>palisade init</b> writes a starting contract. Every gate at <code>warn</code> — it proposes, it does not judge.</li>
-          <li><b>palisade check</b> runs it. Nothing blocks until you promote a gate to <code>error</code> and say why.</li>
-          <li><b>Read the <code>not_covered</code> list.</b> That is the part of the job still yours.</li>
-        </ol>
-      </div>
-
-      <div class="reveal">
-        <p style="font-family:var(--mono);font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:oklch(65%0.01 85);margin-block-end:0.35rem">CI</p>
-<div class="yaml"><span class="y-com">- run: cargo install --git https://…/palisade palisade-cli</span>
-<span class="y-com">- run: palisade check --format sarif &gt; results.sarif</span>
-  <span class="y-flag">continue-on-error: true</span>  <span class="y-com"># upload even on a block</span>
-<span class="y-com">- uses: github/codeql-action/upload-sarif@v3</span>
-  <span class="y-flag">if</span>: <span class="y-str">always()</span>
-  <span class="y-key">with</span>:
-    <span class="y-key">sarif_file</span>: results.sarif</div>
-        <p style="margin-block-start:1.1rem;font-size:0.92rem;color:oklch(85%0.01 85)">
-          Findings land in code scanning. The JSON schema keeps
-          <code style="color:oklch(78%0.12 200)">acceptance</code>,
-          <code style="color:oklch(78%0.12 200)">rule_violations</code> and
-          <code style="color:oklch(78%0.12 200)">residual_judgement</code>
-          separate — conflating “breaks a rule” with “should intervene” is what
-          confounded the measurement that motivated this.
-        </p>
-      </div>
-    </div>
-  </div>
-</section>
-</main>
-
 <footer>
-  <div class="sheet">
-    <div class="foot-grid">
-      <div>
-        <a class="wordmark" href="#top" style="margin-block-end:1rem">
-          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M4 3v18M4 12l9-9M4 12l9 9" stroke="currentColor" stroke-width="2" stroke-linecap="square"/>
-          </svg>
-          Palisade
-        </a>
-        <p>
-          A supervisor for coding agents that runs a project's declared quality
-          contract, and escalates only what the contract could not cover.
-          Deterministic. No model in the loop. No network at analysis time.
-        </p>
-      </div>
-      <div class="foot-col">
-        <h3>Read</h3>
-        <ul>
-          <li><a href="https://github.com/mrorigo/palisade/blob/main/PLAN.md">PLAN.md</a> — how it is built, and why</li>
-          <li><a href="https://github.com/mrorigo/palisade/blob/main/PRD.md">PRD.md</a> — the product</li>
-          <li><a href="https://github.com/mrorigo/palisade/blob/main/EVIDENCE.md">EVIDENCE.md</a> — the measurements, including the failures</li>
-          <li><a href="https://github.com/mrorigo/palisade/blob/main/corpus/JUDGEMENT.md">corpus/JUDGEMENT.md</a> — our own run</li>
-        </ul>
-      </div>
-      <div class="foot-col">
-        <h3>Use</h3>
-        <ul>
-          <li><a href="https://github.com/mrorigo/palisade">Repository</a></li>
-          <li><a href="https://github.com/mrorigo/palisade/issues">Report a false positive</a></li>
-          <li><a href="https://github.com/mrorigo/palisade/blob/main/README.md">README</a></li>
-        </ul>
-      </div>
-    </div>
+  <div class="form">
     <p class="colophon">
+      <span>Palisade — quality inspection for agent-written Rust</span>
       <span>MIT OR Apache-2.0</span>
-      <span>built in rust</span>
-      <span>3.5 mb single binary</span>
-      <span>0.2.0-beta.1</span>
+      <span>3.5 MB single binary · no model · no network at analysis time</span>
+      <a href="https://github.com/mrorigo/palisade">repository</a>
+      <a href="https://github.com/mrorigo/palisade/blob/main/corpus/JUDGEMENT.md">corpus &amp; nonconformities</a>
+      <a href="https://github.com/mrorigo/palisade/blob/main/PLAN.md">how it is built</a>
     </p>
   </div>
 </footer>
