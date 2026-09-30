@@ -454,13 +454,22 @@
     font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.15em;
     text-transform: uppercase; color: var(--lead-deep); margin-block-end: 1.1rem;
   }
-  .limitations ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.75rem; }
+  .limitations ul { margin: 0; padding: 0; list-style: none; }
+  /* Not a grid. The marker is taken out of flow instead: as a grid item the
+     `<b>` would occupy the content column and the following bare text node
+     would become an anonymous grid item in the 1.1rem marker column, wrapping
+     one word per line. Absolutely positioned, the text simply flows. */
   .limitations li {
-    display: grid; grid-template-columns: 1.1rem 1fr; gap: 0.7rem;
+    position: relative;
+    padding-inline-start: 1.75rem;
     font-size: 0.94rem; color: var(--ink-2);
   }
+  .limitations li + li { margin-block-start: 0.75rem; }
   .limitations li::before {
     content: "✗";
+    position: absolute;
+    inset-inline-start: 0;
+    inset-block-start: 0.08em;
     font-family: var(--mono), "Apple Symbols", "Segoe UI Symbol", "Noto Sans Symbols 2", sans-serif;
     font-size: 0.7rem; color: var(--lead);
   }

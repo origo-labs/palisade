@@ -13,7 +13,7 @@ important section here.
 ## Try it
 
 ```sh
-cargo install --git https://github.com/mrorigo/palisade palisade-cli
+cargo install --git https://github.com/origo-labs/palisade palisade-cli
 cd your-rust-project
 palisade init          # writes a starting palisade.toml
 palisade check         # runs it
@@ -105,7 +105,7 @@ a worker deleted the declaration and got `accept`.
 ## CI
 
 ```yaml
-- run: cargo install --git https://github.com/mrorigo/palisade palisade-cli
+- run: cargo install --git https://github.com/origo-labs/palisade palisade-cli
 - run: palisade check --format sarif > results.sarif
   continue-on-error: true      # upload the SARIF even on a block
 - uses: github/codeql-action/upload-sarif@v3
